@@ -1,0 +1,22 @@
+[package]
+name = "firecore-battle"
+version = "0.4.0-alpha.1"
+authors = ["Rhys Holloway <rhyswilliamholloway@gmail.com>"]
+edition = "2018"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.dev]
+opt-level = 3
+debug-assertions = true
+
+[dependencies]
+
+firecore-game = {git = "https://github.com/DoNotDoughnut/firecore-game", default-features = false }
+# firecore-game = { path = "../firecore-game" }
+
+[dev-dependencies]
+postcard = { version = "0.6", default-features = false, features = ["alloc"] }
+firecore-game = {git = "https://github.com/DoNotDoughnut/firecore-game", features = ["ui"] }
+# firecore-game = { path = "../firecore-game", features = ["ui"] }
