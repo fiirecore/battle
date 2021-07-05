@@ -8,7 +8,6 @@ checksum = "43bb833f0bf979d8475d38fbf09ed3b8a55e1885fe93ad3f93239fc6a4f17b98"
 dependencies = [
  "getrandom",
  "once_cell",
- "serde",
  "version_check",
 ]
 
@@ -37,29 +36,19 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "firecore-battle"
 version = "0.5.0-beta.2021-07-04"
 dependencies = [
- "firecore-dependencies 0.5.0-beta.2021-07-02 (git+https://github.com/DoNotDoughnut/firecore-dependencies)",
+ "firecore-dependencies",
  "firecore-pokedex",
+ "log",
  "serde",
 ]
 
 [[package]]
 name = "firecore-dependencies"
-version = "0.5.0-beta.2021-07-02"
-source = "git+https://github.com/DoNotDoughnut/firecore-dependencies#0c2eb39958e0c629ea5cb4efff338a5189651c75"
+version = "0.5.0-beta.2021-07-05"
+source = "git+https://github.com/DoNotDoughnut/firecore-dependencies#d198f00ae9d88f7186de7d619dfeed1ec2c077cf"
 dependencies = [
- "log",
- "rhai",
-]
-
-[[package]]
-name = "firecore-dependencies"
-version = "0.5.0-beta.2021-07-02"
-source = "git+https://github.com/DoNotDoughnut/pokemon-game#cee8e7fa88a83a838e7df29e4ff19dd7879fd1ae"
-dependencies = [
- "ahash",
  "arrayvec",
- "log",
- "rhai",
+ "hashbrown",
  "serde",
  "tinystr",
 ]
@@ -67,9 +56,10 @@ dependencies = [
 [[package]]
 name = "firecore-pokedex"
 version = "0.5.0-beta.2021-07-04"
-source = "git+https://github.com/DoNotDoughnut/firecore-pokedex#408d09de2f8544b9cba846e3536f5de297073303"
+source = "git+https://github.com/DoNotDoughnut/firecore-pokedex#86412418471128578806882d743da79fdc65026e"
 dependencies = [
- "firecore-dependencies 0.5.0-beta.2021-07-02 (git+https://github.com/DoNotDoughnut/pokemon-game)",
+ "firecore-dependencies",
+ "rhai",
  "serde",
 ]
 
@@ -82,6 +72,16 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+dependencies = [
+ "ahash",
+ "serde",
 ]
 
 [[package]]

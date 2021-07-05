@@ -4,16 +4,14 @@ pub extern crate firecore_dependencies as deps;
 pub extern crate firecore_pokedex as pokedex;
 
 use {
-    deps::{
-        log::{debug, info, warn},
-        random::{Random, RandomState, GLOBAL_STATE},
-        rhai::Engine,
-    },
+    deps::random::{Random, RandomState, GLOBAL_STATE},
+    log::{debug, info, warn},
     pokedex::{
         item::ItemUseType,
         moves::{
             target::{MoveTargetInstance, MoveTargetLocation},
             usage::{MoveResult, PokemonTarget},
+            usage::script::Engine,
         },
         pokemon::{instance::PokemonInstance, Health},
         types::Effective,
@@ -390,8 +388,9 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
                                                     true => user.current_hp.saturating_add(heal),
                                                     false => user.current_hp.saturating_sub(heal),
                                                 };
-                                                client_results
-                                                    .push(BattleClientMove::UserHP(user.percent_hp()));
+                                                client_results.push(BattleClientMove::UserHP(
+                                                    user.percent_hp(),
+                                                ));
                                             }
                                             _ => (),
                                         }
@@ -593,9 +592,10 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
                             .party
                             .active_index(instance.pokemon.index)
                             .map(|index| user.party.know(index))
-                            .flatten() {
-                                other.client.send(ServerMessage::AddUnknown(new, unknown))
-                            }
+                            .flatten()
+                        {
+                            other.client.send(ServerMessage::AddUnknown(new, unknown))
+                        }
                         player_queue.push(ActionInstance {
                             pokemon: instance.pokemon,
                             action: BattleClientAction::Switch(new),
