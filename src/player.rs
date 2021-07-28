@@ -1,9 +1,9 @@
 use pokedex::{
     battle::{
-        party::{battle::{BattlePartyPokemon, BorrowedPokemon}, BattleParty},
+        party::{battle::BattlePartyPokemon, BattleParty},
         ActivePokemon,
     },
-    pokemon::party::Party,
+    pokemon::party::PokemonParty,
     trainer::TrainerData,
 };
 
@@ -24,7 +24,7 @@ pub struct BattlePlayer<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display
 impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq> BattlePlayer<ID> {
     pub fn new(
         id: ID,
-        party: Party<BorrowedPokemon>,
+        party: PokemonParty,
         trainer: Option<TrainerData>,
         settings: PlayerSettings,
         client: Box<dyn BattleClient<ID>>,

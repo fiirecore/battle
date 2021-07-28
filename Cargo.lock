@@ -45,7 +45,7 @@ dependencies = [
 [[package]]
 name = "firecore-pokedex"
 version = "0.5.0-beta.2021-07-27"
-source = "git+https://github.com/DoNotDoughnut/firecore-pokedex#4c5103442263fdf34f697fb441ec5afea766be1b"
+source = "git+https://github.com/DoNotDoughnut/firecore-pokedex#187cd592f5a11ccecfed8d6c4e3ae40904ca5220"
 dependencies = [
  "arrayvec",
  "hashbrown",
@@ -115,12 +115,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
-name = "ppv-lite86"
-version = "0.2.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -144,19 +138,6 @@ version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e7573632e6454cf6b99d7aac4ccca54be06da05aca2ef7423d22d27d4d4bcd8"
 dependencies = [
- "libc",
- "rand_chacha",
- "rand_core",
- "rand_hc",
-]
-
-[[package]]
-name = "rand_chacha"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
-dependencies = [
- "ppv-lite86",
  "rand_core",
 ]
 
@@ -165,24 +146,12 @@ name = "rand_core"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
-dependencies = [
- "getrandom",
-]
-
-[[package]]
-name = "rand_hc"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
-dependencies = [
- "rand_core",
-]
 
 [[package]]
 name = "rhai"
-version = "0.20.3"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8e23c09a050ef3dda3e5c79a73b73659561e2c2907ec4812c1e1391564dd360"
+checksum = "378357360ecb73c9fe845edda6fd23f79cefdd86530051065e2e95370c9e5f41"
 dependencies = [
  "ahash",
  "instant",

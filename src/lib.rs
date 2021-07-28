@@ -2,27 +2,17 @@
 
 pub extern crate firecore_pokedex as pokedex;
 
-use {
-    log::{debug, info, warn},
-    pokedex::{
-        item::ItemUseType,
-        moves::{
-            target::{MoveTargetInstance, MoveTargetLocation},
-            usage::script::Engine,
-            usage::{MoveResult, PokemonTarget},
-        },
-        pokemon::{instance::PokemonInstance, Health},
-        types::Effective,
-    },
-};
-
-use std::ops::Deref;
-
+use log::{debug, info, warn};
 use pokedex::{
     battle::{ActionInstance, ActivePokemon, BattleMove, PokemonIndex},
     id::Dex,
-    item::Itemdex,
-    moves::usage::{DamageResult, NoHitResult},
+    item::{ItemUseType, Itemdex},
+    moves::{
+        target::{MoveTargetInstance, MoveTargetLocation},
+        usage::{script::Engine, DamageResult, MoveResult, NoHitResult, PokemonTarget},
+    },
+    pokemon::{instance::PokemonInstance, Health},
+    types::Effective,
 };
 use rand::Rng;
 
@@ -153,7 +143,7 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
                         {
                             user.client.send(ServerMessage::PokemonRequest(
                                 request,
-                                pokemon.pokemon.deref().clone(),
+                                pokemon.pokemon.clone(),
                             ));
                         }
                     }
@@ -563,7 +553,7 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
                                                     user.client.send(
                                                         ServerMessage::PokemonRequest(
                                                             index,
-                                                            pokemon.pokemon.deref().clone(),
+                                                            pokemon.pokemon.clone(),
                                                         ),
                                                     );
                                                     if let Err(err) =
