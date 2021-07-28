@@ -1,6 +1,6 @@
 [package]
 name = "firecore-battle"
-version = "0.5.0-beta.2021-07-04"
+version = "0.5.0-beta.2021-07-27"
 authors = ["Rhys Holloway <rhyswilliamholloway@gmail.com>"]
 edition = "2018"
 
@@ -9,8 +9,7 @@ default = []
 ai = []
 
 [dependencies]
+rand = "0.8"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
-
-firecore-dependencies = { git = "https://github.com/DoNotDoughnut/firecore-dependencies", features = ["random"] }
 firecore-pokedex = { git = "https://github.com/DoNotDoughnut/firecore-pokedex" }

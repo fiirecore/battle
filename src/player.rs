@@ -1,9 +1,9 @@
 use pokedex::{
     battle::{
-        party::{battle::BattlePartyPokemon, BattleParty},
+        party::{battle::{BattlePartyPokemon, BorrowedPokemon}, BattleParty},
         ActivePokemon,
     },
-    pokemon::{instance::BorrowedPokemon, party::Party},
+    pokemon::party::Party,
     trainer::TrainerData,
 };
 

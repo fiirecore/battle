@@ -1,17 +1,15 @@
 // #![feature(map_into_keys_values)] // for move queue fn
 
-pub extern crate firecore_dependencies as deps;
 pub extern crate firecore_pokedex as pokedex;
 
 use {
-    deps::random::{Random, RandomState, GLOBAL_STATE},
     log::{debug, info, warn},
     pokedex::{
         item::ItemUseType,
         moves::{
             target::{MoveTargetInstance, MoveTargetLocation},
-            usage::{MoveResult, PokemonTarget},
             usage::script::Engine,
+            usage::{MoveResult, PokemonTarget},
         },
         pokemon::{instance::PokemonInstance, Health},
         types::Effective,
@@ -22,8 +20,11 @@ use std::ops::Deref;
 
 use pokedex::{
     battle::{ActionInstance, ActivePokemon, BattleMove, PokemonIndex},
+    id::Dex,
+    item::Itemdex,
     moves::usage::{DamageResult, NoHitResult},
 };
+use rand::Rng;
 
 use crate::{
     client::action::{BattleClientAction, BattleClientMove},
@@ -40,8 +41,6 @@ pub mod player;
 
 pub mod client;
 pub mod message;
-
-pub static BATTLE_RANDOM: Random = Random::new(RandomState::Static(&GLOBAL_STATE));
 
 pub struct Battle<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord> {
     ////////////// if using hashmap, only remaining player should be winner
@@ -172,7 +171,7 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
         }
     }
 
-    pub fn update(&mut self, engine: &Engine) {
+    pub fn update(&mut self, random: &mut impl Rng, engine: &Engine) {
         self._receive(true);
         self._receive(false);
 
@@ -196,7 +195,7 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
                 let queue =
                     pokedex::battle::move_queue(&mut self.player1.party, &mut self.player2.party);
 
-                let player_queue = self.client_queue(engine, queue);
+                let player_queue = self.client_queue(random, engine, queue);
 
                 // end queue calculations
 
@@ -262,6 +261,7 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
 
     pub fn client_queue(
         &mut self,
+        random: &mut impl Rng,
         engine: &Engine,
         queue: Vec<ActionInstance<ID, BattleMove>>,
     ) -> Vec<ActionInstance<ID, BattleClientAction<ID>>> {
@@ -306,7 +306,7 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
                             }
                             MoveTargetInstance::RandomOpponent => {
                                 vec![MoveTargetLocation::Opponent(
-                                    BATTLE_RANDOM.gen_range(0, other.party.active.len()),
+                                    random.gen_range(0..other.party.active.len()),
                                 )]
                             }
                             MoveTargetInstance::AllOtherPokemon => {
@@ -361,7 +361,7 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
 
                         let turn = user_pokemon
                             .pokemon
-                            .use_own_move(engine, move_index, targets);
+                            .use_own_move(random, engine, move_index, targets);
 
                         let mut target_results = Vec::with_capacity(turn.results.len());
 
@@ -535,57 +535,63 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
                             action: BattleClientAction::Move(turn.pokemon_move, target_results),
                         });
                     }
-                    BattleMove::UseItem(item, target) => {
-                        if match &item.usage {
-                            ItemUseType::Script(script) => {
-                                user.party
-                                    .active_mut(instance.pokemon.index)
-                                    .unwrap()
-                                    .pokemon
-                                    .execute_item_script(script);
-                                true
-                            }
-                            ItemUseType::Pokeball => match self.data.type_ {
-                                BattleType::Wild => {
-                                    let (target, active) = match target {
-                                        MoveTargetLocation::Opponent(index) => (other, index),
-                                        _ => unreachable!(),
-                                    };
-                                    if let Some(active) = target.party.active.get_mut(active) {
-                                        let active = std::mem::replace(active, ActivePokemon::None);
-                                        if let Some(index) = active.index() {
-                                            if target.party.pokemon.len() > index {
-                                                let mut pokemon =
-                                                    target.party.pokemon.remove(index);
-                                                pokemon.caught = true;
-                                                user.client.send(ServerMessage::PokemonRequest(
-                                                    index,
-                                                    pokemon.pokemon.deref().clone(),
-                                                ));
-                                                if let Err(err) =
-                                                    user.party.pokemon.try_push(pokemon)
-                                                {
-                                                    warn!("Could not catch pokemon because the player's party has reached maximum capacity and PCs have not been implemented.");
-                                                    warn!("Error: {}", err);
+                    BattleMove::UseItem(id, target) => match Itemdex::try_get(&id) {
+                        Some(item) => {
+                            if match &item.usage {
+                                ItemUseType::Script(script) => {
+                                    user.party
+                                        .active_mut(instance.pokemon.index)
+                                        .unwrap()
+                                        .pokemon
+                                        .execute_item_script(script);
+                                    true
+                                }
+                                ItemUseType::Pokeball => match self.data.type_ {
+                                    BattleType::Wild => {
+                                        let (target, active) = match target {
+                                            MoveTargetLocation::Opponent(index) => (other, index),
+                                            _ => unreachable!(),
+                                        };
+                                        if let Some(active) = target.party.active.get_mut(active) {
+                                            let active =
+                                                std::mem::replace(active, ActivePokemon::None);
+                                            if let Some(index) = active.index() {
+                                                if target.party.pokemon.len() > index {
+                                                    let mut pokemon =
+                                                        target.party.pokemon.remove(index);
+                                                    pokemon.caught = true;
+                                                    user.client.send(
+                                                        ServerMessage::PokemonRequest(
+                                                            index,
+                                                            pokemon.pokemon.deref().clone(),
+                                                        ),
+                                                    );
+                                                    if let Err(err) =
+                                                        user.party.pokemon.try_push(pokemon)
+                                                    {
+                                                        warn!("Could not catch pokemon because the player's party has reached maximum capacity and PCs have not been implemented.");
+                                                        warn!("Error: {}", err);
+                                                    }
                                                 }
                                             }
                                         }
+                                        true
                                     }
-                                    true
-                                }
-                                _ => {
-                                    info!("Cannot use pokeballs in trainer battles!");
-                                    false
-                                }
-                            },
-                            ItemUseType::None => true,
-                        } {
-                            player_queue.push(ActionInstance {
-                                pokemon: instance.pokemon,
-                                action: BattleClientAction::UseItem(item, target),
-                            });
+                                    _ => {
+                                        info!("Cannot use pokeballs in trainer battles!");
+                                        false
+                                    }
+                                },
+                                ItemUseType::None => true,
+                            } {
+                                player_queue.push(ActionInstance {
+                                    pokemon: instance.pokemon,
+                                    action: BattleClientAction::UseItem(item, target),
+                                });
+                            }
                         }
-                    }
+                        None => warn!("Could not get item with id {}", id),
+                    },
                     BattleMove::Switch(new) => {
                         user.party.replace(instance.pokemon.index, Some(new));
                         if let Some(unknown) = user
