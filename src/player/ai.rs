@@ -1,4 +1,3 @@
-use deps::random::{Random, RandomState, GLOBAL_STATE};
 use pokedex::{
     battle::{
         party::knowable::{BattlePartyKnown, BattlePartyUnknown},
@@ -6,6 +5,8 @@ use pokedex::{
     },
     moves::target::{MoveTarget, MoveTargetInstance},
 };
+use rand::Rng;
+use std::fmt::{Debug, Display};
 
 use crate::{
     client::{
@@ -15,18 +16,18 @@ use crate::{
     message::{ClientMessage, ServerMessage},
 };
 
-static AI_RANDOM: Random = Random::new(RandomState::Static(&GLOBAL_STATE));
-
 #[derive(Default)]
-pub struct BattlePlayerAi<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> {
+pub struct BattlePlayerAi<R: Rng, ID: Sized + Copy + Debug + Display + Eq + Ord> {
+    random: R,
     user: BattlePartyKnown<ID>,
     opponent: BattlePartyUnknown<ID>,
     messages: Vec<ClientMessage>,
 }
 
-impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> BattlePlayerAi<ID> {
-    pub fn new(id: ID) -> Self {
+impl<R: Rng, ID: Sized + Copy + Debug + Display + Eq + Ord> BattlePlayerAi<R, ID> {
+    pub fn new(random: R, id: ID) -> Self {
         Self {
+            random,
             user: BattlePartyKnown::default_with_id(id),
             opponent: BattlePartyUnknown::default_with_id(id),
             messages: Default::default(),
@@ -34,8 +35,8 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> Battle
     }
 }
 
-impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> BattleEndpoint<ID>
-    for BattlePlayerAi<ID>
+impl<R: Rng, ID: Sized + Copy + Debug + Display + Eq + Ord> BattleEndpoint<ID>
+    for BattlePlayerAi<R, ID>
 {
     fn give_client(&mut self, message: ServerMessage<ID>) {
         match message {
@@ -60,25 +61,25 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> Battle
                             .map(|(index, _)| index)
                             .collect();
 
-                        let move_index = moves[AI_RANDOM.gen_range(0, moves.len())];
+                        let move_index = moves[self.random.gen_range(0..moves.len())];
 
                         let target = match &pokemon.moves[move_index].move_ref.target {
                             MoveTarget::Any => MoveTargetInstance::Any(
                                 false,
-                                AI_RANDOM.gen_range(0, self.opponent.active.len()),
+                                self.random.gen_range(0..self.opponent.active.len()),
                             ),
                             MoveTarget::Ally => {
-                                let index = AI_RANDOM.gen_range(1, self.user.active.len());
+                                let index = self.random.gen_range(1..self.user.active.len());
                                 let index = if index >= active { index + 1 } else { index };
                                 MoveTargetInstance::Ally(index)
                             }
                             MoveTarget::Allies => MoveTargetInstance::Allies,
                             MoveTarget::UserOrAlly => MoveTargetInstance::UserOrAlly(
-                                AI_RANDOM.gen_range(0, self.user.active.len()),
+                                self.random.gen_range(0..self.user.active.len()),
                             ),
                             MoveTarget::User => MoveTargetInstance::User,
                             MoveTarget::Opponent => MoveTargetInstance::Opponent(
-                                AI_RANDOM.gen_range(0, self.opponent.active.len()),
+                                self.random.gen_range(0..self.opponent.active.len()),
                             ),
                             MoveTarget::AllOpponents => MoveTargetInstance::AllOpponents,
                             MoveTarget::RandomOpponent => MoveTargetInstance::RandomOpponent,
@@ -136,7 +137,7 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> Battle
 
                                             if !available.is_empty() {
                                                 let r = available
-                                                    [AI_RANDOM.gen_range(0, available.len())];
+                                                    [self.random.gen_range(0..available.len())];
                                                 self.user.active[active] = Some(r);
 
                                                 self.messages
@@ -204,8 +205,8 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> Battle
     }
 }
 
-impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> BattleClient<ID>
-    for BattlePlayerAi<ID>
+impl<R: Rng, ID: Sized + Copy + Debug + Display + Eq + Ord> BattleClient<ID>
+    for BattlePlayerAi<R, ID>
 {
     fn give_server(&mut self) -> Option<ClientMessage> {
         self.messages.pop()
