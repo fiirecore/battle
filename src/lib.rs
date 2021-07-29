@@ -161,7 +161,7 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
         }
     }
 
-    pub fn update(&mut self, random: &mut impl Rng, engine: &Engine) {
+    pub fn update<R: Rng + Clone + 'static>(&mut self, random: &mut R, engine: &Engine) {
         self._receive(true);
         self._receive(false);
 
@@ -249,9 +249,9 @@ impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq + Ord>
         }
     }
 
-    pub fn client_queue(
+    pub fn client_queue<R: Rng + Clone + 'static>(
         &mut self,
-        random: &mut impl Rng,
+        random: &mut R,
         engine: &Engine,
         queue: Vec<ActionInstance<ID, BattleMove>>,
     ) -> Vec<ActionInstance<ID, BattleClientAction<ID>>> {
