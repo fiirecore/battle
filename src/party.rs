@@ -61,7 +61,8 @@ impl<ID, A: PartyIndex, P: PokemonView> PlayerParty<ID, A, P> {
         !self
             .pokemon
             .iter()
-            .any(P::available)
+            .filter(|p| p.visible())
+            .any(|p| !p.fainted())
             || self.pokemon.is_empty()
     }
 
@@ -70,7 +71,7 @@ impl<ID, A: PartyIndex, P: PokemonView> PlayerParty<ID, A, P> {
             .iter()
             .enumerate()
             .filter(|(i, ..)| !self.active_contains(*i))
-            .any(|(.., pokemon)| pokemon.available())
+            .any(|(.., pokemon)| !pokemon.fainted())
     }
 
     pub fn needs_replace(&self) -> bool {

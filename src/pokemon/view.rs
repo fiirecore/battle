@@ -12,8 +12,8 @@ pub trait PokemonView {
 
     fn fainted(&self) -> bool;
 
-    /// Check if fainted or hidden
-    fn available(&self) -> bool;
+    /// Check if hidden (should not be used in battle)
+    fn visible(&self) -> bool;
 
 }
 
@@ -34,8 +34,8 @@ impl PokemonView for BattlePokemon {
         PokemonInstance::fainted(self)
     }
 
-    fn available(&self) -> bool {
-        !self.caught && PokemonInstance::available(self)
+    fn visible(&self) -> bool {
+        !self.caught
     }
 }
 
@@ -56,8 +56,8 @@ impl PokemonView for PokemonInstance {
         PokemonInstance::fainted(self)
     }
 
-    fn available(&self) -> bool {
-        !PokemonInstance::fainted(self)
+    fn visible(&self) -> bool {
+        true
     }
 }
 
@@ -78,7 +78,7 @@ impl PokemonView for Option<UnknownPokemon> {
         self.as_ref().map(|u| u.fainted()).unwrap_or_default()
     }
 
-    fn available(&self) -> bool {
-        self.as_ref().map(|u| !u.fainted()).unwrap_or_default()
+    fn visible(&self) -> bool {
+        true
     }
 }

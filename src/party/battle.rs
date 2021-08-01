@@ -3,8 +3,8 @@ use core::ops::Deref;
 use pokedex::pokemon::{Party, PokemonInstance, PokemonParty};
 
 use crate::{
-    party::PlayerParty,
-    pokemon::{ActivePokemon, BattlePokemon, UnknownPokemon},
+    party::{PlayerParty, PartyIndex},
+    pokemon::{ActivePokemon, BattlePokemon, UnknownPokemon, PokemonView},
 };
 
 pub type BattleParty<ID> = PlayerParty<ID, ActivePokemon, BattlePokemon>;
@@ -19,7 +19,7 @@ impl<ID> BattleParty<ID> {
     }
 
     pub fn reveal_active(&mut self) {
-        for index in self.active.iter().flatten().map(|a| a.index) {
+        for index in self.active.iter().flatten().map(PartyIndex::index) {
             if let Some(pokemon) = self.pokemon.get_mut(index) {
                 pokemon.known = true;
             }
@@ -36,12 +36,14 @@ impl<ID> BattleParty<ID> {
 
 impl<ID> BattleParty<ID> {
     pub fn party_ref(&self) -> Party<&PokemonInstance> {
-        self.pokemon.iter().map(Deref::deref).collect()
+        self.party_ref_iter().collect()
     }
-}
 
-impl<ID> BattleParty<ID> {
     pub fn party_cloned(&self) -> PokemonParty {
-        self.pokemon.iter().map(|b| b.deref().clone()).collect()
+        self.party_ref_iter().cloned().collect()
+    }
+
+    fn party_ref_iter(&self) -> impl Iterator<Item = &PokemonInstance> + '_ {
+        self.pokemon.iter().filter(|p| p.visible()).map(Deref::deref)
     }
 }
