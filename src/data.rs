@@ -6,12 +6,10 @@ pub struct BattleData {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum BattleType { // move somewhere else
-
+pub enum BattleType {
     Wild,
     Trainer,
     GymLeader,
-
 }
 
 impl Default for BattleType {

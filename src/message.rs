@@ -1,42 +1,48 @@
+use core::fmt::Debug;
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
-    battle::{
-        party::knowable::{BattlePartyKnown, BattlePartyUnknown},
-        view::UnknownPokemon,
-        ActionInstance, Active, BattleMove, PartyIndex, PokemonIndex,
-    },
-    moves::MoveRef,
-    pokemon::{instance::PokemonInstance, party::PokemonParty},
+    moves::MoveId,
+    pokemon::{PokemonInstance, PokemonParty},
 };
 
-use crate::{client::action::BattleClientAction, BattleData};
+use crate::{
+    moves::client::BoundClientMove,
+    moves::BattleMove,
+    pokemon::{PokemonIndex, UnknownPokemon},
+    player::{RemotePlayer, LocalPlayer},
+    BattleData,
+};
+
+type ActiveIndex = usize;
+type PartyIndex = usize;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub enum ClientMessage {
     // Connect(BattleParty),
-    Move(Active, BattleMove),
-    FaintReplace(Active, PartyIndex),
+    Move(ActiveIndex, BattleMove), // active pokemon, move
+    FaintReplace(ActiveIndex, PartyIndex), // active pokemon, party index
     RequestPokemon(PartyIndex),
     FinishedTurnQueue,
-    AddLearnedMove(PartyIndex, usize, MoveRef),
+    AddLearnedMove(PartyIndex, usize, MoveId), // pokemon index, move index, move
     Forfeit,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub enum ServerMessage<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + PartialEq> {
-    User(BattleData, BattlePartyKnown<ID>),
-    Opponents(BattlePartyUnknown<ID>),
+pub enum ServerMessage<ID> {
+    User(BattleData, LocalPlayer<ID>),
+    Opponents(RemotePlayer<ID>),
     // UpdatePokemon(TrainerId, usize, UnknownPokemon),
-    PokemonRequest(PartyIndex, PokemonInstance),
+    PokemonRequest(usize, PokemonInstance),
     StartSelecting,
-    TurnQueue(Vec<ActionInstance<ID, BattleClientAction<ID>>>),
+    TurnQueue(Vec<BoundClientMove<ID>>),
     // AskFinishedTurnQueue,
     // SelectMoveError(usize),
     // Catch(PokemonIndex),
     // RequestFaintReplace(Active),
-    // FaintReplaceError(Active),
-    FaintReplace(PokemonIndex<ID>, Option<PartyIndex>),
+    CanFaintReplace(usize, bool),
+    FaintReplace(PokemonIndex<ID>, Option<usize>),
     AddUnknown(PartyIndex, UnknownPokemon),
-    Winner(ID, Option<Box<PokemonParty>>), // party is for when user requests party back. used in remote clients
+    Winner(ID), // party is for when user requests party back. used in remote clients
+    PartyRequest(PokemonParty),
 }

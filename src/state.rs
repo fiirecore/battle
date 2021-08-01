@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub enum BattleState<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> {
+pub enum BattleState<ID> {
 	StartWait,
 	Setup,
 	StartSelecting,
@@ -9,7 +9,7 @@ pub enum BattleState<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + 
 	End(ID),
 }
 
-impl<ID: Sized + Copy + core::fmt::Debug + core::fmt::Display + Eq + Ord> Default for BattleState<ID> {
+impl<ID> Default for BattleState<ID> {
     fn default() -> Self {
         Self::StartWait
     }
