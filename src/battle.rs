@@ -550,5 +550,3 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
         player_queue
     }
 }
-
-// fn get_player<ID: Eq, E1: BattleEndpoint<ID>, E2: BattleEndpoint<ID>>(id: &ID, p1: &mut BattlePlayer<>)

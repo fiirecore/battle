@@ -34,7 +34,7 @@ impl<ID> PartyKind<ID, Option<UnknownPokemon>> {
     }
 
     pub fn add_unknown(&mut self, index: usize, unknown: UnknownPokemon) {
-        if self.pokemon.len() < index {
+        if self.pokemon.len() > index {
             self.pokemon[index] = Some(unknown);
         }
     }
