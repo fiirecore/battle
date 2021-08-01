@@ -1,6 +1,6 @@
 use crate::{moves::BattleMove, party::PartyIndex};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ActivePokemon {
     pub index: usize,
     pub queued_move: Option<BattleMove>,

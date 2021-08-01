@@ -14,7 +14,7 @@ pub use queue::*;
 
 pub mod client;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum BattleMove {
     Move(usize, MoveTargetInstance),
     UseItem(ItemId, usize),

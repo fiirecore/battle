@@ -25,7 +25,7 @@ impl<ID, A: PartyIndex, P> PlayerParty<ID, A, P> {
 
     pub fn active(&self, active: usize) -> Option<&P> {
         self.index(active)
-            .map(|index| self.pokemon.get(index))
+            .map(move |index| self.pokemon.get(index))
             .flatten()
     }
 
@@ -53,10 +53,6 @@ impl<ID, A: PartyIndex, P> PlayerParty<ID, A, P> {
         self.active.iter().enumerate().flat_map(move |(index, active)| active.as_ref().map(|a| self.pokemon.get(a.index()).map(|p| (index, p)))).flatten()
     }
 
-    // pub fn active_iter_mut(&mut self) -> impl Iterator<Item = &mut P> + '_ {
-    //     self.active.iter().flat_map(|a| a.as_ref().map(A::index)).flat_map(move |index| self.pokemon.get_mut(index))
-    // }
-
 }
 
 impl<ID, A: PartyIndex, P: PokemonView> PlayerParty<ID, A, P> {
@@ -65,7 +61,7 @@ impl<ID, A: PartyIndex, P: PokemonView> PlayerParty<ID, A, P> {
         !self
             .pokemon
             .iter()
-            .any(|pokemon| !pokemon.available())
+            .any(P::available)
             || self.pokemon.is_empty()
     }
 
@@ -73,8 +69,8 @@ impl<ID, A: PartyIndex, P: PokemonView> PlayerParty<ID, A, P> {
         self.pokemon
             .iter()
             .enumerate()
-            .filter(|(i, _)| !self.active_contains(*i))
-            .any(|(_, pokemon)| !pokemon.available())
+            .filter(|(i, ..)| !self.active_contains(*i))
+            .any(|(.., pokemon)| pokemon.available())
     }
 
     pub fn needs_replace(&self) -> bool {
