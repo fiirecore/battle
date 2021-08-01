@@ -176,7 +176,7 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
             }
             BattleState::StartMoving => {
                 let queue =
-                    crate::moves::move_queue(&mut self.player1.party, &mut self.player2.party);
+                    crate::moves::move_queue(&mut self.player1.party, &mut self.player2.party, random);
 
                 let player_queue = self.client_queue(random, engine, queue);
 
