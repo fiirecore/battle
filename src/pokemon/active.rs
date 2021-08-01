@@ -6,21 +6,17 @@ pub struct ActivePokemon {
     pub queued_move: Option<BattleMove>,
 }
 
-impl ActivePokemon {
-    pub fn new(index: usize) -> Self {
+impl PartyIndex for ActivePokemon {
+    fn index(&self) -> usize {
+        self.index
+    }
+}
+
+impl From<usize> for ActivePokemon {
+    fn from(index: usize) -> Self {
         Self {
             index,
             queued_move: None,
         }
-    }
-
-    pub fn use_move(&mut self) -> Option<BattleMove> {
-        self.queued_move.take()
-    }
-}
-
-impl PartyIndex for ActivePokemon {
-    fn index(&self) -> usize {
-        self.index
     }
 }

@@ -21,7 +21,7 @@ use crate::{
         BattleMove, BoundBattleMove, MoveTargetInstance, MoveTargetLocation,
     },
     player::BattlePlayer,
-    pokemon::{ActivePokemon, PokemonIndex},
+    pokemon::PokemonIndex,
     state::BattleState,
 };
 
@@ -36,11 +36,7 @@ pub struct Battle<ID: Sized + Copy + PartialEq + Ord + Display> {
 }
 
 impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
-    pub fn new(
-        data: BattleData,
-        player1: BattlePlayer<ID>,
-        player2: BattlePlayer<ID>,
-    ) -> Self {
+    pub fn new(data: BattleData, player1: BattlePlayer<ID>, player2: BattlePlayer<ID>) -> Self {
         Self {
             state: BattleState::default(),
             data,
@@ -76,11 +72,7 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
         self.state = BattleState::StartSelecting;
     }
 
-    fn receive(
-        data: &BattleData,
-        player: &mut BattlePlayer<ID>,
-        other: &mut BattlePlayer<ID>,
-    ) {
+    fn receive(data: &BattleData, player: &mut BattlePlayer<ID>, other: &mut BattlePlayer<ID>) {
         while let Some(message) = player.endpoint.receive() {
             match message {
                 ClientMessage::Move(active, bmove) => {
@@ -101,7 +93,7 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                     if !player.party.active_contains(index) {
                         if let Some(pokemon) = player.party.pokemon.get(index) {
                             if !pokemon.fainted() {
-                                player.party.active[active] = Some(ActivePokemon::new(index));
+                                player.party.active[active] = Some(index.into());
                                 if let Some(pokemon) = player.party.know(index) {
                                     other
                                         .endpoint
@@ -114,16 +106,24 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                                     },
                                     Some(index),
                                 ));
-                                player.endpoint.send(ServerMessage::CanFaintReplace(active, true));
+                                player
+                                    .endpoint
+                                    .send(ServerMessage::CanFaintReplace(active, true));
                             } else {
-                                player.endpoint.send(ServerMessage::CanFaintReplace(active, false));
+                                player
+                                    .endpoint
+                                    .send(ServerMessage::CanFaintReplace(active, false));
                             }
                         // party.client.confirm_replace(active, index);
                         } else {
-                            player.endpoint.send(ServerMessage::CanFaintReplace(active, false));
+                            player
+                                .endpoint
+                                .send(ServerMessage::CanFaintReplace(active, false));
                         }
                     } else {
-                        player.endpoint.send(ServerMessage::CanFaintReplace(active, false));
+                        player
+                            .endpoint
+                            .send(ServerMessage::CanFaintReplace(active, false));
                         warn!("Player {} tried to replace a pokemon with a pokemon that is already active.", player.name());
                     }
                 }
@@ -150,7 +150,7 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                         }
                     }
                 }
-                ClientMessage::FinishedTurnQueue => (),
+                ClientMessage::FinishedTurnQueue => player.waiting = true,
             }
         }
     }
@@ -164,10 +164,12 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
 
             BattleState::StartWait => (),
             BattleState::StartSelecting => {
-                self.player1.new_turn();
-                self.player2.new_turn();
-                self.player1.endpoint.send(ServerMessage::StartSelecting);
-                self.player2.endpoint.send(ServerMessage::StartSelecting);
+                fn start_selecting<ID>(player: &mut BattlePlayer<ID>) {
+                    player.waiting = false;
+                    player.endpoint.send(ServerMessage::StartSelecting);
+                }
+                start_selecting(&mut self.player1);
+                start_selecting(&mut self.player2);
                 self.state = BattleState::WaitSelecting;
             }
             BattleState::WaitSelecting => {
@@ -219,20 +221,8 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
         }
     }
 
-    fn set_winner(
-        winner: ID,
-        player1: &mut BattlePlayer<ID>,
-        player2: &mut BattlePlayer<ID>,
-    ) {
-        // let party = player1
-        //     .settings
-        //     .request_party
-        //     .then(|| Box::new(player1.party.cloned()));
+    fn set_winner(winner: ID, player1: &mut BattlePlayer<ID>, player2: &mut BattlePlayer<ID>) {
         player1.endpoint.send(ServerMessage::Winner(winner));
-        // let party = player2
-        //     .settings
-        //     .request_party
-        //     .then(|| Box::new(player2.party.cloned()));
         player2.endpoint.send(ServerMessage::Winner(winner));
     }
 
@@ -332,7 +322,9 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                             .into_iter()
                             .flat_map(|target| {
                                 match target {
-                                    MoveTargetLocation::Opponent(index) => other.party.active(index),
+                                    MoveTargetLocation::Opponent(index) => {
+                                        other.party.active(index)
+                                    }
                                     MoveTargetLocation::Team(index) => user.party.active(index),
                                     MoveTargetLocation::User => Some(user_pokemon),
                                 }
@@ -544,7 +536,7 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                         user.party.replace(instance.pokemon.index, Some(new));
                         if let Some(unknown) = user
                             .party
-                            .party_index(instance.pokemon.index)
+                            .index(instance.pokemon.index)
                             .map(|index| user.party.know(index))
                             .flatten()
                         {

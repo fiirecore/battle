@@ -35,7 +35,7 @@ fn queue_player<ID: Copy>(
 ) {
     for index in 0..party.active.len() {
         if let Some(pokemon) = party.active.get_mut(index).map(Option::as_mut).flatten() {
-            if let Some(action) = pokemon.use_move() {
+            if let Some(action) = pokemon.queued_move.take() {
                 if let Some(instance) = party.active(index) {
                     let pokemon = PokemonIndex {
                         team: party.id,

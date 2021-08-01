@@ -28,6 +28,11 @@ impl UnknownPokemon {
             instance: None,
         }
     }
+
+    pub fn fainted(&self) -> bool {
+        self.hp <= 0.0
+    }
+
 }
 
 impl UnknownPokemon {

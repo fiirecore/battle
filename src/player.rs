@@ -1,9 +1,9 @@
 use pokedex::pokemon::PokemonParty;
 
 use crate::{
-    BattleEndpoint,
     party::{BattleParty, PlayerParty},
-    pokemon::{ActivePokemon, BattlePokemon, UnknownPokemon},
+    pokemon::{BattlePokemon, UnknownPokemon},
+    BattleEndpoint,
 };
 
 mod settings;
@@ -20,6 +20,7 @@ pub struct BattlePlayer<ID> {
     pub party: BattleParty<ID>,
     pub name: Option<String>,
     pub settings: PlayerSettings,
+    /// Player's turn has finished
     pub waiting: bool,
 }
 
@@ -39,7 +40,7 @@ impl<ID> BattlePlayer<ID> {
             match party.get(count) {
                 Some(p) => {
                     if !p.fainted() {
-                        active.push(Some(ActivePokemon::new(count)));
+                        active.push(Some(count.into()));
                     }
                 }
                 None => active.push(None),
@@ -62,10 +63,6 @@ impl<ID> BattlePlayer<ID> {
 
     pub fn name(&self) -> &str {
         self.name.as_deref().unwrap_or("Unknown")
-    }
-
-    pub fn new_turn(&mut self) {
-        self.waiting = false;
     }
 }
 
@@ -103,7 +100,7 @@ impl<ID: Copy> BattlePlayer<ID> {
                     .iter()
                     .map(|active| active.as_ref().map(|a| a.index))
                     .collect(),
-            }
+            },
         }
     }
 }
