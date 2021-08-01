@@ -1,17 +1,15 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
-use pokedex::{
-    item::ItemId,
-    moves::{usage::MoveResult, MoveRef},
-};
+use pokedex::item::ItemId;
 
 use crate::BoundAction;
 
 mod target;
 pub use target::*;
 
+#[cfg(feature = "host")]
 mod queue;
+#[cfg(feature = "host")]
 pub use queue::*;
 
 pub mod client;
@@ -24,10 +22,3 @@ pub enum BattleMove {
 }
 
 pub type BoundBattleMove<ID> = BoundAction<ID, BattleMove>;
-
-pub type MoveResults = BTreeMap<MoveTargetLocation, Vec<MoveResult>>;
-
-pub struct TurnResult {
-    pub pokemon_move: MoveRef,
-    pub results: MoveResults,
-}
