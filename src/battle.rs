@@ -50,24 +50,20 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
     }
 
     pub fn begin(&mut self) {
-        self.player1.endpoint.send(ServerMessage::User(
-            self.data.clone(),
-            self.player1.as_local(),
-        ));
-        self.player2.endpoint.send(ServerMessage::User(
-            self.data.clone(),
-            self.player2.as_local(),
-        ));
 
         self.player1.party.reveal_active();
         self.player2.party.reveal_active();
 
-        self.player1
-            .endpoint
-            .send(ServerMessage::Opponents(self.player2.as_remote()));
-        self.player2
-            .endpoint
-            .send(ServerMessage::Opponents(self.player1.as_remote()));
+        fn player_begin<ID: Copy>(data: BattleData, player: &mut BattlePlayer<ID>, other: &BattlePlayer<ID>) {
+            player.endpoint.send(ServerMessage::User(
+                data,
+                player.as_local(),
+            ));
+            player.endpoint.send(ServerMessage::Opponents(other.as_remote()));
+        }
+
+        player_begin(self.data.clone(), &mut self.player1, &self.player2);
+        player_begin(self.data.clone(), &mut self.player2, &self.player1);
 
         self.state = BattleState::StartSelecting;
     }
@@ -76,55 +72,55 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
         while let Some(message) = player.endpoint.receive() {
             match message {
                 ClientMessage::Move(active, bmove) => {
-                    if let Some(pokemon) = player.party.active.get_mut(active) {
-                        match pokemon {
-                            Some(pokemon) => {
-                                pokemon.queued_move = Some(bmove);
-                                // party.client.confirm_move(active);
-                            }
-                            _ => warn!(
-                                "Party {} could not add move #{:?} to pokemon #{}",
-                                player.party.id, bmove, active
-                            ),
+                    match player
+                        .party
+                        .active
+                        .get_mut(active)
+                        .map(Option::as_mut)
+                        .flatten()
+                    {
+                        Some(pokemon) => {
+                            pokemon.queued_move = Some(bmove);
+                            // party.client.confirm_move(active);
                         }
+                        None => warn!(
+                            "Party {} could not add move #{:?} to pokemon #{}",
+                            player.name(),
+                            bmove,
+                            active
+                        ),
                     }
                 }
                 ClientMessage::FaintReplace(active, index) => {
-                    if !player.party.active_contains(index) {
-                        if let Some(pokemon) = player.party.pokemon.get(index) {
-                            if !pokemon.fainted() {
-                                player.party.active[active] = Some(index.into());
-                                if let Some(pokemon) = player.party.know(index) {
-                                    other
-                                        .endpoint
-                                        .send(ServerMessage::AddUnknown(index, pokemon));
+
+                    fn can<ID>(player: &mut BattlePlayer<ID>, active: usize, can: bool) {
+                        player.endpoint.send(ServerMessage::CanFaintReplace(active, can))
+                    }
+
+                    match player.party.active_contains(index) {
+                        false => match player.party.pokemon.get(index) {
+                            Some(pokemon) => match pokemon.fainted() {
+                                false => {
+                                    player.party.active[active] = Some(index.into());
+                                    if let Some(pokemon) = player.party.know(index) {
+                                        other
+                                            .endpoint
+                                            .send(ServerMessage::AddUnknown(index, pokemon));
+                                    }
+                                    other.endpoint.send(ServerMessage::FaintReplace(
+                                        PokemonIndex {
+                                            team: player.party.id,
+                                            index: active,
+                                        },
+                                        Some(index),
+                                    ));
+                                    can(player, active, true)
                                 }
-                                other.endpoint.send(ServerMessage::FaintReplace(
-                                    PokemonIndex {
-                                        team: player.party.id,
-                                        index: active,
-                                    },
-                                    Some(index),
-                                ));
-                                player
-                                    .endpoint
-                                    .send(ServerMessage::CanFaintReplace(active, true));
-                            } else {
-                                player
-                                    .endpoint
-                                    .send(ServerMessage::CanFaintReplace(active, false));
-                            }
-                        // party.client.confirm_replace(active, index);
-                        } else {
-                            player
-                                .endpoint
-                                .send(ServerMessage::CanFaintReplace(active, false));
-                        }
-                    } else {
-                        player
-                            .endpoint
-                            .send(ServerMessage::CanFaintReplace(active, false));
-                        warn!("Player {} tried to replace a pokemon with a pokemon that is already active.", player.name());
+                                true => can(player, active, false),
+                            },
+                            None => can(player, active, false),
+                        },
+                        true => can(player, active, false),
                     }
                 }
                 ClientMessage::RequestPokemon(request) => {
@@ -156,8 +152,9 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
     }
 
     pub fn update<R: Rng + Clone + 'static>(&mut self, random: &mut R, engine: &Engine) {
+        
         Self::receive(&self.data, &mut self.player1, &mut self.player2);
-        Self::receive(&self.data, &mut self.player1, &mut self.player2);
+        Self::receive(&self.data, &mut self.player2, &mut self.player1);
 
         match self.state {
             BattleState::Setup => self.begin(),
