@@ -35,7 +35,29 @@ impl PokemonView for BattlePokemon {
     }
 
     fn available(&self) -> bool {
-        !(self.caught || self.fainted())
+        !self.caught && PokemonInstance::available(self)
+    }
+}
+
+impl PokemonView for PokemonInstance {
+    fn pokemon(&self) -> PokemonRef {
+        self.pokemon
+    }
+
+    fn name(&self) -> &str {
+        PokemonInstance::name(self)
+    }
+
+    fn level(&self) -> Level {
+        self.level
+    }
+
+    fn fainted(&self) -> bool {
+        PokemonInstance::fainted(self)
+    }
+
+    fn available(&self) -> bool {
+        !PokemonInstance::fainted(self)
     }
 }
 
