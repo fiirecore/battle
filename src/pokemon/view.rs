@@ -10,6 +10,9 @@ pub trait PokemonView {
 
     fn level(&self) -> Level;
 
+    /// Percent of HP remaining.
+    fn hp(&self) -> f32;
+
     fn fainted(&self) -> bool;
 
     /// Check if hidden (should not be used in battle)
@@ -28,6 +31,10 @@ impl PokemonView for BattlePokemon {
 
     fn level(&self) -> Level {
         self.level
+    }
+
+    fn hp(&self) -> f32 {
+        self.percent_hp()
     }
 
     fn fainted(&self) -> bool {
@@ -52,6 +59,10 @@ impl PokemonView for PokemonInstance {
         self.level
     }
 
+    fn hp(&self) -> f32 {
+        self.percent_hp()
+    }
+
     fn fainted(&self) -> bool {
         PokemonInstance::fainted(self)
     }
@@ -72,6 +83,10 @@ impl PokemonView for Option<UnknownPokemon> {
 
     fn level(&self) -> Level {
         self.as_ref().map(|u| u.level).unwrap_or_default()
+    }
+
+    fn hp(&self) -> f32 {
+        self.as_ref().map(|u| u.hp).unwrap_or_default()
     }
 
     fn fainted(&self) -> bool {
