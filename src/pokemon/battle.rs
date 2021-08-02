@@ -1,4 +1,5 @@
 use core::ops::{Deref, DerefMut};
+use hashbrown::HashSet;
 
 use pokedex::{moves::MoveId, pokemon::PokemonInstance};
 
@@ -7,7 +8,7 @@ use crate::pokemon::UnknownPokemon;
 #[derive(Debug, Clone)]
 pub struct BattlePokemon {
     pub instance: PokemonInstance,
-    pub learnable_moves: Vec<MoveId>,
+    pub learnable_moves: HashSet<MoveId>,
     // pub persistent: Option<PersistentMove>,
     pub caught: bool,
     pub known: bool,
@@ -37,7 +38,7 @@ impl From<PokemonInstance> for BattlePokemon {
     fn from(instance: PokemonInstance) -> Self {
         Self {
             instance,
-            learnable_moves: Vec::new(),
+            learnable_moves: Default::default(),
             caught: false,
             known: false,
             flinch: false,

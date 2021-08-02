@@ -12,6 +12,9 @@ pub use settings::*;
 mod knowable;
 pub use knowable::*;
 
+mod validate;
+pub use validate::*;
+
 #[cfg(feature = "ai")]
 pub mod ai;
 
@@ -67,22 +70,6 @@ impl<ID> BattlePlayer<ID> {
 }
 
 impl<ID: Copy> BattlePlayer<ID> {
-    pub fn as_local(&self) -> LocalPlayer<ID> {
-        PlayerKnowable {
-            name: self.name.clone(),
-            party: PlayerParty {
-                id: self.party.id,
-                pokemon: self.party.party_cloned(),
-                active: self
-                    .party
-                    .active
-                    .iter()
-                    .map(|active| active.as_ref().map(|a| a.index))
-                    .collect(),
-            },
-        }
-    }
-
     pub fn as_remote(&self) -> RemotePlayer<ID> {
         PlayerKnowable {
             name: self.name.clone(),

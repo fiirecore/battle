@@ -6,7 +6,8 @@ use pokedex::{
     id::Dex,
     item::{ItemUseType, Itemdex},
     moves::{
-        usage::{script::Engine, DamageResult, MoveResult, NoHitResult},
+        script::MoveEngine,
+        usage::{DamageResult, MoveResult, NoHitResult},
         Movedex,
     },
     pokemon::{Health, PokemonInstance},
@@ -20,19 +21,33 @@ use crate::{
         client::{BoundClientMove, ClientAction, ClientActions, ClientMove},
         BattleMove, BoundBattleMove, MoveTargetInstance, MoveTargetLocation,
     },
-    player::BattlePlayer,
+    player::{BattlePlayer, ValidatedPlayer},
     pokemon::PokemonIndex,
-    state::BattleState,
 };
 
 pub struct Battle<ID: Sized + Copy + PartialEq + Ord + Display> {
-    ////////////// if using hashmap, only remaining player should be winner
     state: BattleState<ID>,
 
     data: BattleData,
 
     player1: BattlePlayer<ID>,
     player2: BattlePlayer<ID>,
+}
+
+#[derive(Debug)]
+pub enum BattleState<ID> {
+    Start,
+    StartSelecting,
+    WaitSelecting,
+    StartMoving,
+    WaitMoving,
+    End(ID),
+}
+
+impl<ID> Default for BattleState<ID> {
+    fn default() -> Self {
+        Self::Start
+    }
 }
 
 impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
@@ -50,16 +65,19 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
     }
 
     pub fn begin(&mut self) {
-
         self.player1.party.reveal_active();
         self.player2.party.reveal_active();
 
-        fn player_begin<ID: Copy>(data: BattleData, player: &mut BattlePlayer<ID>, other: &BattlePlayer<ID>) {
-            player.endpoint.send(ServerMessage::User(
-                data,
-                player.as_local(),
-            ));
-            player.endpoint.send(ServerMessage::Opponents(other.as_remote()));
+        fn player_begin<ID: Copy>(
+            data: BattleData,
+            player: &mut BattlePlayer<ID>,
+            other: &BattlePlayer<ID>,
+        ) {
+            player
+                .endpoint
+                .send(ServerMessage::Validate(ValidatedPlayer::new(
+                    data, player, other,
+                )));
         }
 
         player_begin(self.data.clone(), &mut self.player1, &self.player2);
@@ -68,7 +86,7 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
         self.state = BattleState::StartSelecting;
     }
 
-    fn receive(data: &BattleData, player: &mut BattlePlayer<ID>, other: &mut BattlePlayer<ID>) {
+    fn receive(player: &mut BattlePlayer<ID>, other: &mut BattlePlayer<ID>) {
         while let Some(message) = player.endpoint.receive() {
             match message {
                 ClientMessage::Move(active, bmove) => {
@@ -91,10 +109,11 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                         ),
                     }
                 }
-                ClientMessage::FaintReplace(active, index) => {
-
+                ClientMessage::ReplaceFaint(active, index) => {
                     fn can<ID>(player: &mut BattlePlayer<ID>, active: usize, can: bool) {
-                        player.endpoint.send(ServerMessage::CanFaintReplace(active, can))
+                        player
+                            .endpoint
+                            .send(ServerMessage::ConfirmFaintReplace(active, can))
                     }
 
                     match player.party.active_contains(index) {
@@ -112,7 +131,7 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                                             team: player.party.id,
                                             index: active,
                                         },
-                                        Some(index),
+                                        index,
                                     ));
                                     can(player, active, true)
                                 }
@@ -123,25 +142,12 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                         true => can(player, active, false),
                     }
                 }
-                ClientMessage::RequestPokemon(request) => {
-                    if let Some(pokemon) = other.party.pokemon.get(request) {
-                        if matches!(data.type_, BattleType::Wild)
-                            || pokemon.requestable
-                            || (pokemon.fainted() && pokemon.known)
-                        {
-                            player.endpoint.send(ServerMessage::PokemonRequest(
-                                request,
-                                pokemon.deref().clone(),
-                            ));
-                        }
-                    }
-                }
                 ClientMessage::Forfeit => Self::set_winner(other.party.id, player, other),
-                ClientMessage::AddLearnedMove(pokemon, index, move_id) => {
+                ClientMessage::LearnMove(pokemon, move_id, index) => {
                     if let Some(pokemon) = player.party.pokemon.get_mut(pokemon) {
-                        if pokemon.learnable_moves.contains(&move_id) {
+                        if pokemon.learnable_moves.remove(&move_id) {
                             if let Some(move_ref) = Movedex::try_get(&move_id) {
-                                pokemon.replace_move(index, move_ref);
+                                pokemon.replace_move(index as _, move_ref);
                             }
                         }
                     }
@@ -151,15 +157,16 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
         }
     }
 
-    pub fn update<R: Rng + Clone + 'static>(&mut self, random: &mut R, engine: &Engine) {
-        
-        Self::receive(&self.data, &mut self.player1, &mut self.player2);
-        Self::receive(&self.data, &mut self.player2, &mut self.player1);
+    pub fn update<R: Rng + Clone + 'static, E: MoveEngine>(
+        &mut self,
+        random: &mut R,
+        engine: &mut E,
+    ) {
+        Self::receive(&mut self.player1, &mut self.player2);
+        Self::receive(&mut self.player2, &mut self.player1);
 
         match self.state {
-            BattleState::Setup => self.begin(),
-
-            BattleState::StartWait => (),
+            BattleState::Start => self.begin(),
             BattleState::StartSelecting => {
                 fn start_selecting<ID>(player: &mut BattlePlayer<ID>) {
                     player.waiting = false;
@@ -175,8 +182,11 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                 }
             }
             BattleState::StartMoving => {
-                let queue =
-                    crate::moves::move_queue(&mut self.player1.party, &mut self.player2.party, random);
+                let queue = crate::moves::move_queue(
+                    &mut self.player1.party,
+                    &mut self.player2.party,
+                    random,
+                );
 
                 let player_queue = self.client_queue(random, engine, queue);
 
@@ -234,10 +244,10 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
         }
     }
 
-    pub fn client_queue<R: Rng + Clone + 'static>(
+    pub fn client_queue<R: Rng + Clone + 'static, E: MoveEngine>(
         &mut self,
         random: &mut R,
-        engine: &Engine,
+        engine: &mut E,
         queue: Vec<BoundBattleMove<ID>>,
     ) -> Vec<BoundClientMove<ID>> {
         let mut player_queue = Vec::with_capacity(queue.len());
@@ -415,7 +425,9 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                                                 actions.push(ClientAction::Miss);
                                                 continue;
                                             }
-                                            NoHitResult::Todo => actions.push(ClientAction::Fail),
+                                            NoHitResult::Todo | NoHitResult::Error => {
+                                                actions.push(ClientAction::Fail)
+                                            }
                                         },
                                     }
 
@@ -500,8 +512,7 @@ impl<ID: Sized + Copy + PartialEq + Ord + Display> Battle<ID> {
                                                 let mut pokemon =
                                                     other.party.pokemon.remove(active.index);
                                                 pokemon.caught = true;
-                                                user.endpoint.send(ServerMessage::PokemonRequest(
-                                                    active.index,
+                                                user.endpoint.send(ServerMessage::Catch(
                                                     pokemon.deref().clone(),
                                                 ));
                                                 if let Err(err) =

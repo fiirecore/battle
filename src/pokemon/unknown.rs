@@ -13,7 +13,6 @@ pub struct UnknownPokemon {
     pub gender: Gender,
     pub hp: f32,
     pub effect: Option<StatusEffectInstance>,
-    pub instance: Option<PokemonInstance>,
 }
 
 impl UnknownPokemon {
@@ -25,7 +24,6 @@ impl UnknownPokemon {
             gender: pokemon.gender,
             hp: pokemon.percent_hp(),
             effect: pokemon.effect,
-            instance: None,
         }
     }
 

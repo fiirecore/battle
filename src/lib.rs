@@ -15,7 +15,6 @@ pub mod moves;
 pub mod party;
 pub mod player;
 pub mod pokemon;
-pub mod state;
 
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 pub struct BoundAction<ID, T> {
