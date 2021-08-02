@@ -5,8 +5,9 @@ authors = ["Rhys Holloway <rhyswilliamholloway@gmail.com>"]
 edition = "2018"
 
 [features]
-default = ["host", "firecore-pokedex/default_scripting"]
+default = ["host", "default_scripting"]
 host = []
+default_scripting = ["firecore-pokedex/default_scripting"]
 ai = []
 
 [dependencies]
