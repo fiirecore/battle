@@ -1,15 +1,19 @@
 use core::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
-use pokedex::pokemon::PokemonInstance;
+use pokedex::pokemon::{InitPokemon, PokemonId, PokemonRef};
 
 use crate::{party::PlayerParty, pokemon::UnknownPokemon};
 
-pub type LocalPlayer<ID> = PlayerKnowable<ID, PokemonInstance>;
-pub type RemotePlayer<ID> = PlayerKnowable<ID, Remote>;
+pub type LocalPlayer<'d, ID> = PlayerKnowable<ID, InitPokemon<'d>>;
+
+pub type UninitRemotePlayer<ID> = RemotePlayerKind<ID, PokemonId>;
+pub type InitRemotePlayer<'d, ID> = RemotePlayerKind<ID, PokemonRef<'d>>;
+
+pub type RemotePlayerKind<ID, P> = PlayerKnowable<ID, Remote<P>>;
 
 type PartyKind<ID, P> = PlayerParty<ID, usize, P>;
-type Remote = Option<UnknownPokemon>;
+type Remote<P> = Option<UnknownPokemon<P>>;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PlayerKnowable<ID, P> {
@@ -17,8 +21,8 @@ pub struct PlayerKnowable<ID, P> {
     pub party: PartyKind<ID, P>,
 }
 
-impl<ID> PartyKind<ID, Remote> {
-    pub fn add_unknown(&mut self, index: usize, unknown: UnknownPokemon) {
+impl<ID, P> PartyKind<ID, Remote<P>> {
+    pub fn add_unknown(&mut self, index: usize, unknown: UnknownPokemon<P>) {
         if self.pokemon.len() > index {
             self.pokemon[index] = Some(unknown);
         }

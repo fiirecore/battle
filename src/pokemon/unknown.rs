@@ -1,40 +1,69 @@
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
-    pokemon::{data::Gender, Level, PokemonInstance, PokemonRef},
-    status::StatusEffectInstance,
+    ailment::Ailment,
+    pokemon::{data::Gender, InitPokemon, Level, PokemonId, PokemonRef, Pokedex},
 };
 
+pub type UninitUnknownPokemon = UnknownPokemon<PokemonId>;
+pub type InitUnknownPokemon<'d> = UnknownPokemon<PokemonRef<'d>>;
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct UnknownPokemon {
-    pub pokemon: PokemonRef,
+pub struct UnknownPokemon<P> {
+    pub pokemon: P,
     pub nickname: Option<String>,
     pub level: Level,
-    pub gender: Gender,
+    pub gender: Option<Gender>,
     pub hp: f32,
-    pub effect: Option<StatusEffectInstance>,
+    pub ailment: Option<Ailment>,
 }
 
-impl UnknownPokemon {
-    pub fn new(pokemon: &PokemonInstance) -> Self {
+impl<'d> InitUnknownPokemon<'d> {
+    pub fn new(pokemon: &InitPokemon<'d>) -> Self {
         Self {
             pokemon: pokemon.pokemon,
             nickname: pokemon.nickname.clone(),
             level: pokemon.level,
             gender: pokemon.gender,
             hp: pokemon.percent_hp(),
-            effect: pokemon.effect,
+            ailment: pokemon.ailment.as_ref().map(|a| a.ailment),
         }
     }
 
-    pub fn fainted(&self) -> bool {
-        self.hp <= 0.0
+    pub fn name<'b: 'd>(&'b self) -> &'b str {
+        self.nickname.as_ref().unwrap_or(&self.pokemon.name)
+    }
+
+    pub fn uninit(self) -> UninitUnknownPokemon {
+        UninitUnknownPokemon {
+            pokemon: self.pokemon.id,
+            nickname: self.nickname,
+            level: self.level,
+            gender: self.gender,
+            hp: self.hp,
+            ailment: self.ailment,
+        }
     }
 
 }
 
-impl UnknownPokemon {
-    pub fn name(&self) -> &str {
-        self.nickname.as_ref().unwrap_or(&self.pokemon.name)
+impl UninitUnknownPokemon {
+
+    pub fn init<'d>(self, pokedex: &'d Pokedex) -> Option<InitUnknownPokemon<'d>> {
+        Some(InitUnknownPokemon {
+            pokemon: pokedex.try_get(&self.pokemon)?,
+            nickname: self.nickname,
+            level: self.level,
+            gender: self.gender,
+            hp: self.hp,
+            ailment: self.ailment,
+        })
+    }
+
+}
+
+impl<P> UnknownPokemon<P> {
+    pub fn fainted(&self) -> bool {
+        self.hp <= 0.0
     }
 }

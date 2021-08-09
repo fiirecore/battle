@@ -10,8 +10,7 @@ pub use view::*;
 mod unknown;
 pub use unknown::*;
 
-mod battle;
-pub use battle::*;
+pub mod battle;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct PokemonIndex<ID> {

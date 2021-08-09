@@ -55,7 +55,7 @@ impl<ID, A: PartyIndex, P> PlayerParty<ID, A, P> {
 
 }
 
-impl<ID, A: PartyIndex, P: PokemonView> PlayerParty<ID, A, P> {
+impl<ID, A: PartyIndex, V: PokemonView> PlayerParty<ID, A, V> {
 
     pub fn all_fainted(&self) -> bool {
         !self

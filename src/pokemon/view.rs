@@ -1,44 +1,17 @@
-use pokedex::pokemon::{Level, PokemonInstance, PokemonRef};
+use pokedex::pokemon::InitPokemon;
 
-use super::{BattlePokemon, UnknownPokemon};
+use super::{battle::BattlePokemon, UnknownPokemon};
 
 pub trait PokemonView {
-
-    fn pokemon(&self) -> PokemonRef;
-
-    fn name(&self) -> &str;
-
-    fn level(&self) -> Level;
-
-    /// Percent of HP remaining.
-    fn hp(&self) -> f32;
-
     fn fainted(&self) -> bool;
 
     /// Check if hidden (should not be used in battle)
     fn visible(&self) -> bool;
-
 }
 
-impl PokemonView for BattlePokemon {
-    fn pokemon(&self) -> PokemonRef {
-        self.pokemon
-    }
-
-    fn name(&self) -> &str {
-        PokemonInstance::name(self)
-    }
-
-    fn level(&self) -> Level {
-        self.level
-    }
-
-    fn hp(&self) -> f32 {
-        self.percent_hp()
-    }
-
+impl<'d> PokemonView for BattlePokemon<'d> {
     fn fainted(&self) -> bool {
-        PokemonInstance::fainted(self)
+        InitPokemon::fainted(self)
     }
 
     fn visible(&self) -> bool {
@@ -46,25 +19,9 @@ impl PokemonView for BattlePokemon {
     }
 }
 
-impl PokemonView for PokemonInstance {
-    fn pokemon(&self) -> PokemonRef {
-        self.pokemon
-    }
-
-    fn name(&self) -> &str {
-        PokemonInstance::name(self)
-    }
-
-    fn level(&self) -> Level {
-        self.level
-    }
-
-    fn hp(&self) -> f32 {
-        self.percent_hp()
-    }
-
+impl<'d> PokemonView for InitPokemon<'d> {
     fn fainted(&self) -> bool {
-        PokemonInstance::fainted(self)
+        InitPokemon::fainted(self)
     }
 
     fn visible(&self) -> bool {
@@ -72,23 +29,7 @@ impl PokemonView for PokemonInstance {
     }
 }
 
-impl PokemonView for Option<UnknownPokemon> {
-    fn pokemon(&self) -> PokemonRef {
-        self.as_ref().map(|u| u.pokemon).unwrap_or_default()
-    }
-
-    fn name(&self) -> &str {
-        self.as_ref().map(|u| u.name()).unwrap_or("Unknown")
-    }
-
-    fn level(&self) -> Level {
-        self.as_ref().map(|u| u.level).unwrap_or_default()
-    }
-
-    fn hp(&self) -> f32 {
-        self.as_ref().map(|u| u.hp).unwrap_or_default()
-    }
-
+impl<P> PokemonView for Option<UnknownPokemon<P>> {
     fn fainted(&self) -> bool {
         self.as_ref().map(|u| u.fainted()).unwrap_or_default()
     }

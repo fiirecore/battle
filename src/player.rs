@@ -1,8 +1,9 @@
-use pokedex::pokemon::PokemonParty;
+use pokedex::pokemon::InitParty;
 
 use crate::{
     party::{BattleParty, PlayerParty},
-    pokemon::{BattlePokemon, UnknownPokemon},
+    player::UninitRemotePlayer,
+    pokemon::{battle::BattlePokemon, UnknownPokemon},
     BattleEndpoint,
 };
 
@@ -18,19 +19,19 @@ pub use validate::*;
 #[cfg(feature = "ai")]
 pub mod ai;
 
-pub struct BattlePlayer<ID> {
+pub struct BattlePlayer<'d, ID> {
     pub endpoint: Box<dyn BattleEndpoint<ID>>,
-    pub party: BattleParty<ID>,
+    pub party: BattleParty<'d, ID>,
     pub name: Option<String>,
     pub settings: PlayerSettings,
     /// Player's turn has finished
     pub waiting: bool,
 }
 
-impl<ID> BattlePlayer<ID> {
+impl<'d, ID> BattlePlayer<'d, ID> {
     pub fn new(
         id: ID,
-        party: PokemonParty,
+        party: InitParty<'d>,
         name: Option<String>,
         settings: PlayerSettings,
         endpoint: Box<dyn BattleEndpoint<ID>>,
@@ -69,8 +70,8 @@ impl<ID> BattlePlayer<ID> {
     }
 }
 
-impl<ID: Copy> BattlePlayer<ID> {
-    pub fn as_remote(&self) -> RemotePlayer<ID> {
+impl<'d, ID: Copy> BattlePlayer<'d, ID> {
+    pub fn as_remote(&self) -> UninitRemotePlayer<ID> {
         PlayerKnowable {
             name: self.name.clone(),
             party: PlayerParty {
@@ -79,7 +80,7 @@ impl<ID: Copy> BattlePlayer<ID> {
                     .party
                     .pokemon
                     .iter()
-                    .map(|p| p.known.then(|| UnknownPokemon::new(p)))
+                    .map(|p| p.known.then(|| UnknownPokemon::new(p).uninit()))
                     .collect(),
                 active: self
                     .party

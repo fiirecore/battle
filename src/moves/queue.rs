@@ -3,7 +3,7 @@ use std::{cmp::Reverse, collections::BTreeMap};
 
 use pokedex::{
     moves::Priority,
-    pokemon::stat::{BaseStat, FullStatType, StatType},
+    pokemon::stat::{BaseStat, StatType},
 };
 
 use crate::{
@@ -32,9 +32,9 @@ pub fn move_queue<ID: Copy + Ord, R: Rng>(
     queue.into_iter().map(|(_, i)| i).collect() // into_values
 }
 
-fn queue_player<ID: Copy + Ord>(
+fn queue_player<'d, ID: Copy + Ord>(
     queue: &mut BTreeMap<MovePriority<ID>, BoundBattleMove<ID>>,
-    party: &mut BattleParty<ID>,
+    party: &mut BattleParty<'d, ID>,
     tiebreaker: bool,
 ) {
     for index in 0..party.active.len() {
@@ -49,8 +49,8 @@ fn queue_player<ID: Copy + Ord>(
                     queue.insert(
                         match action {
                             BattleMove::Move(index, ..) => MovePriority::Second(
-                                Reverse(instance.moves[index].priority),
-                                Reverse(instance.base.get(FullStatType::Basic(StatType::Speed))),
+                                Reverse(instance.moves.get(index).map(|i| i.m.priority).unwrap_or_default()),
+                                Reverse(instance.stat(StatType::Speed)),
                                 tiebreaker,
                                 id,
                             ),

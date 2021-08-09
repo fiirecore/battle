@@ -1,13 +1,13 @@
 use core::fmt::Debug;
 use serde::{Deserialize, Serialize};
 
-use pokedex::{moves::MoveId, pokemon::PokemonInstance};
+use pokedex::{moves::MoveId, pokemon::{UninitPokemon, PokemonId}};
 
 use crate::{
     moves::client::BoundClientMove,
     moves::BattleMove,
     player::ValidatedPlayer,
-    pokemon::{PokemonIndex, UnknownPokemon},
+    pokemon::{PokemonIndex, UninitUnknownPokemon},
 };
 
 type ActiveIndex = usize;
@@ -24,12 +24,12 @@ pub enum ClientMessage {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub enum ServerMessage<ID> {
-    Validate(ValidatedPlayer<ID>),
+    Begin(ValidatedPlayer<ID, PokemonId>),
     StartSelecting,
-    Catch(PokemonInstance),
+    Catch(UninitPokemon),
     TurnQueue(Vec<BoundClientMove<ID>>),
     ConfirmFaintReplace(ActiveIndex, bool),
     FaintReplace(PokemonIndex<ID>, usize),
-    AddUnknown(PartyIndex, UnknownPokemon),
-    Winner(ID),
+    AddUnknown(PartyIndex, UninitUnknownPokemon),
+    Winner(Option<ID>),
 }
