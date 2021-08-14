@@ -1,25 +1,27 @@
-use pokedex::{moves::MoveTarget, pokemon::{InitPokemon, Party}};
+use pokedex::pokemon::Party;
 use rand::Rng;
 
 use crate::{
     message::{ClientMessage, ServerMessage},
     moves::{
         client::{ClientAction, ClientMove},
-        BattleMove, MoveTargetInstance,
+        usage::{MoveTarget, MoveTargetInstance},
+        BattleMove,
     },
-    player::{UninitRemotePlayer, PlayerKnowable},
+    player::{PlayerKnowable, UninitRemotePlayer},
+    pokemon::OwnedRefPokemon,
     BattleEndpoint,
 };
 
 pub struct BattlePlayerAi<'d, R: Rng, ID: Default + PartialEq> {
     random: R,
-    local: PlayerKnowable<ID, InitPokemon<'d>>,
+    local: PlayerKnowable<ID, OwnedRefPokemon<'d>>,
     remote: UninitRemotePlayer<ID>,
     messages: Vec<ClientMessage>,
 }
 
 impl<'d, R: Rng, ID: Default + PartialEq> BattlePlayerAi<'d, R, ID> {
-    pub fn new(random: R, party: Party<InitPokemon<'d>>) -> Self {
+    pub fn new(random: R, party: Party<OwnedRefPokemon<'d>>) -> Self {
         let mut local = PlayerKnowable::default();
         local.party.pokemon = party;
         Self {
@@ -39,7 +41,7 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
                 self.local.name = validate.name;
                 self.local.active = validate.active;
                 self.remote = validate.remote;
-            },
+            }
             ServerMessage::StartSelecting => {
                 for (active, pokemon) in self.local.active_iter() {
                     // crashes when moves run out
@@ -53,7 +55,7 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
 
                     let move_index = moves[self.random.gen_range(0..moves.len())];
 
-                    let target = match &pokemon.moves[move_index].m.target {
+                    let target = match &pokemon.moves[move_index].m.usage.target {
                         MoveTarget::Any => MoveTargetInstance::Any(
                             false,
                             self.random.gen_range(0..self.remote.active.len()),
@@ -74,7 +76,7 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
                         MoveTarget::AllOpponents => MoveTargetInstance::AllOpponents,
                         MoveTarget::RandomOpponent => MoveTargetInstance::RandomOpponent,
                         MoveTarget::AllOtherPokemon => MoveTargetInstance::AllOtherPokemon,
-                        MoveTarget::Todo => MoveTargetInstance::Todo,
+                        MoveTarget::None => MoveTargetInstance::None,
                         MoveTarget::UserAndAllies => MoveTargetInstance::UserAndAllies,
                         MoveTarget::AllPokemon => MoveTargetInstance::AllPokemon,
                     };
@@ -158,15 +160,23 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
                 }
                 self.messages.push(ClientMessage::FinishedTurnQueue);
             }
-            ServerMessage::FaintReplace(pokemon, new) => if let Some(index) = match pokemon.team == self.local.id {
-                true => &mut self.local.active,
-                false => &mut self.remote.active,
-            }.get_mut(pokemon.index) { *index = Some(new) },
+            ServerMessage::FaintReplace(pokemon, new) => {
+                if let Some(index) = match pokemon.team == self.local.id {
+                    true => &mut self.local.active,
+                    false => &mut self.remote.active,
+                }
+                .get_mut(pokemon.index)
+                {
+                    *index = Some(new)
+                }
+            }
             ServerMessage::AddUnknown(index, unknown) => self.remote.add_unknown(index, unknown),
             ServerMessage::Winner(..) | ServerMessage::Catch(..) => (),
-            ServerMessage::ConfirmFaintReplace(index, can) => if !can {
-                log::error!("AI cannot replace pokemon at active index {}", index)
-            },
+            ServerMessage::ConfirmFaintReplace(index, can) => {
+                if !can {
+                    log::error!("AI cannot replace pokemon at active index {}", index)
+                }
+            }
         }
     }
 

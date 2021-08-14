@@ -2,8 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use pokedex::{
     ailment::Ailment,
-    pokemon::{data::Gender, InitPokemon, Level, PokemonId, PokemonRef, Pokedex},
+    pokemon::{Gender, Level, PokemonId, PokemonRef, Pokedex},
 };
+
+use super::OwnedRefPokemon;
 
 pub type UninitUnknownPokemon = UnknownPokemon<PokemonId>;
 pub type InitUnknownPokemon<'d> = UnknownPokemon<PokemonRef<'d>>;
@@ -19,7 +21,7 @@ pub struct UnknownPokemon<P> {
 }
 
 impl<'d> InitUnknownPokemon<'d> {
-    pub fn new(pokemon: &InitPokemon<'d>) -> Self {
+    pub fn new(pokemon: &OwnedRefPokemon<'d>) -> Self {
         Self {
             pokemon: pokemon.pokemon,
             nickname: pokemon.nickname.clone(),

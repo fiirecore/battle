@@ -1,9 +1,9 @@
-use pokedex::pokemon::InitParty;
+use pokedex::pokemon::Party;
 
 use crate::{
     party::{BattleParty, PlayerParty},
     player::UninitRemotePlayer,
-    pokemon::{battle::BattlePokemon, UnknownPokemon},
+    pokemon::{battle::BattlePokemon, UnknownPokemon, OwnedRefPokemon},
     BattleEndpoint,
 };
 
@@ -31,7 +31,7 @@ pub struct BattlePlayer<'d, ID> {
 impl<'d, ID> BattlePlayer<'d, ID> {
     pub fn new(
         id: ID,
-        party: InitParty<'d>,
+        party: Party<OwnedRefPokemon<'d>>,
         name: Option<String>,
         settings: PlayerSettings,
         endpoint: Box<dyn BattleEndpoint<ID>>,

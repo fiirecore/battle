@@ -2,13 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use pokedex::{
     item::ItemId,
-    moves::{usage::Critical, MoveId},
-    pokemon::{stat::StatStage, Experience, Level},
+    moves::{MoveId},
+    pokemon::{Experience, Level},
     ailment::LiveAilment,
     types::Effective,
 };
 
-use crate::{pokemon::PokemonIndex, BoundAction, moves::MoveTargetLocation};
+use crate::{pokemon::{PokemonIndex, battle::stat::{BattleStatType, Stage}}, BoundAction, moves::usage::{MoveTargetLocation, Critical}};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ClientAction<ID> {
@@ -16,7 +16,7 @@ pub enum ClientAction<ID> {
     TargetHP(f32, Critical), // bool = crit
     UserHP(f32),             // dont heal the target
     Effective(Effective),
-    StatStage(StatStage),
+    Stat(BattleStatType, Stage),
     Ailment(LiveAilment),
     Faint(PokemonIndex<ID>), // target that is fainting
     SetExp(Experience, Level),

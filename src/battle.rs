@@ -1,15 +1,10 @@
-use core::{fmt::Display, ops::Deref};
+use core::fmt::Display;
 use log::{info, warn};
 use rand::Rng;
 
 use pokedex::{
-    item::{ItemUseType, Itemdex},
-    moves::{
-        script::MoveEngine,
-        usage::{DamageResult, MoveResult, NoHitResult},
-        MoveInstance, Movedex,
-    },
-    pokemon::{Health, InitPokemon},
+    item::{usage::ItemUsageKind, Itemdex},
+    pokemon::Health,
     types::Effective,
 };
 
@@ -18,10 +13,14 @@ use crate::{
     message::{ClientMessage, ServerMessage},
     moves::{
         client::{BoundClientMove, ClientAction, ClientActions, ClientMove},
-        BattleMove, BoundBattleMove, MoveTargetInstance, MoveTargetLocation,
+        usage::{
+            script::MoveEngine, DamageResult, MoveResult, MoveTargetInstance, MoveTargetLocation,
+            NoHitResult,
+        },
+        BattleMove, BoundBattleMove,
     },
     player::{BattlePlayer, ValidatedPlayer},
-    pokemon::PokemonIndex,
+    pokemon::{OwnedRefPokemon, PokemonIndex},
 };
 
 pub struct Battle<'d, ID: Sized + Copy + PartialEq + Ord + Display> {
@@ -94,16 +93,12 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
         Self::set_winner(winner, &mut self.player1, &mut self.player2);
     }
 
-    pub fn process(&mut self, movedex: &'d Movedex) {
-        Self::receive(movedex, &mut self.player1, &mut self.player2);
-        Self::receive(movedex, &mut self.player2, &mut self.player1);
+    pub fn process(&mut self) {
+        Self::receive(&mut self.player1, &mut self.player2);
+        Self::receive(&mut self.player2, &mut self.player1);
     }
 
-    fn receive(
-        movedex: &'d Movedex,
-        player: &mut BattlePlayer<'d, ID>,
-        other: &mut BattlePlayer<'d, ID>,
-    ) {
+    fn receive(player: &mut BattlePlayer<'d, ID>, other: &mut BattlePlayer<'d, ID>) {
         while let Some(message) = player.endpoint.receive() {
             match message {
                 ClientMessage::Move(active, bmove) => {
@@ -164,9 +159,7 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                 ClientMessage::LearnMove(pokemon, move_id, index) => {
                     if let Some(pokemon) = player.party.pokemon.get_mut(pokemon) {
                         if pokemon.learnable_moves.remove(&move_id) {
-                            if let Some(move_ref) = movedex.try_get(&move_id) {
-                                pokemon.replace_move(index as _, MoveInstance::new(move_ref));
-                            }
+                            pokemon.replace_move(index as _, &move_id);
                         }
                     }
                 }
@@ -179,10 +172,9 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
         &mut self,
         random: &mut R,
         engine: &mut E,
-        movedex: &'d Movedex,
         itemdex: &'d Itemdex,
     ) {
-        self.process(movedex);
+        self.process();
 
         match self.state {
             BattleState::Start => self.begin(),
@@ -207,7 +199,7 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                     random,
                 );
 
-                let player_queue = self.client_queue(random, engine, movedex, itemdex, queue);
+                let player_queue = self.client_queue(random, engine, itemdex, queue);
 
                 // end queue calculations
 
@@ -271,7 +263,6 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
         &mut self,
         random: &mut R,
         engine: &mut E,
-        movedex: &'d Movedex,
         itemdex: &'d Itemdex,
         queue: Vec<BoundBattleMove<ID>>,
     ) -> Vec<BoundClientMove<ID>> {
@@ -327,7 +318,7 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                                         other.party.active.len(),
                                     )
                                 }
-                                MoveTargetInstance::Todo => {
+                                MoveTargetInstance::None => {
                                     warn!(
                                             "Could not use move '{}' because it has no target implemented.",
                                             user_pokemon
@@ -361,7 +352,7 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                                         MoveTargetLocation::Team(index) => user.party.active(index),
                                         MoveTargetLocation::User => Some(user_pokemon),
                                     }
-                                    .map(|i| (target, i.deref()))
+                                    .map(|i| (target, i))
                                 })
                                 .collect();
 
@@ -418,7 +409,7 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
 
                                     if let Some(target) = target_party.active_mut(index) {
                                         fn on_damage<'d, ID>(
-                                            pokemon: &mut InitPokemon<'d>,
+                                            pokemon: &mut OwnedRefPokemon<'d>,
                                             actions: &mut Vec<ClientAction<ID>>,
                                             result: DamageResult<Health>,
                                         ) {
@@ -438,16 +429,16 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                                             MoveResult::Damage(result) => {
                                                 on_damage(target, &mut actions, result)
                                             }
-                                            MoveResult::Status(ailment) => {
+                                            MoveResult::Ailment(ailment) => {
                                                 target.ailment = Some(ailment);
                                                 actions.push(ClientAction::Ailment(ailment));
                                             }
                                             MoveResult::Drain(result, ..) => {
                                                 on_damage(target, &mut actions, result)
                                             }
-                                            MoveResult::StatStage(stat) => {
-                                                target.stages.change_stage(stat);
-                                                actions.push(ClientAction::StatStage(stat));
+                                            MoveResult::Stat(stat, stage) => {
+                                                target.stages.change_stage(stat, stage);
+                                                actions.push(ClientAction::Stat(stat, stage));
                                             }
                                             MoveResult::Flinch => target.flinch = true,
                                             MoveResult::NoHit(result) => match result {
@@ -500,9 +491,7 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                                                         .unwrap();
 
                                                     pokemon.learnable_moves.extend(
-                                                        pokemon
-                                                            .instance
-                                                            .add_exp(movedex, experience),
+                                                        pokemon.instance.add_exp(experience),
                                                     );
 
                                                     actions.push(ClientAction::SetExp(
@@ -536,17 +525,14 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                     }
                     BattleMove::UseItem(id, target) => match itemdex.try_get(&id) {
                         Some(item) => {
-                            if match &item.usage {
-                                ItemUseType::Script(script) => {
+                            if match &item.usage.kind {
+                                ItemUsageKind::Script | ItemUsageKind::Actions(..) => {
                                     match user.party.active_mut(target) {
-                                        Some(pokemon) => {
-                                            pokemon.execute_item_script(script);
-                                            true
-                                        }
+                                        Some(pokemon) => pokemon.try_use_item(&item),
                                         None => false,
                                     }
                                 }
-                                ItemUseType::Pokeball => match self.data.type_ {
+                                ItemUsageKind::Pokeball => match self.data.type_ {
                                     BattleType::Wild => {
                                         if let Some(active) = other
                                             .party
@@ -555,19 +541,11 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                                             .map(Option::take)
                                             .flatten()
                                         {
-                                            if other.party.pokemon.len() > active.index {
-                                                let mut pokemon =
-                                                    other.party.pokemon.remove(active.index);
-                                                pokemon.caught = true;
+                                            if let Some(pokemon) = other.party.remove(active.index)
+                                            {
                                                 user.endpoint.send(ServerMessage::Catch(
-                                                    pokemon.deref().clone().into(),
+                                                    pokemon.instance.uninit(),
                                                 ));
-                                                if let Err(err) =
-                                                    user.party.pokemon.try_push(pokemon)
-                                                {
-                                                    warn!("Could not catch pokemon because the player's party has reached maximum capacity and PCs have not been implemented.");
-                                                    warn!("Error: {}", err);
-                                                }
                                             }
                                         }
                                         true
@@ -577,7 +555,7 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                                         false
                                     }
                                 },
-                                ItemUseType::None => true,
+                                ItemUsageKind::None => true,
                             } {
                                 player_queue.push(BoundClientMove {
                                     pokemon: instance.pokemon,

@@ -1,13 +1,12 @@
 [package]
 name = "firecore-battle"
-version = "0.5.0-beta.2021-08-02"
+version = "0.5.0-beta.2021-08-14"
 authors = ["Rhys Holloway <rhyswilliamholloway@gmail.com>"]
 edition = "2018"
 
 [features]
-default = ["host", "default_scripting"]
+default = ["host", "rhai"]
 host = []
-default_scripting = ["firecore-pokedex/default_scripting"]
 ai = []
 
 [dependencies]
@@ -16,3 +15,4 @@ log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 hashbrown = "0.11"
 firecore-pokedex = { git = "https://github.com/DoNotDoughnut/firecore-pokedex", default-features = false }
+rhai = { version = "1", optional = true }

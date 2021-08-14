@@ -1,5 +1,22 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum MoveTarget {
+    Any,
+    Ally,
+    Allies,
+    UserOrAlly,
+    UserAndAllies,
+    // UserOrAllies,
+    User,
+    Opponent,
+    AllOpponents,
+    RandomOpponent,
+    AllOtherPokemon,
+    AllPokemon,
+    None,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub enum MoveTargetInstance {
     Any(bool, usize),
@@ -13,7 +30,7 @@ pub enum MoveTargetInstance {
     RandomOpponent,
     AllOtherPokemon,
     AllPokemon,
-    Todo,
+    None,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
@@ -21,6 +38,12 @@ pub enum MoveTargetLocation {
     Opponent(usize), // maybe add TrainerId
     Team(usize),
     User,
+}
+
+impl Default for MoveTarget {
+    fn default() -> Self {
+        Self::None
+    }
 }
 
 impl MoveTargetLocation {

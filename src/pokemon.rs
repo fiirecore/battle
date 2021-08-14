@@ -12,6 +12,9 @@ pub use unknown::*;
 
 pub mod battle;
 
+pub type OwnedRefPokemon<'d> = pokedex::pokemon::OwnedRefPokemon<'d, crate::moves::usage::MoveUsage>;
+
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct PokemonIndex<ID> {
     pub team: ID,

@@ -1,7 +1,7 @@
 use core::fmt::Debug;
 use serde::{Deserialize, Serialize};
 
-use pokedex::{moves::MoveId, pokemon::{UninitPokemon, PokemonId}};
+use pokedex::{moves::MoveId, pokemon::{PokemonId, OwnedIdPokemon}};
 
 use crate::{
     moves::client::BoundClientMove,
@@ -26,7 +26,7 @@ pub enum ClientMessage {
 pub enum ServerMessage<ID> {
     Begin(ValidatedPlayer<ID, PokemonId>),
     StartSelecting,
-    Catch(UninitPokemon),
+    Catch(OwnedIdPokemon),
     TurnQueue(Vec<BoundClientMove<ID>>),
     ConfirmFaintReplace(ActiveIndex, bool),
     FaintReplace(PokemonIndex<ID>, usize),

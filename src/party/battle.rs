@@ -1,10 +1,10 @@
 use core::ops::Deref;
 
-use pokedex::pokemon::{InitPokemon, Party, PokemonRef};
+use pokedex::pokemon::{Party, PokemonRef};
 
 use crate::{
     party::{PartyIndex, PlayerParty},
-    pokemon::{ActivePokemon, battle::BattlePokemon, PokemonView, UnknownPokemon},
+    pokemon::{battle::BattlePokemon, ActivePokemon, OwnedRefPokemon, UnknownPokemon},
 };
 
 pub type BattleParty<'d, ID> = PlayerParty<ID, ActivePokemon, BattlePokemon<'d>>;
@@ -34,18 +34,11 @@ impl<'d, ID> BattleParty<'d, ID> {
 }
 
 impl<'d, ID> BattleParty<'d, ID> {
-    pub fn party_ref(&self) -> Party<&InitPokemon<'d>> {
-        self.party_ref_iter().collect()
+    pub fn party_ref(&self) -> Party<&OwnedRefPokemon<'d>> {
+        self.pokemon.iter().map(Deref::deref).collect()
     }
 
-    pub fn party_cloned(&self) -> Party<InitPokemon<'d>> {
-        self.party_ref_iter().cloned().collect()
-    }
-
-    fn party_ref_iter(&self) -> impl Iterator<Item = &InitPokemon<'d>> + '_ {
-        self.pokemon
-            .iter()
-            .filter(|p| p.visible())
-            .map(Deref::deref)
+    pub fn party_cloned(&self) -> Party<OwnedRefPokemon<'d>> {
+        self.pokemon.iter().map(Deref::deref).cloned().collect()
     }
 }

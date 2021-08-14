@@ -1,7 +1,19 @@
-use core::ops::{Deref, DerefMut};
+use core::{
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
+    ops::{Deref, DerefMut},
+};
 use serde::{Deserialize, Serialize};
 
-use pokedex::pokemon::stat::{Stage, StatSet, BaseStat, StatStage, StatType};
+use pokedex::pokemon::stat::{BaseStat, StatSet, StatType};
+
+pub type Stage = i8;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BattleStatType {
+    Basic(StatType),
+    Accuracy,
+    Evasion,
+}
 
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct StatStages {
@@ -11,43 +23,55 @@ pub struct StatStages {
 }
 
 impl StatStages {
-
-    pub fn get(&self, stat: StatType) -> Stage {
+    pub fn get(&self, stat: BattleStatType) -> Stage {
         match stat {
-            StatType::Accuracy => self.accuracy,
-            StatType::Evasion => self.evasion,
-            StatType::Health => self.hp,
-            StatType::Attack => self.atk,
-            StatType::Defense => self.def,
-            StatType::SpAttack => self.sp_atk,
-            StatType::SpDefense => self.sp_def,
-            StatType::Speed => self.speed,
+            BattleStatType::Basic(stat) => match stat {
+                StatType::Health => self.hp,
+                StatType::Attack => self.atk,
+                StatType::Defense => self.def,
+                StatType::SpAttack => self.sp_atk,
+                StatType::SpDefense => self.sp_def,
+                StatType::Speed => self.speed,
+            },
+            BattleStatType::Accuracy => self.accuracy,
+            BattleStatType::Evasion => self.evasion,
         }
     }
 
-    pub fn get_mut(&mut self, stat: StatType) -> &mut Stage {
+    pub fn get_mut(&mut self, stat: BattleStatType) -> &mut Stage {
         match stat {
-            StatType::Accuracy => &mut self.accuracy,
-            StatType::Evasion => &mut self.evasion,
-            StatType::Health => &mut self.hp,
-            StatType::Attack => &mut self.atk,
-            StatType::Defense => &mut self.def,
-            StatType::SpAttack => &mut self.sp_atk,
-            StatType::SpDefense => &mut self.sp_def,
-            StatType::Speed => &mut self.speed,
+            BattleStatType::Basic(stat) => match stat {
+                StatType::Health => &mut self.hp,
+                StatType::Attack => &mut self.atk,
+                StatType::Defense => &mut self.def,
+                StatType::SpAttack => &mut self.sp_atk,
+                StatType::SpDefense => &mut self.sp_def,
+                StatType::Speed => &mut self.speed,
+            },
+            BattleStatType::Accuracy => &mut self.accuracy,
+            BattleStatType::Evasion => &mut self.evasion,
         }
     }
 
-    pub fn can_change(&self, stat: &StatStage) -> bool {
-        self.get(stat.stat).abs() + stat.stage < 6
+    pub fn can_change(&self, stat: BattleStatType, stage: Stage) -> bool {
+        self.get(stat).abs() + stage < 6
     }
 
-    pub fn change_stage(&mut self, stat: StatStage) {
-        *self.get_mut(stat.stat) += stat.stage;
+    pub fn change_stage(&mut self, stat: BattleStatType, stage: Stage) {
+        *self.get_mut(stat) += stage;
     }
 
     pub fn mult(base: BaseStat, stage: Stage) -> BaseStat {
         base * (2.max(2 + stage) as BaseStat) / (2.max(2 - stage) as BaseStat)
+    }
+}
+
+impl Display for BattleStatType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            BattleStatType::Basic(stat) => Debug::fmt(stat, f),
+            stat => Debug::fmt(stat, f),
+        }
     }
 }
 

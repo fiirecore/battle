@@ -4,11 +4,11 @@ use pokedex::pokemon::Party;
 
 use crate::pokemon::PokemonView;
 
-mod knowable;
 mod battle;
+mod knowable;
 
-pub use knowable::*;
 pub use battle::*;
+pub use knowable::*;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PlayerParty<ID, A: PartyIndex, P> {
@@ -22,6 +22,12 @@ pub trait PartyIndex: From<usize> {
 }
 
 impl<ID, A: PartyIndex, P> PlayerParty<ID, A, P> {
+    pub fn index(&self, index: usize) -> Option<usize> {
+        self.active
+            .get(index)
+            .map(|active| active.as_ref().map(PartyIndex::index))
+            .flatten()
+    }
 
     pub fn active(&self, active: usize) -> Option<&P> {
         self.index(active)
@@ -35,13 +41,6 @@ impl<ID, A: PartyIndex, P> PlayerParty<ID, A, P> {
             .flatten()
     }
 
-    pub fn index(&self, index: usize) -> Option<usize> {
-        self.active
-            .get(index)
-            .map(|active| active.as_ref().map(PartyIndex::index))
-            .flatten()
-    }
-
     pub fn active_contains(&self, index: usize) -> bool {
         self.active
             .iter()
@@ -50,20 +49,33 @@ impl<ID, A: PartyIndex, P> PlayerParty<ID, A, P> {
     }
 
     pub fn active_iter(&self) -> impl Iterator<Item = (usize, &P)> + '_ {
-        self.active.iter().enumerate().flat_map(move |(index, active)| active.as_ref().map(|a| self.pokemon.get(a.index()).map(|p| (index, p)))).flatten()
+        self.active
+            .iter()
+            .enumerate()
+            .flat_map(move |(index, active)| {
+                active
+                    .as_ref()
+                    .map(|a| self.pokemon.get(a.index()).map(|p| (index, p)))
+            })
+            .flatten()
     }
 
+    pub fn remove(&mut self, active: usize) -> Option<P> {
+        self.index(active)
+            .map(|index| {
+                if self.pokemon.len() < index {
+                    Some(self.pokemon.remove(index))
+                } else {
+                    None
+                }
+            })
+            .flatten()
+    }
 }
 
 impl<ID, A: PartyIndex, V: PokemonView> PlayerParty<ID, A, V> {
-
     pub fn all_fainted(&self) -> bool {
-        !self
-            .pokemon
-            .iter()
-            .filter(|p| p.visible())
-            .any(|p| !p.fainted())
-            || self.pokemon.is_empty()
+        !self.pokemon.iter().any(|p| !p.fainted()) || self.pokemon.is_empty()
     }
 
     pub fn any_inactive(&self) -> bool {
@@ -83,7 +95,6 @@ impl<ID, A: PartyIndex, V: PokemonView> PlayerParty<ID, A, V> {
             *a = new.map(Into::into);
         }
     }
-
 }
 
 impl<ID: Default, A: PartyIndex, P> Default for PlayerParty<ID, A, P> {

@@ -5,18 +5,19 @@ use pokedex::{
     moves::MoveId,
     pokemon::{
         stat::{BaseStat, StatType},
-        InitPokemon, PokemonRef,
+        PokemonRef,
     },
 };
 
-mod stat;
-pub use stat::*;
+pub mod stat;
 
-use crate::pokemon::UnknownPokemon;
+mod moves;
+
+use crate::pokemon::{battle::stat::{StatStages, BattleStatType}, OwnedRefPokemon, UnknownPokemon};
 
 #[derive(Debug, Clone)]
 pub struct BattlePokemon<'d> {
-    pub instance: InitPokemon<'d>,
+    pub instance: OwnedRefPokemon<'d>,
     pub learnable_moves: HashSet<MoveId>,
     // pub persistent: Option<PersistentMove>,
     pub caught: bool,
@@ -44,13 +45,12 @@ impl<'d> BattlePokemon<'d> {
     }
 
     pub fn stat(&self, stat: StatType) -> BaseStat {
-        StatStages::mult(self.instance.stat(stat), self.stages.get(stat))
+        StatStages::mult(self.instance.stat(stat), self.stages.get(BattleStatType::Basic(stat)))
     }
-
 }
 
-impl<'d> From<InitPokemon<'d>> for BattlePokemon<'d> {
-    fn from(instance: InitPokemon<'d>) -> Self {
+impl<'d> From<OwnedRefPokemon<'d>> for BattlePokemon<'d> {
+    fn from(instance: OwnedRefPokemon<'d>) -> Self {
         Self {
             instance,
             learnable_moves: Default::default(),
@@ -64,7 +64,7 @@ impl<'d> From<InitPokemon<'d>> for BattlePokemon<'d> {
 }
 
 impl<'d> Deref for BattlePokemon<'d> {
-    type Target = InitPokemon<'d>;
+    type Target = OwnedRefPokemon<'d>;
 
     fn deref(&self) -> &Self::Target {
         &self.instance

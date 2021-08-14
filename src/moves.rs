@@ -4,8 +4,7 @@ use pokedex::item::ItemId;
 
 use crate::BoundAction;
 
-mod target;
-pub use target::*;
+pub mod usage;
 
 #[cfg(feature = "host")]
 mod queue;
@@ -14,9 +13,13 @@ pub use queue::*;
 
 pub mod client;
 
+pub mod persistent;
+
+pub type Move = pokedex::moves::Move<usage::MoveUsage>;
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum BattleMove {
-    Move(usize, MoveTargetInstance),
+    Move(usize, usage::MoveTargetInstance),
     UseItem(ItemId, usize),
     Switch(usize),
 }
