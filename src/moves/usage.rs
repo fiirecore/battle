@@ -17,15 +17,19 @@ pub mod script;
 
 pub type CriticalRate = u8;
 pub type Critical = bool;
-pub type Percent = u8; // 0 to 100
+/// 0 through 100
+pub type Percent = u8;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MoveUsage {
-    pub pokemon: MoveUsageKind,
+    /// What the move does in battle
+    pub execute: MoveExecution,
 
+    /// The target of the move.
     #[serde(default)]
     pub target: MoveTarget,
 
+    /// If the move makes contact with the target.
     #[serde(default)]
     pub contact: bool,
 
@@ -40,13 +44,13 @@ pub struct MoveUsage {
 // }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum MoveUsageKind {
+pub enum MoveExecution {
     /// Load a vector of actions
     Actions(Vec<MoveAction>),
     /// Use a script defined in the instance of the object that uses this
     Script,
     /// Placeholder to show that object does not have a defined use yet.
-    Todo,
+    None,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -60,12 +64,11 @@ pub enum MoveAction {
     Chance(Vec<Self>, Percent),
 }
 
-impl MoveUsageKind {
+impl MoveExecution {
     pub fn len(&self) -> usize {
         match self {
             Self::Actions(actions) => actions.iter().map(MoveAction::len).sum(),
-            Self::Script => 0,
-            Self::Todo => 1,
+            Self::Script | Self::None => 1,
         }
     }
 }

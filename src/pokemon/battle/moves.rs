@@ -12,7 +12,7 @@ use pokedex::{
 use crate::moves::{
     usage::{
         script::MoveEngine, CriticalRate, DamageKind, DamageResult, MoveAction, MoveResult,
-        MoveResults, MoveUsageKind, NoHitResult,
+        MoveResults, MoveExecution, NoHitResult,
     },
     Move,
 };
@@ -67,7 +67,7 @@ impl<'a> super::BattlePokemon<'a> {
             //     target: vec![MoveResult::NoHit(NoHitResult::Miss)],
             // },
             true => {
-                let mut results = Vec::with_capacity(used_move.usage.pokemon.len());
+                let mut results = Vec::with_capacity(used_move.usage.execute.len());
                 // let mut results = MoveResults {
                 //     user: Vec::with_capacity(used_move.usage.user.len()),
                 //     target: Vec::with_capacity(used_move.usage.target.len()),
@@ -91,7 +91,7 @@ impl<'a> super::BattlePokemon<'a> {
             engine,
             results,
             used_move,
-            &used_move.usage.pokemon,
+            &used_move.usage.execute,
             target,
             false,
         );
@@ -112,15 +112,15 @@ impl<'a> super::BattlePokemon<'a> {
         engine: &mut E,
         results: &mut Vec<MoveResult>,
         used_move: &Move,
-        usage: &MoveUsageKind,
+        usage: &MoveExecution,
         target: &Self,
         is_user: bool,
     ) {
         match usage {
-            MoveUsageKind::Actions(actions) => {
+            MoveExecution::Actions(actions) => {
                 self.move_actions(random, results, actions, used_move, target)
             }
-            MoveUsageKind::Script => {
+            MoveExecution::Script => {
                 match engine.execute(random, used_move, self, target, is_user) {
                     Ok(script_results) => results.extend(script_results),
                     Err(err) => {
@@ -132,7 +132,7 @@ impl<'a> super::BattlePokemon<'a> {
                     }
                 }
             }
-            MoveUsageKind::Todo => results.push(MoveResult::NoHit(NoHitResult::Todo)),
+            MoveExecution::None => results.push(MoveResult::NoHit(NoHitResult::Todo)),
         }
     }
 
