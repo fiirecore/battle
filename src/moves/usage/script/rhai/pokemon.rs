@@ -13,7 +13,7 @@ use pokedex::{
 
 use crate::{
     moves::usage::DamageResult,
-    pokemon::battle::BattlePokemon,
+    pokemon::{battle::BattlePokemon, OwnedRefPokemon},
 };
 
 use super::{ScriptDamage, ScriptRandom};
@@ -58,8 +58,8 @@ impl<R: Rng + Clone + 'static> ScriptPokemon<R> {
             .into(),
         )
     }
-    pub fn current_hp(&mut self) -> INT {
-        self.hp() as INT
+    pub fn hp(&mut self) -> INT {
+        OwnedRefPokemon::hp(self) as INT
     }
 }
 

@@ -45,7 +45,7 @@ impl RhaiMoveEngine {
             .register_get("effective", ScriptDamage::effective)
             .register_type_with_name::<ScriptPokemon<R>>("Pokemon")
             .register_fn("damage", ScriptPokemon::<R>::get_damage)
-            .register_get("current_hp", ScriptPokemon::<R>::current_hp)
+            .register_get("hp", ScriptPokemon::<R>::hp) 
             .register_type::<ScriptMove>()
             .register_get("category", ScriptMove::get_category)
             .register_get("type", ScriptMove::get_type)
