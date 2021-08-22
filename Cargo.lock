@@ -36,7 +36,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "firecore-battle"
-version = "0.5.0-beta.2021-08-14"
+version = "0.5.0-beta.2021-08-22"
 dependencies = [
  "firecore-pokedex",
  "hashbrown",
@@ -44,16 +44,16 @@ dependencies = [
  "rand",
  "rhai",
  "serde",
+ "tinystr",
 ]
 
 [[package]]
 name = "firecore-pokedex"
-version = "0.5.0-beta.2021-08-14"
-source = "git+https://github.com/DoNotDoughnut/firecore-pokedex#8ddb902469b8572d2f3514b7fdee2086b6f8c3fa"
+version = "0.5.0-beta.2021-08-22"
+source = "git+https://github.com/DoNotDoughnut/firecore-pokedex#02f1e7fb1b6ea0e18253989d123ab3c31c9a2491"
 dependencies = [
  "arrayvec",
  "hashbrown",
- "log",
  "rand",
  "serde",
  "tinystr",
@@ -77,6 +77,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
  "ahash",
+ "serde",
 ]
 
 [[package]]
@@ -90,9 +91,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.99"
+version = "0.2.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7f823d141fe0a24df1e23b4af4e3c7ba9e5966ec514ea068c93024aa7deb765"
+checksum = "a1fa8cddc8fbbee11227ef194b5317ed014b8acbf15139bd716a18ad3fe99ec5"
 
 [[package]]
 name = "log"
@@ -153,9 +154,9 @@ checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 
 [[package]]
 name = "rhai"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37515c01bf9aa516d84240740bd5d02f19b04a112e537ae43807042c84ef8ed2"
+checksum = "5106130d91d833d3409dc3b1f8433dcc15262d006514552dce2038819b5d3c03"
 dependencies = [
  "ahash",
  "instant",
@@ -178,18 +179,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.127"
+version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f03b9878abf6d14e6779d3f24f07b2cfa90352cfec4acc5aab8f1ac7f146fae8"
+checksum = "1056a0db1978e9dbf0f6e4fca677f6f9143dc1c19de346f22cac23e422196834"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.127"
+version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a024926d3432516606328597e0f224a51355a493b49fdd67e9209187cbe55ecc"
+checksum = "13af2fbb8b60a8950d6c72a56d2095c28870367cc8e10c55e9745bac4995a2c4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -219,9 +220,9 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "syn"
-version = "1.0.74"
+version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1873d832550d4588c3dbc20f01361ab00bfe741048f71e3fecf145a7cc18b29c"
+checksum = "b7f58f7e8eaa0009c5fec437aabf511bd9933e4b2d7407bd05273c01a8906ea7"
 dependencies = [
  "proc-macro2",
  "quote",

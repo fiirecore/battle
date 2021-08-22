@@ -1,6 +1,6 @@
 [package]
 name = "firecore-battle"
-version = "0.5.0-beta.2021-08-14"
+version = "0.5.0-beta.2021-08-22"
 authors = ["Rhys Holloway <rhyswilliamholloway@gmail.com>"]
 edition = "2018"
 
@@ -16,3 +16,4 @@ serde = { version = "1.0", features = ["derive"] }
 hashbrown = "0.11"
 firecore-pokedex = { git = "https://github.com/DoNotDoughnut/firecore-pokedex", default-features = false }
 rhai = { version = "1", optional = true }
+tinystr = { version = "0.4", features = ["serde"] }

@@ -1,17 +1,17 @@
+use core::marker::PhantomData;
 use hashbrown::HashMap;
 use rand::Rng;
+use rhai::{exported_module, plugin::*, Array, Dynamic, Engine, Scope, AST, INT};
 
 use pokedex::{
-    moves::{MoveCategory, MoveId},
+    moves::{Move, MoveCategory},
     types::PokemonType,
 };
 
 use crate::{
-    moves::{Move, usage::{script::MoveEngine, DamageResult, MoveResult}},
+    moves::usage::{engine::MoveScriptEngine, DamageResult, MoveResult, MoveScriptId, MoveUsage},
     pokemon::battle::BattlePokemon,
 };
-
-use rhai::{exported_module, plugin::*, Array, Dynamic, Engine, ParseError, Scope, AST, INT};
 
 mod damage;
 mod error;
@@ -24,17 +24,17 @@ pub use error::*;
 pub use moves::*;
 pub use pokemon::*;
 pub use random::*;
-pub use result::*;
 
-pub type Scripts = HashMap<(MoveId, bool), AST>;
+pub type Scripts = HashMap<MoveScriptId, AST>;
 
-pub struct RhaiMoveEngine {
-    scripts: Scripts,
-    engine: Engine,
+pub struct RhaiMoveScriptEngine<R: Rng + Clone + 'static> {
+    pub scripts: Scripts,
+    pub engine: Engine,
+    _marker: PhantomData<R>,
 }
 
-impl RhaiMoveEngine {
-    pub fn new<R: Rng + Clone + 'static>() -> Self {
+impl<R: Rng + Clone + 'static> RhaiMoveScriptEngine<R> {
+    pub fn new() -> Self {
         let mut engine = Engine::new_raw();
 
         engine
@@ -45,7 +45,7 @@ impl RhaiMoveEngine {
             .register_get("effective", ScriptDamage::effective)
             .register_type_with_name::<ScriptPokemon<R>>("Pokemon")
             .register_fn("damage", ScriptPokemon::<R>::get_damage)
-            .register_get("hp", ScriptPokemon::<R>::hp) 
+            .register_get("hp", ScriptPokemon::<R>::hp)
             .register_type::<ScriptMove>()
             .register_get("category", ScriptMove::get_category)
             .register_get("type", ScriptMove::get_type)
@@ -56,38 +56,30 @@ impl RhaiMoveEngine {
             .register_static_module("MoveResult", exported_module!(result).into());
 
         Self {
-            engine,
             scripts: Default::default(),
+            engine,
+            _marker: PhantomData,
         }
-    }
-
-    pub fn reserve(&mut self, capacity: usize) {
-        self.scripts.reserve(capacity)
-    }
-
-    pub fn insert(&mut self, id: MoveId, is_user: bool, script: &str) -> Result<(), ParseError> {
-        self.scripts
-            .insert((id, is_user), self.engine.compile(script)?);
-        Ok(())
     }
 }
 
-impl MoveEngine for RhaiMoveEngine {
+impl<RNG: Rng + Clone + 'static> MoveScriptEngine for RhaiMoveScriptEngine<RNG> {
     type Error = RhaiMoveError;
 
     fn execute<'a, R: Rng + Clone + 'static>(
         &mut self,
         random: &mut R,
         used_move: &Move,
+        usage: &MoveUsage,
+        id: &MoveScriptId,
         user: &BattlePokemon<'a>,
         target: &BattlePokemon<'a>,
-        is_user: bool,
     ) -> Result<Vec<MoveResult>, Self::Error> {
-        match self.scripts.get(&(used_move.id, is_user)) {
+        match self.scripts.get(&id) {
             Some(script) => {
                 let mut scope = Scope::new();
                 scope.push("random", ScriptRandom::new(random));
-                scope.push("move", ScriptMove::new(used_move));
+                scope.push("move", ScriptMove::new(used_move, usage));
                 scope.push("user", ScriptPokemon::<R>::new(user));
                 scope.push("target", ScriptPokemon::<R>::new(target));
 

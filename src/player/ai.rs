@@ -1,15 +1,17 @@
-use pokedex::pokemon::Party;
+use pokedex::{
+    pokemon::{OwnedRefPokemon, Party},
+    moves::MoveTarget,
+};
 use rand::Rng;
 
 use crate::{
     message::{ClientMessage, ServerMessage},
     moves::{
         client::{ClientAction, ClientMove},
-        usage::{MoveTarget, MoveTargetInstance},
+        usage::target::MoveTargetInstance,
         BattleMove,
     },
     player::{PlayerKnowable, UninitRemotePlayer},
-    pokemon::OwnedRefPokemon,
     BattleEndpoint,
 };
 
@@ -55,7 +57,7 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
 
                     let move_index = moves[self.random.gen_range(0..moves.len())];
 
-                    let target = match &pokemon.moves[move_index].m.usage.target {
+                    let target = match &pokemon.moves[move_index].m.target {
                         MoveTarget::Any => MoveTargetInstance::Any(
                             false,
                             self.random.gen_range(0..self.remote.active.len()),

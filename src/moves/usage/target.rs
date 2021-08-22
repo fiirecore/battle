@@ -1,22 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-pub enum MoveTarget {
-    Any,
-    Ally,
-    Allies,
-    UserOrAlly,
-    UserAndAllies,
-    // UserOrAllies,
-    User,
-    Opponent,
-    AllOpponents,
-    RandomOpponent,
-    AllOtherPokemon,
-    AllPokemon,
-    None,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub enum MoveTargetInstance {
     Any(bool, usize),
@@ -40,72 +23,38 @@ pub enum MoveTargetLocation {
     User,
 }
 
-impl Default for MoveTarget {
-    fn default() -> Self {
-        Self::None
-    }
-}
+use core::iter::once;
 
 impl MoveTargetLocation {
-    pub fn user() -> Vec<Self> {
-        vec![Self::User]
+    pub fn user() -> impl Iterator<Item = Self> {
+        once(Self::User)
     }
 
-    pub fn opponent(index: usize) -> Vec<Self> {
-        vec![Self::Opponent(index)]
+    pub fn opponent(index: usize) -> impl Iterator<Item = Self> {
+        once(Self::Opponent(index))
     }
 
-    pub fn team(index: usize) -> Vec<Self> {
-        vec![Self::Team(index)]
+    pub fn team(index: usize) -> impl Iterator<Item = Self> {
+        once(Self::Team(index))
     }
 
-    pub fn allies(user: usize, len: usize) -> Vec<Self> {
-        let mut vec = Vec::with_capacity(len - 1);
-        for i in 0..len {
-            if i != user {
-                vec.push(Self::Team(i));
-            }
-        }
-        vec
+    pub fn allies(user: usize, size: usize) -> impl Iterator<Item = Self> {
+        (0..size).into_iter().filter(move |index| index != &user).map(Self::Team)
     }
 
-    pub fn opponents(size: usize) -> Vec<Self> {
-        (0..size).into_iter().map(Self::Opponent).collect()
+    pub fn opponents(size: usize) -> impl Iterator<Item = Self> {
+        (0..size).into_iter().map(Self::Opponent)
     }
 
-    pub fn user_and_allies(user: usize, player: usize) -> Vec<Self> {
-        let mut vec = Vec::with_capacity(player);
-        for i in 0..player {
-            if i != user {
-                vec.push(Self::Team(i));
-            } else {
-                vec.push(Self::User);
-            }
-        }
-        vec
+    pub fn user_and_allies(user: usize, size: usize) -> impl Iterator<Item = Self> {
+        Self::allies(user, size).chain(once(Self::User))
     }
 
-    pub fn all_pokemon(user: usize, player: usize, opponent: usize) -> Vec<Self> {
-        let mut vec = Vec::with_capacity(player + opponent);
-        for i in 0..player {
-            if i != user {
-                vec.push(Self::Team(i));
-            } else {
-                vec.push(Self::User);
-            }
-        }
-        vec.extend((0..opponent).into_iter().map(Self::Opponent));
-        vec
+    pub fn all_pokemon(user: usize, player_size: usize, opponent_size: usize) -> impl Iterator<Item = Self> {
+        Self::opponents(opponent_size).chain(Self::user_and_allies(user, player_size))
     }
 
-    pub fn all_other_pokemon(user: usize, player: usize, opponent: usize) -> Vec<Self> {
-        let mut vec = Vec::with_capacity(player + opponent - 1);
-        for i in 0..player {
-            if i != user {
-                vec.push(Self::Team(i));
-            }
-        }
-        vec.extend((0..opponent).into_iter().map(Self::Opponent));
-        vec
+    pub fn all_other_pokemon(user: usize, player_size: usize, opponent_size: usize) -> impl Iterator<Item = Self> {
+        Self::opponents(opponent_size).chain(Self::allies(user, player_size))
     }
 }

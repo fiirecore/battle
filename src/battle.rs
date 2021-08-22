@@ -4,7 +4,7 @@ use rand::Rng;
 
 use pokedex::{
     item::{usage::ItemUsageKind, Itemdex},
-    pokemon::Health,
+    pokemon::{Health, OwnedRefPokemon},
     types::Effective,
 };
 
@@ -14,13 +14,14 @@ use crate::{
     moves::{
         client::{BoundClientMove, ClientAction, ClientActions, ClientMove},
         usage::{
-            script::MoveEngine, DamageResult, MoveResult, MoveTargetInstance, MoveTargetLocation,
-            NoHitResult,
+            engine::MoveEngine,
+            target::{MoveTargetInstance, MoveTargetLocation},
+            DamageResult, MoveResult, NoHitResult,
         },
         BattleMove, BoundBattleMove,
     },
     player::{BattlePlayer, ValidatedPlayer},
-    pokemon::{OwnedRefPokemon, PokemonIndex},
+    pokemon::PokemonIndex,
 };
 
 pub struct Battle<'d, ID: Sized + Copy + PartialEq + Ord + Display> {
@@ -278,45 +279,46 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                 match instance.action {
                     BattleMove::Move(move_index, target) => {
                         let turn = {
-                            let targets = match target {
-                                MoveTargetInstance::Any(user, index) => vec![match user {
+                            let targets: Vec<MoveTargetLocation> = match target {
+                                MoveTargetInstance::Any(user, index) => match user {
                                     true => match index == instance.pokemon.index {
-                                        true => MoveTargetLocation::User,
-                                        false => MoveTargetLocation::Team(index),
+                                        true => MoveTargetLocation::user().collect(),
+                                        false => MoveTargetLocation::team(index).collect(),
                                     },
-                                    false => MoveTargetLocation::Opponent(index),
-                                }],
+                                    false => MoveTargetLocation::opponent(index).collect(),
+                                },
                                 MoveTargetInstance::Ally(index) => {
-                                    vec![MoveTargetLocation::Team(index)]
+                                    MoveTargetLocation::team(index).collect()
                                 }
                                 MoveTargetInstance::Allies => MoveTargetLocation::allies(
                                     instance.pokemon.index,
                                     user.party.active.len(),
-                                ),
+                                ).collect(),
                                 MoveTargetInstance::UserOrAlly(index) => {
-                                    vec![match index == instance.pokemon.index {
-                                        true => MoveTargetLocation::User,
-                                        false => MoveTargetLocation::Team(index),
-                                    }]
+                                    match index == instance.pokemon.index {
+                                        true => MoveTargetLocation::user().collect(),
+                                        false => MoveTargetLocation::team(index).collect(),
+                                    }
                                 }
-                                MoveTargetInstance::User => vec![MoveTargetLocation::User],
+                                MoveTargetInstance::User => MoveTargetLocation::user().collect(),
                                 MoveTargetInstance::Opponent(index) => {
-                                    vec![MoveTargetLocation::Opponent(index)]
+                                    MoveTargetLocation::opponent(index).collect()
                                 }
                                 MoveTargetInstance::AllOpponents => {
                                     MoveTargetLocation::opponents(other.party.active.len())
+                                        .collect()
                                 }
-                                MoveTargetInstance::RandomOpponent => {
-                                    vec![MoveTargetLocation::Opponent(
-                                        random.gen_range(0..other.party.active.len()),
-                                    )]
-                                }
+                                MoveTargetInstance::RandomOpponent => MoveTargetLocation::opponent(
+                                    random.gen_range(0..other.party.active.len()),
+                                )
+                                .collect(),
                                 MoveTargetInstance::AllOtherPokemon => {
                                     MoveTargetLocation::all_other_pokemon(
                                         instance.pokemon.index,
                                         user.party.active.len(),
                                         other.party.active.len(),
                                     )
+                                    .collect()
                                 }
                                 MoveTargetInstance::None => {
                                     warn!(
@@ -334,12 +336,14 @@ impl<'d, ID: Sized + Copy + PartialEq + Ord + Display> Battle<'d, ID> {
                                         instance.pokemon.index,
                                         user.party.active.len(),
                                     )
+                                    .collect()
                                 }
                                 MoveTargetInstance::AllPokemon => MoveTargetLocation::all_pokemon(
                                     instance.pokemon.index,
                                     user.party.active.len(),
                                     other.party.active.len(),
-                                ),
+                                )
+                                .collect(),
                             };
 
                             let targets = targets

@@ -8,20 +8,18 @@ use rhai::INT;
 
 use pokedex::{
     moves::MoveCategory,
+    pokemon::OwnedRefPokemon,
     types::{Effective, PokemonType},
 };
 
-use crate::{
-    moves::usage::DamageResult,
-    pokemon::{battle::BattlePokemon, OwnedRefPokemon},
-};
+use crate::{moves::usage::DamageResult, pokemon::battle::BattlePokemon};
 
 use super::{ScriptDamage, ScriptRandom};
 
 #[derive(Clone, Copy)]
-pub struct ScriptPokemon<R: Rng + Clone + 'static>(*const BattlePokemon<'static>, PhantomData<R>);
+pub struct ScriptPokemon<R: Rng>(*const BattlePokemon<'static>, PhantomData<R>);
 
-impl<R: Rng + Clone + 'static> ScriptPokemon<R> {
+impl<R: Rng> ScriptPokemon<R> {
     pub fn new<'a>(pokemon: &BattlePokemon<'a>) -> Self {
         let p = pokemon as *const BattlePokemon<'a>;
         let p = unsafe {
@@ -63,7 +61,7 @@ impl<R: Rng + Clone + 'static> ScriptPokemon<R> {
     }
 }
 
-impl<R: Rng + Clone + 'static> Deref for ScriptPokemon<R> {
+impl<R: Rng> Deref for ScriptPokemon<R> {
     type Target = BattlePokemon<'static>;
 
     fn deref(&self) -> &Self::Target {

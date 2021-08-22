@@ -9,11 +9,14 @@ use pokedex::{
     },
 };
 
+mod unknown;
+pub use unknown::*;
+
 pub mod stat;
 
 mod moves;
 
-use crate::pokemon::{battle::stat::{StatStages, BattleStatType}, OwnedRefPokemon, UnknownPokemon};
+use crate::pokemon::{battle::stat::{StatStages, BattleStatType}, OwnedRefPokemon};
 
 #[derive(Debug, Clone)]
 pub struct BattlePokemon<'d> {

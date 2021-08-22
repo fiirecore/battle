@@ -1,5 +1,6 @@
+use std::collections::BTreeMap;
+use core::cmp::Reverse;
 use rand::Rng;
-use std::{cmp::Reverse, collections::BTreeMap};
 
 use pokedex::{
     moves::Priority,
@@ -49,7 +50,13 @@ fn queue_player<'d, ID: Copy + Ord>(
                     queue.insert(
                         match action {
                             BattleMove::Move(index, ..) => MovePriority::Second(
-                                Reverse(instance.moves.get(index).map(|i| i.m.priority).unwrap_or_default()),
+                                Reverse(
+                                    instance
+                                        .moves
+                                        .get(index)
+                                        .map(|i| i.m.priority)
+                                        .unwrap_or_default(),
+                                ),
                                 Reverse(instance.stat(StatType::Speed)),
                                 tiebreaker,
                                 id,

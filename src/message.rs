@@ -1,25 +1,25 @@
 use core::fmt::Debug;
 use serde::{Deserialize, Serialize};
 
-use pokedex::{moves::MoveId, pokemon::{PokemonId, OwnedIdPokemon}};
+use pokedex::{
+    moves::MoveId,
+    pokemon::{OwnedIdPokemon, PokemonId},
+};
 
 use crate::{
     moves::client::BoundClientMove,
     moves::BattleMove,
     player::ValidatedPlayer,
-    pokemon::{PokemonIndex, UninitUnknownPokemon},
+    pokemon::{battle::UninitUnknownPokemon, ActivePosition, PartyPosition, PokemonIndex},
 };
-
-type ActiveIndex = usize;
-type PartyIndex = usize;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub enum ClientMessage {
-    Move(ActiveIndex, BattleMove),         // active pokemon, move
-    ReplaceFaint(ActiveIndex, PartyIndex), // active pokemon, party index
+    Move(ActivePosition, BattleMove),            // active pokemon, move
+    ReplaceFaint(ActivePosition, PartyPosition), // active pokemon, party index
     FinishedTurnQueue,
     Forfeit,
-    LearnMove(PartyIndex, MoveId, u8), // pokemon index, move, move index (0 - 3)
+    LearnMove(PartyPosition, MoveId, u8), // pokemon index, move, move index (0 - 3)
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -28,8 +28,8 @@ pub enum ServerMessage<ID> {
     StartSelecting,
     Catch(OwnedIdPokemon),
     TurnQueue(Vec<BoundClientMove<ID>>),
-    ConfirmFaintReplace(ActiveIndex, bool),
+    ConfirmFaintReplace(ActivePosition, bool),
     FaintReplace(PokemonIndex<ID>, usize),
-    AddUnknown(PartyIndex, UninitUnknownPokemon),
+    AddUnknown(PartyPosition, UninitUnknownPokemon),
     Winner(Option<ID>),
 }

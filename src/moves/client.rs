@@ -1,14 +1,21 @@
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
-    item::ItemId,
-    moves::{MoveId},
-    pokemon::{Experience, Level},
     ailment::LiveAilment,
+    item::ItemId,
+    moves::MoveId,
+    pokemon::{Experience, Level},
     types::Effective,
 };
 
-use crate::{pokemon::{PokemonIndex, battle::stat::{BattleStatType, Stage}}, BoundAction, moves::usage::{MoveTargetLocation, Critical}};
+use crate::{
+    moves::usage::{target::MoveTargetLocation, Critical},
+    pokemon::{
+        battle::stat::{BattleStatType, Stage},
+        PokemonIndex,
+    },
+    BoundAction,
+};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ClientAction<ID> {

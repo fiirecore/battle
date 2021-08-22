@@ -10,10 +10,9 @@ pub use damage::*;
 mod result;
 pub use result::*;
 
-mod target;
-pub use target::*;
+pub mod target;
 
-pub mod script;
+pub mod engine;
 
 pub type CriticalRate = u8;
 pub type Critical = bool;
@@ -24,10 +23,6 @@ pub type Percent = u8;
 pub struct MoveUsage {
     /// What the move does in battle
     pub execute: MoveExecution,
-
-    /// The target of the move.
-    #[serde(default)]
-    pub target: MoveTarget,
 
     /// If the move makes contact with the target.
     #[serde(default)]
@@ -43,12 +38,14 @@ pub struct MoveUsage {
 //     pub target: T,
 // }
 
+pub type MoveScriptId = tinystr::TinyStr16;
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum MoveExecution {
     /// Load a vector of actions
     Actions(Vec<MoveAction>),
     /// Use a script defined in the instance of the object that uses this
-    Script,
+    Script(MoveScriptId),
     /// Placeholder to show that object does not have a defined use yet.
     None,
 }
@@ -68,7 +65,7 @@ impl MoveExecution {
     pub fn len(&self) -> usize {
         match self {
             Self::Actions(actions) => actions.iter().map(MoveAction::len).sum(),
-            Self::Script | Self::None => 1,
+            Self::Script(..) | Self::None => 1,
         }
     }
 }

@@ -1,4 +1,5 @@
-use std::{error::Error, fmt::{Display, Debug, Formatter, Result as FmtResult}};
+use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use std::error::Error;
 
 use rhai::EvalAltResult;
 

@@ -1,13 +1,18 @@
 use rand::Rng;
 use std::error::Error;
 
+use pokedex::moves::Move;
+
 use crate::{
-    moves::{Move, usage::MoveResult},
+    moves::{usage::MoveResult},
     pokemon::battle::BattlePokemon,
 };
 
 #[cfg(feature = "rhai")]
-pub mod rhai;
+mod default;
+
+#[cfg(feature = "rhai")]
+pub use default::*;
 
 pub trait MoveEngine {
     type Error: Error;
@@ -18,6 +23,5 @@ pub trait MoveEngine {
         used_move: &Move,
         user: &BattlePokemon<'a>,
         target: &BattlePokemon<'a>,
-        is_user: bool,
     ) -> Result<Vec<MoveResult>, Self::Error>;
 }

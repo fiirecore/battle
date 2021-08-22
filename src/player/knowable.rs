@@ -1,12 +1,9 @@
 use core::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
-use pokedex::pokemon::{PokemonId, PokemonRef};
+use pokedex::pokemon::{OwnedRefPokemon, PokemonId, PokemonRef};
 
-use crate::{
-    party::PlayerParty,
-    pokemon::{OwnedRefPokemon, UnknownPokemon},
-};
+use crate::{party::PlayerParty, pokemon::battle::UnknownPokemon};
 
 pub type LocalPlayer<'d, ID> = PlayerKnowable<ID, OwnedRefPokemon<'d>>;
 

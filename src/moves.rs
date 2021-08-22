@@ -4,6 +4,8 @@ use pokedex::item::ItemId;
 
 use crate::BoundAction;
 
+use self::usage::target::MoveTargetInstance;
+
 pub mod usage;
 
 #[cfg(feature = "host")]
@@ -15,11 +17,9 @@ pub mod client;
 
 pub mod persistent;
 
-pub type Move = pokedex::moves::Move<usage::MoveUsage>;
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum BattleMove {
-    Move(usize, usage::MoveTargetInstance),
+    Move(usize, MoveTargetInstance),
     UseItem(ItemId, usize),
     Switch(usize),
 }

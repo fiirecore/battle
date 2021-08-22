@@ -1,20 +1,16 @@
 use core::hash::Hash;
 use hashbrown::HashMap;
-use log::error;
 use rand::Rng;
 
 use pokedex::{
-    moves::{MoveCategory, MoveId, OwnedMove, Power},
+    moves::{Move, MoveCategory, MoveId, OwnedMove, Power},
     pokemon::Health,
     types::{Effective, PokemonType},
 };
 
-use crate::moves::{
-    usage::{
-        script::MoveEngine, CriticalRate, DamageKind, DamageResult, MoveAction, MoveResult,
-        MoveResults, MoveExecution, NoHitResult,
-    },
-    Move,
+use crate::moves::usage::{
+    engine::MoveEngine, CriticalRate, DamageKind, DamageResult, MoveAction,
+    MoveResult, MoveResults, MoveUsage, NoHitResult,
 };
 
 impl<'a> super::BattlePokemon<'a> {
@@ -67,81 +63,21 @@ impl<'a> super::BattlePokemon<'a> {
             //     target: vec![MoveResult::NoHit(NoHitResult::Miss)],
             // },
             true => {
-                let mut results = Vec::with_capacity(used_move.usage.execute.len());
-                // let mut results = MoveResults {
-                //     user: Vec::with_capacity(used_move.usage.user.len()),
-                //     target: Vec::with_capacity(used_move.usage.target.len()),
-                // };
-                self.move_usage(random, engine, &mut results, used_move, target);
-                results
+                engine.execute(random, used_move, self, target).unwrap_or_else(|err| {
+                    log::error!("Could not use move {} with error {}", used_move, err);
+                    vec![MoveResult::NoHit(NoHitResult::Error)]
+                })
             }
         }
     }
 
-    fn move_usage<R: Rng + Clone + 'static, E: MoveEngine>(
-        &self,
-        random: &mut R,
-        engine: &mut E,
-        results: &mut MoveResults,
-        used_move: &Move,
-        target: &Self,
-    ) {
-        self.move_usages(
-            random,
-            engine,
-            results,
-            used_move,
-            &used_move.usage.execute,
-            target,
-            false,
-        );
-        // self.move_usages(
-        //     random,
-        //     engine,
-        //     &mut results.user,
-        //     used_move,
-        //     &used_move.usage.user,
-        //     self,
-        //     true,
-        // );
-    }
-
-    fn move_usages<R: Rng + Clone + 'static, E: MoveEngine>(
-        &self,
-        random: &mut R,
-        engine: &mut E,
-        results: &mut Vec<MoveResult>,
-        used_move: &Move,
-        usage: &MoveExecution,
-        target: &Self,
-        is_user: bool,
-    ) {
-        match usage {
-            MoveExecution::Actions(actions) => {
-                self.move_actions(random, results, actions, used_move, target)
-            }
-            MoveExecution::Script => {
-                match engine.execute(random, used_move, self, target, is_user) {
-                    Ok(script_results) => results.extend(script_results),
-                    Err(err) => {
-                        error!(
-                            "Could not execute move script for {} with error {}",
-                            used_move.name, err
-                        );
-                        results.push(MoveResult::NoHit(NoHitResult::Error));
-                    }
-                }
-            }
-            MoveExecution::None => results.push(MoveResult::NoHit(NoHitResult::Todo)),
-        }
-    }
-
-    fn move_actions<R: Rng + Clone + 'static>(
+    pub fn move_actions<R: Rng>(
         &self,
         random: &mut R,
         results: &mut Vec<MoveResult>,
         actions: &Vec<MoveAction>,
         used_move: &Move,
+        usage: &MoveUsage,
         target: &Self,
     ) {
         for action in actions {
@@ -154,7 +90,7 @@ impl<'a> super::BattlePokemon<'a> {
                             *kind,
                             used_move.category,
                             used_move.pokemon_type,
-                            used_move.usage.crit_rate,
+                            usage.crit_rate,
                         ) {
                             Some(result) => MoveResult::Damage(result),
                             None => MoveResult::NoHit(NoHitResult::Ineffective),
@@ -176,7 +112,7 @@ impl<'a> super::BattlePokemon<'a> {
                             *kind,
                             used_move.category,
                             used_move.pokemon_type,
-                            used_move.usage.crit_rate,
+                            usage.crit_rate,
                         ) {
                             Some(result) => {
                                 let heal = (result.damage as f32 * *percent as f32 / 100.0) as i16;
@@ -198,7 +134,7 @@ impl<'a> super::BattlePokemon<'a> {
                 MoveAction::Flinch => results.push(MoveResult::Flinch),
                 MoveAction::Chance(actions, chance) => {
                     if random.gen_range(0..=100) < *chance {
-                        self.move_actions(random, results, actions, used_move, target);
+                        self.move_actions(random, results, actions, used_move, usage, target);
                     }
                 }
             }

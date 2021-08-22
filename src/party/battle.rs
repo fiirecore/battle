@@ -1,10 +1,13 @@
 use core::ops::Deref;
 
-use pokedex::pokemon::{Party, PokemonRef};
+use pokedex::pokemon::{OwnedRefPokemon, Party, PokemonRef};
 
 use crate::{
     party::{PartyIndex, PlayerParty},
-    pokemon::{battle::BattlePokemon, ActivePokemon, OwnedRefPokemon, UnknownPokemon},
+    pokemon::{
+        battle::{BattlePokemon, UnknownPokemon},
+        ActivePokemon,
+    },
 };
 
 pub type BattleParty<'d, ID> = PlayerParty<ID, ActivePokemon, BattlePokemon<'d>>;

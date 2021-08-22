@@ -1,9 +1,9 @@
-use pokedex::pokemon::Party;
+use pokedex::pokemon::{Party, OwnedRefPokemon};
 
 use crate::{
     party::{BattleParty, PlayerParty},
     player::UninitRemotePlayer,
-    pokemon::{battle::BattlePokemon, UnknownPokemon, OwnedRefPokemon},
+    pokemon::battle::{BattlePokemon, UnknownPokemon},
     BattleEndpoint,
 };
 
