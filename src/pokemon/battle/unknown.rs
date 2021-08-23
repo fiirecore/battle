@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
-    ailment::Ailment,
+    ailment::LiveAilment,
     pokemon::{Gender, Level, PokemonId, PokemonRef, Pokedex},
 };
 
@@ -17,7 +17,7 @@ pub struct UnknownPokemon<P> {
     pub level: Level,
     pub gender: Option<Gender>,
     pub hp: f32,
-    pub ailment: Option<Ailment>,
+    pub ailment: Option<LiveAilment>,
 }
 
 impl<'d> InitUnknownPokemon<'d> {
@@ -28,7 +28,7 @@ impl<'d> InitUnknownPokemon<'d> {
             level: pokemon.level,
             gender: pokemon.gender,
             hp: pokemon.percent_hp(),
-            ailment: pokemon.ailment.as_ref().map(|a| a.ailment),
+            ailment: pokemon.ailment,
         }
     }
 
