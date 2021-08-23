@@ -1,140 +1,103 @@
-use core::hash::Hash;
-use hashbrown::HashMap;
 use rand::Rng;
 
 use pokedex::{
-    moves::{Move, MoveCategory, MoveId, OwnedMove, Power},
+    moves::{CriticalRate, Move, MoveCategory, MoveId, OwnedMove, Power},
     pokemon::Health,
     types::{Effective, PokemonType},
 };
 
-use crate::moves::usage::{
-    engine::MoveEngine, CriticalRate, DamageKind, DamageResult, MoveAction,
-    MoveResult, MoveResults, MoveUsage, NoHitResult,
+use crate::moves::{
+    damage::{DamageKind, DamageResult},
+    engine::MoveEngine,
+    target::TargetLocation,
+    MoveResult, MoveUse,
 };
 
-impl<'a> super::BattlePokemon<'a> {
+impl<'d> super::BattlePokemon<'d> {
     // To - do: uses PP on use
-    pub fn use_own_move<ID: Eq + Hash, R: Rng + Clone + 'static, E: MoveEngine>(
+    pub fn use_own_move<R: Rng + Clone + 'static, E: MoveEngine>(
         &self,
         random: &mut R,
         engine: &mut E,
         move_index: usize,
-        targets: HashMap<ID, &Self>,
-    ) -> Option<(MoveId, HashMap<ID, MoveResults>)> {
-        let used_move = self
+        targets: Vec<(TargetLocation, &Self)>,
+    ) -> Option<(MoveId, Vec<(TargetLocation, MoveResult)>)> {
+        let m = self
             .moves
             .get(move_index)
             .map(OwnedMove::try_use)
             .flatten()?;
 
-        let targets = targets
-            .into_iter()
-            .map(|(id, target)| {
-                (
-                    id,
-                    self.use_move_on_target(random, engine, used_move, target),
-                )
-            })
-            .collect();
+        let results = engine
+            .execute(random, &m, self, targets)
+            .unwrap_or_else(|err| {
+                log::error!("Could not use move {} with error {}", m, err);
+                vec![(TargetLocation::User, MoveResult::Error)]
+            });
 
-        Some((used_move.id, targets))
+        Some((m.id, results))
     }
 
-    pub fn use_move_on_target<R: Rng + Clone + 'static, E: MoveEngine>(
+    pub fn move_usage<R: Rng>(
         &self,
         random: &mut R,
-        engine: &mut E,
-        used_move: &Move,
-        target: &Self,
-    ) -> MoveResults {
-        let hit = used_move
-            .accuracy
-            .map(|accuracy| {
-                let hit: u8 = random.gen_range(0..=100);
-                hit < accuracy
-            })
-            .unwrap_or(true);
-
-        match hit {
-            false => vec![MoveResult::NoHit(NoHitResult::Miss)],
-            // MoveResults {
-            //     user: Default::default(),
-            //     target: vec![MoveResult::NoHit(NoHitResult::Miss)],
-            // },
-            true => {
-                engine.execute(random, used_move, self, target).unwrap_or_else(|err| {
-                    log::error!("Could not use move {} with error {}", used_move, err);
-                    vec![MoveResult::NoHit(NoHitResult::Error)]
-                })
-            }
-        }
-    }
-
-    pub fn move_actions<R: Rng>(
-        &self,
-        random: &mut R,
-        results: &mut Vec<MoveResult>,
-        actions: &Vec<MoveAction>,
-        used_move: &Move,
-        usage: &MoveUsage,
-        target: &Self,
+        results: &mut Vec<(TargetLocation, MoveResult)>,
+        actions: &Vec<MoveUse>,
+        m: &Move,
+        target: (TargetLocation, &Self),
     ) {
         for action in actions {
             match action {
-                MoveAction::Damage(kind) => {
-                    results.push(
-                        match self.damage_kind(
+                MoveUse::Damage(kind) => {
+                    results.push((
+                        target.0,
+                        MoveResult::Damage(target.1.damage_kind(
                             random,
-                            target,
+                            target.1,
                             *kind,
-                            used_move.category,
-                            used_move.pokemon_type,
-                            usage.crit_rate,
-                        ) {
-                            Some(result) => MoveResult::Damage(result),
-                            None => MoveResult::NoHit(NoHitResult::Ineffective),
-                        },
-                    );
+                            m.category,
+                            m.pokemon_type,
+                            m.crit_rate,
+                        )),
+                    ));
                 }
-                MoveAction::Ailment(status, length, chance) => {
-                    if target.ailment.is_none() {
+                MoveUse::Ailment(status, length, chance) => {
+                    if target.1.ailment.is_none() {
                         if random.gen_bool(*chance as f64 / 100.0) {
-                            results.push(MoveResult::Ailment(length.init(*status, random)));
+                            results.push((
+                                target.0,
+                                MoveResult::Ailment(length.init(*status, random)),
+                            ));
                         }
                     }
                 }
-                MoveAction::Drain(kind, percent) => {
-                    results.push(
-                        match self.damage_kind(
-                            random,
-                            target,
-                            *kind,
-                            used_move.category,
-                            used_move.pokemon_type,
-                            usage.crit_rate,
-                        ) {
-                            Some(result) => {
-                                let heal = (result.damage as f32 * *percent as f32 / 100.0) as i16;
-                                MoveResult::Drain(result, heal)
-                            }
-                            None => MoveResult::NoHit(NoHitResult::Ineffective),
-                        },
+                MoveUse::Drain(kind, percent) => {
+                    let result = self.damage_kind(
+                        random,
+                        target.1,
+                        *kind,
+                        m.category,
+                        m.pokemon_type,
+                        m.crit_rate,
                     );
+
+                    let healing = (result.damage as f32 * *percent as f32 / 100.0) as i16;
+
+                    results.push((target.0, MoveResult::Damage(result)));
+                    results.push((TargetLocation::User, MoveResult::Heal(healing)))
                 }
-                MoveAction::Stat(stat, stage) => {
-                    log::debug!("to-do: maybe stat stage check");
-                    // if target.stages.can_change_stage(&stat) {
-                    results.push(MoveResult::Stat(*stat, *stage));
-                    // }
+                MoveUse::Stat(stat, stage) => {
+                    if target.1.stages.can_change(*stat, *stage) {
+                        results.push((target.0, MoveResult::Stat(*stat, *stage)));
+                    }
                 }
                 // MoveUseType::Linger(..) => {
-                // 	results.insert(target.instance, Some(MoveResult::Todo));
+                // 	results.insert(target.instance, Some(MoveAction::Todo));
                 // }
-                MoveAction::Flinch => results.push(MoveResult::Flinch),
-                MoveAction::Chance(actions, chance) => {
+                MoveUse::Flinch => results.push((target.0, MoveResult::Flinch)),
+                MoveUse::Chance(actions, chance) => {
                     if random.gen_range(0..=100) < *chance {
-                        self.move_actions(random, results, actions, used_move, usage, target);
+                        self.move_usage(random, results, actions, m, target);
                     }
                 }
             }
@@ -149,36 +112,31 @@ impl<'a> super::BattlePokemon<'a> {
         category: MoveCategory,
         move_type: PokemonType,
         crit_rate: CriticalRate,
-    ) -> Option<DamageResult<Health>> {
-        match kind {
-            DamageKind::Power(power) => {
-                self.move_power_damage_random(random, target, power, category, move_type, crit_rate)
-            }
-            DamageKind::PercentCurrent(percent) => {
-                let effective = target.pokemon.effective(move_type, category);
-                (!matches!(effective, Effective::Ineffective)).then(|| DamageResult {
-                    damage: (target.hp() as f32 * effective.multiplier() * percent as f32 / 100.0)
-                        as Health,
-                    effective,
-                    crit: false,
-                })
-            }
-            DamageKind::PercentMax(percent) => {
-                let effective = target.pokemon.effective(move_type, category);
-                (!matches!(effective, Effective::Ineffective)).then(|| DamageResult {
-                    damage: (target.max_hp() as f32 * effective.multiplier() * percent as f32
-                        / 100.0) as Health,
-                    effective,
-                    crit: false,
-                })
-            }
-            DamageKind::Constant(damage) => {
-                let effective = target.pokemon.effective(move_type, category);
-                (!matches!(effective, Effective::Ineffective)).then(|| DamageResult {
-                    damage,
-                    effective,
-                    crit: false,
-                })
+    ) -> DamageResult<Health> {
+        let effective = target.pokemon.effective(move_type, category);
+        let crit = Self::crit(random, crit_rate);
+
+        if let DamageKind::Power(power) = kind {
+            self.move_power_damage_random(random, target, power, category, move_type, crit)
+        } else {
+            DamageResult {
+                damage: match matches!(effective, Effective::Ineffective) {
+                    true => 0,
+                    false => match kind {
+                        DamageKind::PercentCurrent(percent) => {
+                            (target.hp() as f32 * effective.multiplier() * percent as f32 / 100.0)
+                                as Health
+                        }
+                        DamageKind::PercentMax(percent) => {
+                            (target.max_hp() as f32 * effective.multiplier() * percent as f32
+                                / 100.0) as Health
+                        }
+                        DamageKind::Constant(damage) => damage,
+                        DamageKind::Power(..) => unreachable!(),
+                    },
+                },
+                effective,
+                crit,
             }
         }
     }
@@ -190,14 +148,14 @@ impl<'a> super::BattlePokemon<'a> {
         power: Power,
         category: MoveCategory,
         move_type: PokemonType,
-        crit_rate: CriticalRate,
-    ) -> Option<DamageResult<Health>> {
+        crit: bool,
+    ) -> DamageResult<Health> {
         self.move_power_damage(
             target,
             power,
             category,
             move_type,
-            Self::crit(random, crit_rate),
+            crit,
             Self::damage_range(random),
         )
     }
@@ -224,13 +182,13 @@ impl<'a> super::BattlePokemon<'a> {
         move_type: PokemonType,
         crit: bool,
         damage_range: u8,
-    ) -> Option<DamageResult<Health>> {
+    ) -> DamageResult<Health> {
         let effective = target.pokemon.effective(move_type, category);
         let (attack, defense) = category.stats();
         let attack = self.stat(attack);
         let defense = target.stat(defense);
         if effective == Effective::Ineffective {
-            return None;
+            return DamageResult::default();
         }
         let damage =
             (((((2.0 * self.level as f64 / 5.0 + 2.0).floor() * attack as f64 * power as f64
@@ -248,10 +206,10 @@ impl<'a> super::BattlePokemon<'a> {
                 }
                 * if crit { 1.5 } else { 1.0 };
         let damage = damage.min(u16::MAX as f64) as u16;
-        Some(DamageResult {
+        DamageResult {
             damage,
             effective,
             crit,
-        })
+        }
     }
 }

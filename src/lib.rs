@@ -3,9 +3,9 @@
 pub extern crate firecore_pokedex as pokedex;
 
 #[cfg(feature = "host")]
-mod battle;
+mod host;
 #[cfg(feature = "host")]
-pub use battle::*;
+pub use host::*;
 
 mod data;
 pub use data::*;

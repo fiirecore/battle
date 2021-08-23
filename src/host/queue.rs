@@ -1,17 +1,13 @@
-use std::collections::BTreeMap;
 use core::cmp::Reverse;
 use rand::Rng;
+use std::collections::BTreeMap;
 
 use pokedex::{
     moves::Priority,
     pokemon::stat::{BaseStat, StatType},
 };
 
-use crate::{
-    moves::{BattleMove, BoundBattleMove},
-    party::BattleParty,
-    pokemon::PokemonIndex,
-};
+use crate::{moves::BattleMove, party::BattleParty, pokemon::PokemonIndex, BoundAction};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MovePriority<ID: Ord> {
@@ -23,7 +19,7 @@ pub fn move_queue<ID: Copy + Ord, R: Rng>(
     player1: &mut BattleParty<ID>,
     player2: &mut BattleParty<ID>,
     random: &mut R,
-) -> Vec<BoundBattleMove<ID>> {
+) -> Vec<BoundAction<ID, BattleMove>> {
     let mut queue = BTreeMap::new();
 
     let tiebreaker = random.gen_bool(0.5);
@@ -34,7 +30,7 @@ pub fn move_queue<ID: Copy + Ord, R: Rng>(
 }
 
 fn queue_player<'d, ID: Copy + Ord>(
-    queue: &mut BTreeMap<MovePriority<ID>, BoundBattleMove<ID>>,
+    queue: &mut BTreeMap<MovePriority<ID>, BoundAction<ID, BattleMove>>,
     party: &mut BattleParty<'d, ID>,
     tiebreaker: bool,
 ) {
@@ -63,7 +59,7 @@ fn queue_player<'d, ID: Copy + Ord>(
                             ),
                             _ => MovePriority::First(id),
                         },
-                        BoundBattleMove { pokemon, action },
+                        BoundAction { pokemon, action },
                     );
                 }
             }

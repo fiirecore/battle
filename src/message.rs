@@ -7,8 +7,8 @@ use pokedex::{
 };
 
 use crate::{
-    moves::client::BoundClientMove,
-    moves::BattleMove,
+    BoundAction,
+    moves::{BattleMove, ClientMove},
     player::ValidatedPlayer,
     pokemon::{battle::UninitUnknownPokemon, ActivePosition, PartyPosition, PokemonIndex},
 };
@@ -27,7 +27,7 @@ pub enum ServerMessage<ID> {
     Begin(ValidatedPlayer<ID, PokemonId>),
     StartSelecting,
     Catch(OwnedIdPokemon),
-    TurnQueue(Vec<BoundClientMove<ID>>),
+    TurnQueue(Vec<BoundAction<ID, ClientMove>>),
     ConfirmFaintReplace(ActivePosition, bool),
     FaintReplace(PokemonIndex<ID>, usize),
     AddUnknown(PartyPosition, UninitUnknownPokemon),

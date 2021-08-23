@@ -1,15 +1,13 @@
 use pokedex::{
-    pokemon::{OwnedRefPokemon, Party},
     moves::MoveTarget,
+    pokemon::{OwnedRefPokemon, Party},
 };
 use rand::Rng;
 
 use crate::{
     message::{ClientMessage, ServerMessage},
     moves::{
-        client::{ClientAction, ClientMove},
-        usage::target::MoveTargetInstance,
-        BattleMove,
+        damage::DamageResult, target::MoveTargetInstance, BattleMove, ClientMove, ClientMoveAction,
     },
     player::{PlayerKnowable, UninitRemotePlayer},
     BattleEndpoint,
@@ -93,13 +91,18 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
             ServerMessage::TurnQueue(actions) => {
                 for instance in actions {
                     if let ClientMove::Move(.., instances) = &instance.action {
-                        for actions in instances {
-                            for moves in &actions.actions {
-                                match moves {
-                                    ClientAction::Faint(instance) => {
-                                        if instance.team == self.local.id {
+                        for (location, action) in instances {
+                            match action {
+                                ClientMoveAction::SetDamage(DamageResult {
+                                    damage: hp, ..
+                                })
+                                | ClientMoveAction::SetHP(hp) => {
+                                    if hp <= &0.0 {
+                                        if (instance.pokemon.team == self.local.id)
+                                            == location.is_team()
+                                        {
                                             if let Some(pokemon) =
-                                                self.local.active_mut(instance.index)
+                                                self.local.active_mut(instance.pokemon.index)
                                             {
                                                 pokemon.hp = 0;
                                             }
@@ -123,39 +126,17 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
                                             if !available.is_empty() {
                                                 let r = available
                                                     [self.random.gen_range(0..available.len())];
-                                                self.local.active[instance.index] = Some(r);
+                                                self.local.active[instance.pokemon.index] = Some(r);
 
                                                 self.messages.push(ClientMessage::ReplaceFaint(
-                                                    instance.index,
+                                                    instance.pokemon.index,
                                                     r,
                                                 ));
                                             }
                                         }
                                     }
-                                    ClientAction::SetExp(.., level) => {
-                                        match instance.pokemon.team == self.local.id {
-                                            false => {
-                                                if let Some(pokemon) = self
-                                                    .remote
-                                                    .active_mut(instance.pokemon.index)
-                                                    .map(Option::as_mut)
-                                                    .flatten()
-                                                {
-                                                    pokemon.level = *level;
-                                                    // Ai does not learn moves
-                                                }
-                                            }
-                                            true => {
-                                                if let Some(pokemon) =
-                                                    self.local.active_mut(instance.pokemon.index)
-                                                {
-                                                    pokemon.level = *level;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    _ => (),
                                 }
+                                _ => (),
                             }
                         }
                     }

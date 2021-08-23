@@ -2,9 +2,9 @@ use rhai::INT;
 
 use pokedex::{pokemon::Health, types::Effective};
 
-use crate::moves::usage::DamageResult;
+use crate::moves::damage::DamageResult;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct ScriptDamage(DamageResult<INT>);
 
 impl ScriptDamage {

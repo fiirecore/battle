@@ -17,7 +17,7 @@ pub enum MoveTargetInstance {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
-pub enum MoveTargetLocation {
+pub enum TargetLocation {
     Opponent(usize), // maybe add TrainerId
     Team(usize),
     User,
@@ -25,7 +25,15 @@ pub enum MoveTargetLocation {
 
 use core::iter::once;
 
-impl MoveTargetLocation {
+impl TargetLocation {
+
+    pub fn is_team(&self) -> bool {
+        match self {
+            Self::Opponent(..) => false,
+            _ => true,
+        }
+    }
+
     pub fn user() -> impl Iterator<Item = Self> {
         once(Self::User)
     }

@@ -10,10 +10,9 @@ host = []
 ai = []
 
 [dependencies]
+firecore-pokedex = { git = "https://github.com/DoNotDoughnut/firecore-pokedex", default-features = false }
 rand = { version = "0.8", default-features = false }
 log = "0.4"
+hashbrown = "0.11" 
 serde = { version = "1.0", features = ["derive"] }
-hashbrown = "0.11"
-firecore-pokedex = { git = "https://github.com/DoNotDoughnut/firecore-pokedex", default-features = false }
 rhai = { version = "1", optional = true }
-tinystr = { version = "0.4", features = ["serde"] }

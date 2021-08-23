@@ -11,7 +11,7 @@ pub enum DamageKind {
     Constant(Health),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DamageResult<INT> {
     /// Inflicted damage
     pub damage: INT,
@@ -19,4 +19,14 @@ pub struct DamageResult<INT> {
     pub effective: Effective,
     /// If the attack was a critical hit
     pub crit: bool,
+}
+
+impl<INT: Default> Default for DamageResult<INT> {
+    fn default() -> Self {
+        Self {
+            damage: Default::default(),
+            effective: Effective::Ineffective,
+            crit: false,
+        }
+    }
 }
