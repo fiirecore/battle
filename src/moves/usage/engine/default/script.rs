@@ -27,6 +27,7 @@ pub use random::*;
 
 pub type Scripts = HashMap<MoveScriptId, AST>;
 
+#[derive(Debug)]
 pub struct RhaiMoveScriptEngine<R: Rng + Clone + 'static> {
     pub scripts: Scripts,
     pub engine: Engine,
