@@ -104,7 +104,8 @@ impl MoveEngine for DefaultMoveEngine {
                             let targets = targets
                                 .into_iter()
                                 .map(ScriptPokemon::new)
-                                .collect::<Vec<ScriptPokemon>>();
+                                .map(Dynamic::from)
+                                .collect::<Array>();
                                 
                             scope.push("targets", targets);
 
@@ -152,9 +153,13 @@ impl core::fmt::Display for DefaultMoveError {
 mod moveresult {
     use rhai::INT;
 
-    use crate::moves::MoveResult;
+    use crate::moves::{MoveResult, target::TargetLocation};
 
     use super::{pokemon::ScriptPokemon, ScriptDamage, ScriptMoveResult};
+
+    pub fn Miss() -> ScriptMoveResult {
+        ScriptMoveResult(TargetLocation::User, MoveResult::Miss)
+    }
 
     pub fn Damage(damage: ScriptDamage, pokemon: ScriptPokemon) -> ScriptMoveResult {
         ScriptMoveResult::new(pokemon, MoveResult::Damage(damage.into()))

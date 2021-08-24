@@ -47,12 +47,6 @@ pub type Critical = bool;
 /// 0 through 100
 pub type Percent = u8;
 
-// #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-// pub struct Targets<T> {
-//     pub user: T,
-//     pub target: T,
-// }
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum MoveExecution {
     /// Load a vector of actions
