@@ -7,7 +7,7 @@ use pokedex::{
     types::PokemonType,
 };
 
-use rhai::{exported_module, plugin::*, Array, Dynamic, Engine, Scope, AST, INT};
+use rhai::{plugin::*, Array, Dynamic, Engine, Scope, AST, INT};
 
 use crate::{
     moves::{
@@ -57,9 +57,11 @@ impl DefaultMoveEngine {
             .register_get("crit_rate", ScriptMove::get_crit_rate)
             .register_type_with_name::<MoveCategory>("Category")
             .register_type_with_name::<PokemonType>("Type")
+            .register_type::<MoveResult>()
             .register_type_with_name::<ScriptMoveResult>("Result")
-            .register_type_with_name::<MoveResult>("MoveResult")
-            .register_static_module("MoveResult", exported_module!(moveresult).into());
+            .register_fn("miss", ScriptMoveResult::miss)
+            .register_fn("damage", ScriptMoveResult::damage)
+            .register_fn("drain", ScriptMoveResult::heal);
 
         Self {
             moves: Default::default(),
@@ -98,15 +100,17 @@ impl MoveEngine for DefaultMoveEngine {
                     MoveExecution::Script => match self.scripts.get(&m.id) {
                         Some(script) => {
                             let mut scope = Scope::new();
+
                             scope.push("random", ScriptRandom::new(random));
                             scope.push("move", ScriptMove::new(m));
                             scope.push("user", ScriptPokemon::new((TargetLocation::User, user)));
+
                             let targets = targets
                                 .into_iter()
                                 .map(ScriptPokemon::new)
                                 .map(Dynamic::from)
                                 .collect::<Array>();
-                                
+
                             scope.push("targets", targets);
 
                             results.extend(
@@ -146,27 +150,4 @@ impl core::fmt::Display for DefaultMoveError {
             other => core::fmt::Debug::fmt(other, f),
         }
     }
-}
-
-#[allow(non_snake_case, non_upper_case_globals)]
-#[export_module]
-mod moveresult {
-    use rhai::INT;
-
-    use crate::moves::{MoveResult, target::TargetLocation};
-
-    use super::{pokemon::ScriptPokemon, ScriptDamage, ScriptMoveResult};
-
-    pub fn Miss() -> ScriptMoveResult {
-        ScriptMoveResult(TargetLocation::User, MoveResult::Miss)
-    }
-
-    pub fn Damage(damage: ScriptDamage, pokemon: ScriptPokemon) -> ScriptMoveResult {
-        ScriptMoveResult::new(pokemon, MoveResult::Damage(damage.into()))
-    }
-    // pub const fn Status(effect: StatusEffect) -> MoveResult { MoveResult::Status(effect) }
-    pub fn Heal(heal: INT, pokemon: ScriptPokemon) -> ScriptMoveResult {
-        ScriptMoveResult::new(pokemon, MoveResult::Heal(heal as _))
-    }
-
 }
