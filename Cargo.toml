@@ -1,18 +1,25 @@
 [package]
 name = "firecore-battle"
-version = "0.5.0-beta.2021-08-22"
+version = "0.0.1" # "0.5.0-beta.2021-08-22"
 authors = ["Rhys Holloway <rhyswilliamholloway@gmail.com>"]
 edition = "2018"
+description = "Pokemon battle simulation"
+license = "MIT"
+repository = "https://github.com/DoNotDoughnut/firecore-battle"
+readme = "README.md"
+categories = ["game-development", "game-engines"]
+keywords = ["pokemon", "battle", "turn-based"]
 
 [features]
-default = ["host", "rhai"]
+default = ["host", "scripting"]
+scripting = ["rhai"]
 host = []
 ai = []
 
 [dependencies]
-firecore-pokedex = { git = "https://github.com/DoNotDoughnut/firecore-pokedex", default-features = false }
+firecore-pokedex = "0.0.1"
 rand = { version = "0.8", default-features = false }
 log = "0.4"
-hashbrown = "0.11" 
-serde = { version = "1.0", features = ["derive"] }
+hashbrown = "0.11"
+serde = { version = "1", features = ["derive"] }
 rhai = { version = "1", optional = true }

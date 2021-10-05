@@ -8,10 +8,10 @@ use crate::{
     pokemon::battle::BattlePokemon,
 };
 
-#[cfg(feature = "rhai")]
+#[cfg(feature = "scripting")]
 pub mod default;
 
-#[cfg(feature = "rhai")]
+#[cfg(feature = "scripting")]
 pub use default::DefaultMoveEngine;
 
 pub trait MoveEngine {
