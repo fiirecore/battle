@@ -87,9 +87,10 @@ fn main() {
         }
     }
 
-    let (p1, p2) = (
+    let (p1, p2, p3) = (
         BattlePlayerAi::new(StepRng::new(2351, 436246), party.clone()),
-        BattlePlayerAi::new(StepRng::new(2351, 436246), party.clone()),
+        BattlePlayerAi::new(StepRng::new(35211, 46), party.clone()),
+        BattlePlayerAi::new(StepRng::new(123, 434626), party.clone())
     );
 
     let bp1 = BattlePlayer::new(
@@ -108,12 +109,20 @@ fn main() {
         p2,
         1,
     );
+    let bp3 = BattlePlayer::new(
+        2,
+        p3.party().clone(),
+        Some("P3".to_owned()),
+        Default::default(),
+        p3,
+        1,
+    );
 
     let mut battle = Battle::new(
         BattleData {
             type_: BattleType::Trainer,
         },
-        vec![bp1, bp2].into_iter(),
+        vec![bp1, bp2, bp3].into_iter(),
     );
 
     let mut engine = DefaultMoveEngine::new::<StepRng>();
