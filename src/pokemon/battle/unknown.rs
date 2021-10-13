@@ -2,13 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use pokedex::{
     ailment::LiveAilment,
-    pokemon::{Gender, Level, PokemonId, PokemonRef, Pokedex},
+    pokemon::{owned::OwnedPokemon, Gender, Level, Pokemon, PokemonId},
+    Dex, Initializable, Uninitializable,
 };
 
-use super::OwnedRefPokemon;
-
 pub type UninitUnknownPokemon = UnknownPokemon<PokemonId>;
-pub type InitUnknownPokemon<'d> = UnknownPokemon<PokemonRef<'d>>;
+pub type InitUnknownPokemon<'d> = UnknownPokemon<&'d Pokemon>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UnknownPokemon<P> {
@@ -21,7 +20,7 @@ pub struct UnknownPokemon<P> {
 }
 
 impl<'d> InitUnknownPokemon<'d> {
-    pub fn new(pokemon: &OwnedRefPokemon<'d>) -> Self {
+    pub fn new(pokemon: &OwnedPokemon<'d>) -> Self {
         Self {
             pokemon: pokemon.pokemon,
             nickname: pokemon.nickname.clone(),
@@ -36,8 +35,14 @@ impl<'d> InitUnknownPokemon<'d> {
         self.nickname.as_ref().unwrap_or(&self.pokemon.name)
     }
 
-    pub fn uninit(self) -> UninitUnknownPokemon {
-        UninitUnknownPokemon {
+}
+
+impl<'d> Uninitializable for InitUnknownPokemon<'d> {
+
+    type Output = UninitUnknownPokemon;
+
+    fn uninit(self) -> Self::Output {
+        Self::Output {
             pokemon: self.pokemon.id,
             nickname: self.nickname,
             level: self.level,
@@ -46,14 +51,14 @@ impl<'d> InitUnknownPokemon<'d> {
             ailment: self.ailment,
         }
     }
-
 }
 
-impl UninitUnknownPokemon {
+impl<'d, D: Dex<Pokemon> + 'd> Initializable<'d, D> for UninitUnknownPokemon {
+    type Output = InitUnknownPokemon<'d>;
 
-    pub fn init<'d>(self, pokedex: &'d Pokedex) -> Option<InitUnknownPokemon<'d>> {
-        Some(InitUnknownPokemon {
-            pokemon: pokedex.try_get(&self.pokemon)?,
+    fn init(self, dex: &'d D) -> Option<Self::Output> {
+        Some(Self::Output {
+            pokemon: dex.try_get(&self.pokemon)?,
             nickname: self.nickname,
             level: self.level,
             gender: self.gender,
@@ -61,7 +66,6 @@ impl UninitUnknownPokemon {
             ailment: self.ailment,
         })
     }
-
 }
 
 impl<P> UnknownPokemon<P> {

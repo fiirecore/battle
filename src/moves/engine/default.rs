@@ -38,7 +38,7 @@ pub struct DefaultMoveEngine {
 }
 
 impl DefaultMoveEngine {
-    pub fn new<R: Rng + Clone + 'static>() -> Self {
+    pub fn new<'d, R: Rng + Clone + 'static>() -> Self {
         let mut engine = Engine::new_raw();
 
         engine
@@ -48,10 +48,10 @@ impl DefaultMoveEngine {
             .register_get("damage", ScriptDamage::get_damage)
             .register_get("effective", ScriptDamage::effective)
             .register_type_with_name::<ScriptPokemon>("Pokemon")
+            .register_fn("throw_move", ScriptPokemon::throw_move::<R>)
             .register_fn("damage", ScriptPokemon::get_damage::<R>)
             .register_get("hp", ScriptPokemon::hp)
             .register_type::<ScriptMove>()
-            .register_fn("try_hit", ScriptMove::try_hit::<R>)
             .register_get("category", ScriptMove::get_category)
             .register_get("type", ScriptMove::get_type)
             .register_get("crit_rate", ScriptMove::get_crit_rate)
@@ -88,7 +88,7 @@ impl MoveEngine for DefaultMoveEngine {
                 match &usage {
                     MoveExecution::Actions(actions) => {
                         for target in targets {
-                            match m.try_hit(random) {
+                            match target.1.throw_move(random, m) {
                                 true => {
                                     results.reserve(usage.len());
                                     user.move_usage(random, &mut results, actions, m, target);

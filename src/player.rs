@@ -1,11 +1,9 @@
-use pokedex::pokemon::{Party, OwnedRefPokemon};
-
-use crate::{
-    party::{BattleParty, PlayerParty},
-    player::UninitRemotePlayer,
-    pokemon::battle::{BattlePokemon, UnknownPokemon},
-    BattleEndpoint,
+use pokedex::{
+    pokemon::{owned::OwnedPokemon, party::Party},
+    Uninitializable,
 };
+
+use crate::{BattleEndpoint, message::{ClientMessage, ServerMessage}, party::{BattleParty, PlayerParty}, player::UninitRemotePlayer, pokemon::battle::{BattlePokemon, UnknownPokemon}};
 
 mod settings;
 pub use settings::*;
@@ -20,9 +18,9 @@ pub use validate::*;
 pub mod ai;
 
 pub struct BattlePlayer<'d, ID> {
-    pub endpoint: Box<dyn BattleEndpoint<ID>>,
+    name: Option<String>,
     pub party: BattleParty<'d, ID>,
-    pub name: Option<String>,
+    endpoint: Box<dyn BattleEndpoint<ID>>,
     pub settings: PlayerSettings,
     /// Player's turn has finished
     pub waiting: bool,
@@ -31,7 +29,7 @@ pub struct BattlePlayer<'d, ID> {
 impl<'d, ID> BattlePlayer<'d, ID> {
     pub fn new(
         id: ID,
-        party: Party<OwnedRefPokemon<'d>>,
+        party: Party<OwnedPokemon<'d>>,
         name: Option<String>,
         settings: PlayerSettings,
         endpoint: Box<dyn BattleEndpoint<ID>>,
@@ -67,6 +65,21 @@ impl<'d, ID> BattlePlayer<'d, ID> {
 
     pub fn name(&self) -> &str {
         self.name.as_deref().unwrap_or("Unknown")
+    }
+
+    pub fn send(&mut self, message: ServerMessage<ID>) {
+        self.endpoint.send(message)
+    }
+
+    pub fn receive(&mut self) -> Option<ClientMessage> {
+        self.endpoint.receive()
+    }
+
+}
+
+impl<'d, ID: core::fmt::Debug> core::fmt::Debug for BattlePlayer<'d, ID> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BattlePlayer").field("party", &self.party).field("name", &self.name).finish()
     }
 }
 

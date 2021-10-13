@@ -1,4 +1,4 @@
-use core::cmp::Reverse;
+use core::{cmp::Reverse, hash::Hash};
 use rand::Rng;
 use std::collections::BTreeMap;
 
@@ -7,32 +7,37 @@ use pokedex::{
     pokemon::stat::{BaseStat, StatType},
 };
 
-use crate::{moves::BattleMove, party::BattleParty, pokemon::PokemonIndex, BoundAction};
+use crate::{
+    moves::BattleMove, party::BattleParty, player::BattlePlayer, pokemon::PokemonIndex, BoundAction,
+};
+
+use super::collection::BattleMap;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MovePriority<ID: Ord> {
-    First(ID),
-    Second(Reverse<Priority>, Reverse<BaseStat>, bool, ID),
+    First(ID, usize),
+    Second(Reverse<Priority>, Reverse<BaseStat>, Option<u16>),
 }
 
-pub fn move_queue<ID: Copy + Ord, R: Rng>(
-    player1: &mut BattleParty<ID>,
-    player2: &mut BattleParty<ID>,
+// struct Player<'d, 'a, ID: Copy + Ord, MDEX: Dex<Move>, R: Rng>(&'a mut BattleParty<'d, ID, MDEX>, &'a mut R);
+
+pub fn move_queue<ID: Copy + Ord + Hash, R: Rng>(
+    players: &mut BattleMap<ID, BattlePlayer<ID>>,
     random: &mut R,
 ) -> Vec<BoundAction<ID, BattleMove>> {
     let mut queue = BTreeMap::new();
 
-    let tiebreaker = random.gen_bool(0.5);
-    queue_player(&mut queue, player1, tiebreaker);
-    queue_player(&mut queue, player2, !tiebreaker);
+    for mut player in players.values_mut() {
+        queue_player(&mut queue, &mut player.party, random)
+    }
 
-    queue.into_iter().map(|(_, i)| i).collect() // into_values
+    queue.into_values().collect()
 }
 
-fn queue_player<'d, ID: Copy + Ord>(
+fn queue_player<ID: Copy + Ord, R: Rng>(
     queue: &mut BTreeMap<MovePriority<ID>, BoundAction<ID, BattleMove>>,
-    party: &mut BattleParty<'d, ID>,
-    tiebreaker: bool,
+    party: &mut BattleParty<ID>,
+    random: &mut R,
 ) {
     for index in 0..party.active.len() {
         if let Some(pokemon) = party.active.get_mut(index).map(Option::as_mut).flatten() {
@@ -42,25 +47,42 @@ fn queue_player<'d, ID: Copy + Ord>(
                         team: party.id,
                         index,
                     };
+
                     let id = party.id;
-                    queue.insert(
-                        match action {
-                            BattleMove::Move(index, ..) => MovePriority::Second(
-                                Reverse(
-                                    instance
-                                        .moves
-                                        .get(index)
-                                        .map(|i| i.m.priority)
-                                        .unwrap_or_default(),
-                                ),
-                                Reverse(instance.stat(StatType::Speed)),
-                                tiebreaker,
-                                id,
+
+                    let mut priority = match action {
+                        BattleMove::Move(index, ..) => MovePriority::Second(
+                            Reverse(
+                                instance
+                                    .moves
+                                    .get(index)
+                                    .map(|i| i.0.priority)
+                                    .unwrap_or_default(),
                             ),
-                            _ => MovePriority::First(id),
-                        },
-                        BoundAction { pokemon, action },
-                    );
+                            Reverse(instance.stat(StatType::Speed)),
+                            None,
+                        ),
+                        _ => MovePriority::First(id, index),
+                    };
+
+                    fn tie_break<ID: Ord, R: Rng>(
+                        queue: &mut BTreeMap<MovePriority<ID>, BoundAction<ID, BattleMove>>,
+                        random: &mut R,
+                        priority: &mut MovePriority<ID>,
+                    ) {
+                        if let MovePriority::Second(.., shift) = priority {
+                            *shift = Some(random.gen());
+                        }
+                        if queue.contains_key(priority) {
+                            tie_break(queue, random, priority);
+                        }
+                    }
+
+                    if queue.contains_key(&priority) {
+                        tie_break(queue, random, &mut priority);
+                    }
+
+                    queue.insert(priority, BoundAction { pokemon, action });
                 }
             }
         }

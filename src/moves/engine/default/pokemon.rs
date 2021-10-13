@@ -3,11 +3,11 @@ use core::ops::{Deref, DerefMut};
 use rand::Rng;
 use rhai::INT;
 
-use pokedex::{moves::MoveCategory, pokemon::OwnedRefPokemon, types::PokemonType};
+use pokedex::{moves::MoveCategory, pokemon::owned::OwnedPokemon, types::PokemonType};
 
 use crate::{moves::target::TargetLocation, pokemon::battle::BattlePokemon};
 
-use super::{ScriptDamage, ScriptRandom};
+use super::{moves::ScriptMove, ScriptDamage, ScriptRandom};
 
 #[derive(Clone, Copy)]
 pub struct ScriptPokemon(
@@ -25,10 +25,19 @@ impl ScriptPokemon {
         Self(pokemon.0, p)
     }
 
+    pub fn throw_move<R: Rng + Clone + 'static>(
+        &mut self,
+        random: ScriptRandom<R>,
+        m: ScriptMove,
+    ) -> bool {
+        let mut random = random;
+        BattlePokemon::throw_move(self, random.deref_mut(), m.m())
+    }
+
     pub fn get_damage<R: Rng + Clone + 'static>(
         &mut self,
         random: ScriptRandom<R>,
-        target: ScriptPokemon,
+        target: Self,
         power: INT,
         category: MoveCategory,
         move_type: PokemonType,
@@ -46,7 +55,7 @@ impl ScriptPokemon {
         ))
     }
     pub fn hp(&mut self) -> INT {
-        OwnedRefPokemon::hp(self) as INT
+        OwnedPokemon::hp(self) as INT
     }
 }
 

@@ -1,8 +1,11 @@
+use core::hash::Hash;
+
+use rand::{Rng, prelude::IteratorRandom};
+
 use pokedex::{
     moves::MoveTarget,
-    pokemon::{OwnedRefPokemon, Party},
+    pokemon::{owned::OwnedPokemon, party::Party},
 };
-use rand::Rng;
 
 use crate::{
     message::{ClientMessage, ServerMessage},
@@ -13,34 +16,39 @@ use crate::{
     BattleEndpoint,
 };
 
-pub struct BattlePlayerAi<'d, R: Rng, ID: Default + PartialEq> {
+pub struct BattlePlayerAi<'d, R: Rng, ID: Eq + Hash> {
     random: R,
-    local: PlayerKnowable<ID, OwnedRefPokemon<'d>>,
-    remote: UninitRemotePlayer<ID>,
+    local: PlayerKnowable<ID, OwnedPokemon<'d>>,
+    remotes: hashbrown::HashMap<ID, UninitRemotePlayer<ID>>,
     messages: Vec<ClientMessage>,
 }
 
-impl<'d, R: Rng, ID: Default + PartialEq> BattlePlayerAi<'d, R, ID> {
-    pub fn new(random: R, party: Party<OwnedRefPokemon<'d>>) -> Self {
+impl<'d, R: Rng, ID: Default + Eq + Hash + Clone> BattlePlayerAi<'d, R, ID> {
+    pub fn new(random: R, party: Party<OwnedPokemon<'d>>) -> Self {
         let mut local = PlayerKnowable::default();
         local.party.pokemon = party;
         Self {
             random,
             local,
-            remote: Default::default(),
+            remotes: Default::default(),
             messages: Default::default(),
         }
     }
+
+    pub fn party(&self) -> &Party<OwnedPokemon<'d>> {
+        &self.local.party.pokemon
+    }
+
 }
 
-impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<'d, R, ID> {
+impl<'d, R: Rng, ID: Eq + Hash + Clone> BattleEndpoint<ID> for BattlePlayerAi<'d, R, ID> {
     fn send(&mut self, message: ServerMessage<ID>) {
         match message {
             ServerMessage::Begin(validate) => {
                 self.local.id = validate.id;
                 self.local.name = validate.name;
                 self.local.active = validate.active;
-                self.remote = validate.remote;
+                self.remotes = validate.remotes.into_iter().map(|p| (p.party.id.clone(), p)).collect();
             }
             ServerMessage::StartSelecting => {
                 for (active, pokemon) in self.local.active_iter() {
@@ -49,36 +57,40 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
                         .moves
                         .iter()
                         .enumerate()
-                        .filter(|(_, instance)| instance.pp != 0)
+                        .filter(|(_, instance)| instance.uses() != 0)
                         .map(|(index, _)| index)
                         .collect();
 
                     let move_index = moves[self.random.gen_range(0..moves.len())];
 
-                    let target = match &pokemon.moves[move_index].m.target {
-                        MoveTarget::Any => MoveTargetInstance::Any(
-                            false,
-                            self.random.gen_range(0..self.remote.active.len()),
-                        ),
-                        MoveTarget::Ally => {
-                            let index = self.random.gen_range(1..self.local.active.len());
-                            let index = if index >= active { index + 1 } else { index };
-                            MoveTargetInstance::Ally(index)
+                    let target = if let Some(id) = self.remotes.keys().choose(&mut self.random) {
+                        match &pokemon.moves.get(move_index).map(|o| o.0.target).unwrap_or_default() {
+                            MoveTarget::Any => MoveTargetInstance::Any(
+                                false,
+                                self.random.gen_range(0..self.remotes[id].active.len()),
+                            ),
+                            MoveTarget::Ally => {
+                                let index = self.random.gen_range(1..self.local.active.len());
+                                let index = if index >= active { index + 1 } else { index };
+                                MoveTargetInstance::Ally(index)
+                            }
+                            MoveTarget::Allies => MoveTargetInstance::Allies,
+                            MoveTarget::UserOrAlly => MoveTargetInstance::UserOrAlly(
+                                self.random.gen_range(0..self.local.active.len()),
+                            ),
+                            MoveTarget::User => MoveTargetInstance::User,
+                            MoveTarget::Opponent => MoveTargetInstance::Opponent(
+                                self.random.gen_range(0..self.remotes[id].active.len()),
+                            ),
+                            MoveTarget::AllOpponents => MoveTargetInstance::AllOpponents,
+                            MoveTarget::RandomOpponent => MoveTargetInstance::RandomOpponent,
+                            MoveTarget::AllOtherPokemon => MoveTargetInstance::AllOtherPokemon,
+                            MoveTarget::None => MoveTargetInstance::None,
+                            MoveTarget::UserAndAllies => MoveTargetInstance::UserAndAllies,
+                            MoveTarget::AllPokemon => MoveTargetInstance::AllPokemon,
                         }
-                        MoveTarget::Allies => MoveTargetInstance::Allies,
-                        MoveTarget::UserOrAlly => MoveTargetInstance::UserOrAlly(
-                            self.random.gen_range(0..self.local.active.len()),
-                        ),
-                        MoveTarget::User => MoveTargetInstance::User,
-                        MoveTarget::Opponent => MoveTargetInstance::Opponent(
-                            self.random.gen_range(0..self.remote.active.len()),
-                        ),
-                        MoveTarget::AllOpponents => MoveTargetInstance::AllOpponents,
-                        MoveTarget::RandomOpponent => MoveTargetInstance::RandomOpponent,
-                        MoveTarget::AllOtherPokemon => MoveTargetInstance::AllOtherPokemon,
-                        MoveTarget::None => MoveTargetInstance::None,
-                        MoveTarget::UserAndAllies => MoveTargetInstance::UserAndAllies,
-                        MoveTarget::AllPokemon => MoveTargetInstance::AllPokemon,
+                    } else {
+                        MoveTargetInstance::None
                     };
 
                     self.messages.push(ClientMessage::Move(
@@ -145,16 +157,18 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
             }
             ServerMessage::FaintReplace(pokemon, new) => {
                 if let Some(index) = match pokemon.team == self.local.id {
-                    true => &mut self.local.active,
-                    false => &mut self.remote.active,
+                    true => Some(&mut self.local.active),
+                    false => self.remotes.values_mut().filter(|r| r.id == pokemon.team).map(|r| &mut r.active).next(),
                 }
-                .get_mut(pokemon.index)
+                .map(|a| a.get_mut(pokemon.index)).flatten()
                 {
                     *index = Some(new)
                 }
             }
-            ServerMessage::AddUnknown(index, unknown) => self.remote.add_unknown(index, unknown),
-            ServerMessage::Winner(..) | ServerMessage::Catch(..) => (),
+            ServerMessage::AddUnknown(id, index, unknown) => if let Some(r) = self.remotes.get_mut(&id) {
+                r.add_unknown(index, unknown)
+            }
+            ServerMessage::End(..) | ServerMessage::Catch(..) => (),
             ServerMessage::ConfirmFaintReplace(index, can) => {
                 if !can {
                     log::error!("AI cannot replace pokemon at active index {}", index)
@@ -166,4 +180,5 @@ impl<'d, R: Rng, ID: Default + PartialEq> BattleEndpoint<ID> for BattlePlayerAi<
     fn receive(&mut self) -> Option<ClientMessage> {
         self.messages.pop()
     }
+
 }

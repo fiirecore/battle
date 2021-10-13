@@ -1,19 +1,19 @@
 use core::ops::Deref;
 
-use pokedex::pokemon::{OwnedRefPokemon, Party, PokemonRef};
+use pokedex::pokemon::{owned::OwnedPokemon, party::Party};
 
 use crate::{
     party::{PartyIndex, PlayerParty},
     pokemon::{
-        battle::{BattlePokemon, UnknownPokemon},
+        battle::{BattlePokemon, InitUnknownPokemon},
         ActivePokemon,
     },
 };
 
-pub type BattleParty<'d, ID> = PlayerParty<ID, ActivePokemon, BattlePokemon<'d>>;
+pub type BattleParty<'d, TEAM> = PlayerParty<TEAM, ActivePokemon, BattlePokemon<'d>>;
 
-impl<'d, ID> BattleParty<'d, ID> {
-    pub fn know(&mut self, index: usize) -> Option<UnknownPokemon<PokemonRef<'d>>> {
+impl<'d, TEAM> BattleParty<'d, TEAM> {
+    pub fn know(&mut self, index: usize) -> Option<InitUnknownPokemon<'d>> {
         self.pokemon
             .get_mut(index)
             .map(BattlePokemon::know)
@@ -36,12 +36,12 @@ impl<'d, ID> BattleParty<'d, ID> {
     }
 }
 
-impl<'d, ID> BattleParty<'d, ID> {
-    pub fn party_ref(&self) -> Party<&OwnedRefPokemon<'d>> {
+impl<'d, TEAM> BattleParty<'d, TEAM> {
+    pub fn party_ref(&self) -> Party<&OwnedPokemon<'d>> {
         self.pokemon.iter().map(Deref::deref).collect()
     }
 
-    pub fn party_cloned(&self) -> Party<OwnedRefPokemon<'d>> {
+    pub fn party_cloned(&self) -> Party<OwnedPokemon<'d>> {
         self.pokemon.iter().map(Deref::deref).cloned().collect()
     }
 }

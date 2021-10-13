@@ -1,7 +1,7 @@
 use core::fmt::Display;
 use serde::{Deserialize, Serialize};
 
-use pokedex::pokemon::OwnedRefPokemon;
+use pokedex::pokemon::owned::OwnedPokemon;
 
 use crate::{moves::BattleMove, party::PartyIndex};
 
@@ -28,13 +28,13 @@ pub trait PokemonView {
 
 impl<'d> PokemonView for battle::BattlePokemon<'d> {
     fn fainted(&self) -> bool {
-        OwnedRefPokemon::fainted(self)
+        OwnedPokemon::fainted(self)
     }
 }
 
-impl<'d> PokemonView for OwnedRefPokemon<'d> {
+impl<'d> PokemonView for OwnedPokemon<'d> {
     fn fainted(&self) -> bool {
-        OwnedRefPokemon::fainted(self)
+        OwnedPokemon::fainted(self)
     }
 }
 

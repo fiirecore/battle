@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use pokedex::pokemon::Party;
+use pokedex::pokemon::party::Party;
 
 use crate::pokemon::PokemonView;
 
@@ -11,8 +11,8 @@ pub use battle::*;
 pub use knowable::*;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct PlayerParty<ID, A: PartyIndex, P> {
-    pub id: ID,
+pub struct PlayerParty<TEAM, A: PartyIndex, P> {
+    pub id: TEAM,
     pub active: Vec<Option<A>>,
     pub pokemon: Party<P>,
 }

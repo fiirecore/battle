@@ -2,10 +2,10 @@ use core::ops::{Deref, DerefMut};
 use hashbrown::HashSet;
 
 use pokedex::{
-    moves::MoveId,
+    moves::{Move, MoveId},
     pokemon::{
+        owned::OwnedPokemon,
         stat::{BaseStat, StatType},
-        PokemonRef,
     },
 };
 
@@ -16,11 +16,11 @@ pub mod stat;
 
 mod moves;
 
-use crate::pokemon::{battle::stat::{StatStages, BattleStatType}, OwnedRefPokemon};
+use crate::pokemon::battle::stat::{BattleStatType, StatStages};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BattlePokemon<'d> {
-    pub instance: OwnedRefPokemon<'d>,
+    pub instance: OwnedPokemon<'d>,
     pub learnable_moves: HashSet<MoveId>,
     // pub persistent: Option<PersistentMove>,
     pub caught: bool,
@@ -31,7 +31,7 @@ pub struct BattlePokemon<'d> {
 }
 
 impl<'d> BattlePokemon<'d> {
-    pub fn know(&mut self) -> Option<UnknownPokemon<PokemonRef<'d>>> {
+    pub fn know(&mut self) -> Option<InitUnknownPokemon<'d>> {
         (!self.known).then(|| {
             self.known = true;
             UnknownPokemon::new(&self.instance)
@@ -47,13 +47,23 @@ impl<'d> BattlePokemon<'d> {
         }
     }
 
+    // To - do: factor in accuracy
+    pub fn throw_move<R: rand::Rng>(&self, random: &mut R, m: &Move) -> bool {
+        m.accuracy
+            .map(|accuracy| random.gen_range(0..100) < accuracy)
+            .unwrap_or(true)
+    }
+
     pub fn stat(&self, stat: StatType) -> BaseStat {
-        StatStages::mult(self.instance.stat(stat), self.stages.get(BattleStatType::Basic(stat)))
+        StatStages::mult(
+            self.instance.stat(stat),
+            self.stages.get(BattleStatType::Basic(stat)),
+        )
     }
 }
 
-impl<'d> From<OwnedRefPokemon<'d>> for BattlePokemon<'d> {
-    fn from(instance: OwnedRefPokemon<'d>) -> Self {
+impl<'d> From<OwnedPokemon<'d>> for BattlePokemon<'d> {
+    fn from(instance: OwnedPokemon<'d>) -> Self {
         Self {
             instance,
             learnable_moves: Default::default(),
@@ -67,7 +77,7 @@ impl<'d> From<OwnedRefPokemon<'d>> for BattlePokemon<'d> {
 }
 
 impl<'d> Deref for BattlePokemon<'d> {
-    type Target = OwnedRefPokemon<'d>;
+    type Target = OwnedPokemon<'d>;
 
     fn deref(&self) -> &Self::Target {
         &self.instance

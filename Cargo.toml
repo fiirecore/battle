@@ -5,19 +5,19 @@ authors = ["Rhys Holloway <rhyswilliamholloway@gmail.com>"]
 edition = "2018"
 description = "Pokemon battle simulation"
 license = "MIT"
-repository = "https://github.com/DoNotDoughnut/firecore-battle"
+repository = "https://github.com/fiirecore/battle"
 readme = "README.md"
 categories = ["game-development", "game-engines"]
 keywords = ["pokemon", "battle", "turn-based"]
 
 [features]
-default = ["host", "scripting"]
+default = ["host", "scripting", "ai"]
 scripting = ["rhai"]
 host = []
 ai = []
 
 [dependencies]
-firecore-pokedex = "0.0.1"
+firecore-pokedex = { git = "https://github.com/fiirecore/pokedex" }
 rand = { version = "0.8", default-features = false }
 log = "0.4"
 hashbrown = "0.11"

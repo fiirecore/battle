@@ -1,7 +1,7 @@
 use rand::Rng;
 
 use pokedex::{
-    moves::{CriticalRate, Move, MoveCategory, MoveId, OwnedMove, Power},
+    moves::{owned::OwnedMove, CriticalRate, Move, MoveCategory, MoveId, Power},
     pokemon::Health,
     types::{Effective, PokemonType},
 };
@@ -31,7 +31,7 @@ impl<'d> super::BattlePokemon<'d> {
         let results = engine
             .execute(random, &m, self, targets)
             .unwrap_or_else(|err| {
-                log::error!("Could not use move {} with error {}", m, err);
+                log::error!("Could not use move {} with error {}", m.name, err);
                 vec![(TargetLocation::User, MoveResult::Error)]
             });
 

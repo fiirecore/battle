@@ -3,14 +3,14 @@ use serde::{Deserialize, Serialize};
 
 use pokedex::{
     moves::MoveId,
-    pokemon::{OwnedIdPokemon, PokemonId},
+    pokemon::{owned::SavedPokemon, PokemonId},
 };
 
 use crate::{
-    BoundAction,
     moves::{BattleMove, ClientMove},
     player::ValidatedPlayer,
     pokemon::{battle::UninitUnknownPokemon, ActivePosition, PartyPosition, PokemonIndex},
+    BoundAction,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -26,10 +26,17 @@ pub enum ClientMessage {
 pub enum ServerMessage<ID> {
     Begin(ValidatedPlayer<ID, PokemonId>),
     StartSelecting,
-    Catch(OwnedIdPokemon),
+    Catch(SavedPokemon),
     TurnQueue(Vec<BoundAction<ID, ClientMove>>),
     ConfirmFaintReplace(ActivePosition, bool),
     FaintReplace(PokemonIndex<ID>, usize),
-    AddUnknown(PartyPosition, UninitUnknownPokemon),
-    Winner(Option<ID>),
+    AddUnknown(ID, PartyPosition, UninitUnknownPokemon),
+    End(EndState),
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum EndState {
+    Win,  // add money gained
+    Lose, // add money lost
+    Other,
 }
