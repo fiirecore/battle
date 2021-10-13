@@ -8,31 +8,24 @@ use pokedex::{
     Dex, Identifiable, Uninitializable,
 };
 
-use crate::{
-    data::*,
-    message::{ClientMessage, EndState, ServerMessage},
-    moves::{
+use crate::{BattleEndpoint, BoundAction, data::*, message::{ClientMessage, EndState, ServerMessage}, moves::{
         damage::DamageResult,
         engine::MoveEngine,
         target::{MoveTargetInstance, TargetLocation},
         BattleMove, ClientMove, ClientMoveAction, MoveResult,
-    },
-    player::{BattlePlayer, ValidatedPlayer},
-    pokemon::{battle::BattlePokemon, PokemonIndex},
-    BoundAction,
-};
+    }, player::{BattlePlayer, ValidatedPlayer}, pokemon::{battle::BattlePokemon, PokemonIndex}};
 
 mod collection;
 
 pub mod queue;
 pub use queue::move_queue;
 
-pub struct Battle<'d, ID: Copy + Ord + Hash> {
+pub struct Battle<'d, ID: Copy + Ord + Hash, E: BattleEndpoint<ID>> {
     state: BattleState<ID>,
 
     data: BattleData,
 
-    pub players: collection::BattleMap<ID, BattlePlayer<'d, ID>>, // can change to dex implementation, and impl Identifiable for BattlePlayer
+    pub players: collection::BattleMap<ID, BattlePlayer<'d, ID, E>>, // can change to dex implementation, and impl Identifiable for BattlePlayer
                                                               // player2: BattlePlayer<'d, ID>,
 }
 
@@ -52,8 +45,8 @@ impl<ID> Default for BattleState<ID> {
     }
 }
 
-impl<'d, ID: Copy + Ord + Hash> Battle<'d, ID> {
-    pub fn new(data: BattleData, players: impl IntoIterator<Item = BattlePlayer<'d, ID>>) -> Self {
+impl<'d, ID: Copy + Ord + Hash, E: BattleEndpoint<ID>> Battle<'d, ID, E> {
+    pub fn new(data: BattleData, players: impl IntoIterator<Item = BattlePlayer<'d, ID, E>>) -> Self {
         Self {
             state: BattleState::default(),
             data,
@@ -113,7 +106,7 @@ impl<'d, ID: Copy + Ord + Hash> Battle<'d, ID> {
                         }
                     }
                     ClientMessage::ReplaceFaint(active, index) => {
-                        fn can<ID>(player: &mut BattlePlayer<ID>, active: usize, can: bool) {
+                        fn can<ID, E: BattleEndpoint<ID>>(player: &mut BattlePlayer<ID, E>, active: usize, can: bool) {
                             player.send(ServerMessage::ConfirmFaintReplace(active, can))
                         }
 
@@ -166,10 +159,10 @@ impl<'d, ID: Copy + Ord + Hash> Battle<'d, ID> {
         }
     }
 
-    pub fn update<R: Rng + Clone + 'static, E: MoveEngine>(
+    pub fn update<R: Rng + Clone + 'static, ENG: MoveEngine>(
         &mut self,
         random: &mut R,
-        engine: &mut E,
+        engine: &mut ENG,
         itemdex: &'d impl Dex<Item>,
     ) {
         self.process();
@@ -239,10 +232,10 @@ impl<'d, ID: Copy + Ord + Hash> Battle<'d, ID> {
         }
     }
 
-    pub fn client_queue<R: Rng + Clone + 'static, E: MoveEngine>(
+    pub fn client_queue<R: Rng + Clone + 'static, ENG: MoveEngine>(
         &mut self,
         random: &mut R,
-        engine: &mut E,
+        engine: &mut ENG,
         itemdex: &'d impl Dex<Item>,
         queue: Vec<BoundAction<ID, BattleMove>>,
     ) -> Vec<BoundAction<ID, ClientMove>> {
@@ -550,7 +543,7 @@ impl<'d, ID: Copy + Ord + Hash> Battle<'d, ID> {
     }
 }
 
-impl<'d, ID: Copy + Ord + Hash + core::fmt::Debug> core::fmt::Debug for Battle<'d, ID> {
+impl<'d, ID: Copy + Ord + Hash + core::fmt::Debug, E: BattleEndpoint<ID>> core::fmt::Debug for Battle<'d, ID, E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Battle").field("state", &self.state).field("data", &self.data).field("players", &self.players).finish()
     }

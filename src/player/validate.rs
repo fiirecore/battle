@@ -7,7 +7,7 @@ use pokedex::pokemon::PokemonId;
 use crate::{
     party::PartyIndex,
     player::{BattlePlayer, RemotePlayerKind},
-    BattleData,
+    BattleData, BattleEndpoint,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -20,13 +20,18 @@ pub struct ValidatedPlayer<ID, P> {
 }
 
 impl<ID: Copy> ValidatedPlayer<ID, PokemonId> {
-    pub fn new<'d: 'a, 'a, I: Iterator<Item = Ref<'a, BattlePlayer<'d, ID>>> + 'a>(
+    pub fn new<
+        'd: 'a,
+        'a,
+        E: BattleEndpoint<ID>,
+        I: Iterator<Item = Ref<'a, BattlePlayer<'d, ID, E>>> + 'a,
+    >(
         data: BattleData,
-        player: &BattlePlayer<ID>,
+        player: &BattlePlayer<ID, E>,
         others: I,
     ) -> Self
     where
-        ID: 'a,
+        ID: 'a, E: 'a,
     {
         Self {
             id: player.party.id,

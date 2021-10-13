@@ -8,7 +8,8 @@ use pokedex::{
 };
 
 use crate::{
-    moves::BattleMove, party::BattleParty, player::BattlePlayer, pokemon::PokemonIndex, BoundAction,
+    moves::BattleMove, party::BattleParty, player::BattlePlayer, pokemon::PokemonIndex,
+    BattleEndpoint, BoundAction,
 };
 
 use super::collection::BattleMap;
@@ -21,8 +22,8 @@ pub enum MovePriority<ID: Ord> {
 
 // struct Player<'d, 'a, ID: Copy + Ord, MDEX: Dex<Move>, R: Rng>(&'a mut BattleParty<'d, ID, MDEX>, &'a mut R);
 
-pub fn move_queue<ID: Copy + Ord + Hash, R: Rng>(
-    players: &mut BattleMap<ID, BattlePlayer<ID>>,
+pub fn move_queue<ID: Copy + Ord + Hash, E: BattleEndpoint<ID>, R: Rng>(
+    players: &mut BattleMap<ID, BattlePlayer<ID, E>>,
     random: &mut R,
 ) -> Vec<BoundAction<ID, BattleMove>> {
     let mut queue = BTreeMap::new();

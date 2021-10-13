@@ -60,8 +60,6 @@ fn main() {
         crit_rate: 0,
     });
 
-    let movedex = Rc::new(movedex);
-
     #[derive(Clone)]
     struct BattleP<'d>(Rc<RefCell<BattlePlayerAi<'d, StepRng, u8>>>);
 
@@ -75,7 +73,7 @@ fn main() {
         }
     }
 
-    let itemdex = Rc::new(BasicDex::default());
+    let itemdex = BasicDex::default();
 
     let mut r = StepRng::new(34618, 3213);
 
@@ -83,7 +81,7 @@ fn main() {
 
     for i in 0..3 {
         let p = SavedPokemon::generate(&mut r, i, 30, None, None);
-        if let Some(mut p) = p.init(&mut r, &*pokedex, &*movedex, &*itemdex) {
+        if let Some(mut p) = p.init(&mut r, &pokedex, &movedex, &itemdex) {
             p.moves.add(None, &mid);
             party.push(p)
         }
@@ -99,7 +97,7 @@ fn main() {
         p1.party().clone(),
         Some("P1".to_owned()),
         Default::default(),
-        Box::new(p1),
+        p1,
         1,
     );
     let bp2 = BattlePlayer::new(
@@ -107,7 +105,7 @@ fn main() {
         p2.party().clone(),
         Some("P2".to_owned()),
         Default::default(),
-        Box::new(p2),
+        p2,
         1,
     );
 
@@ -120,10 +118,8 @@ fn main() {
 
     let mut engine = DefaultMoveEngine::new::<StepRng>();
 
-    let itemdex_ = itemdex.clone();
-
     while !battle.finished() {
-        battle.update(&mut r, &mut engine, &*itemdex_);
+        battle.update(&mut r, &mut engine, &itemdex);
     }
 
     println!("{:?} wins!", battle.winner());

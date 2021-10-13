@@ -17,22 +17,22 @@ pub use validate::*;
 #[cfg(feature = "ai")]
 pub mod ai;
 
-pub struct BattlePlayer<'d, ID> {
+pub struct BattlePlayer<'d, ID, E> {
     name: Option<String>,
     pub party: BattleParty<'d, ID>,
-    endpoint: Box<dyn BattleEndpoint<ID>>,
+    endpoint: E,
     pub settings: PlayerSettings,
     /// Player's turn has finished
     pub waiting: bool,
 }
 
-impl<'d, ID> BattlePlayer<'d, ID> {
+impl<'d, ID, E: BattleEndpoint<ID>> BattlePlayer<'d, ID, E> {
     pub fn new(
         id: ID,
         party: Party<OwnedPokemon<'d>>,
         name: Option<String>,
         settings: PlayerSettings,
-        endpoint: Box<dyn BattleEndpoint<ID>>,
+        endpoint: E,
         active_size: usize,
     ) -> Self {
         let mut active = Vec::with_capacity(active_size);
@@ -77,13 +77,13 @@ impl<'d, ID> BattlePlayer<'d, ID> {
 
 }
 
-impl<'d, ID: core::fmt::Debug> core::fmt::Debug for BattlePlayer<'d, ID> {
+impl<'d, ID: core::fmt::Debug, E: BattleEndpoint<ID>> core::fmt::Debug for BattlePlayer<'d, ID, E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BattlePlayer").field("party", &self.party).field("name", &self.name).finish()
     }
 }
 
-impl<'d, ID: Copy> BattlePlayer<'d, ID> {
+impl<'d, ID: Copy, E: BattleEndpoint<ID>> BattlePlayer<'d, ID, E> {
     pub fn as_remote(&self) -> UninitRemotePlayer<ID> {
         PlayerKnowable {
             name: self.name.clone(),
