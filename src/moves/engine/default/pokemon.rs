@@ -5,19 +5,19 @@ use rhai::INT;
 
 use pokedex::{moves::MoveCategory, pokemon::owned::OwnedPokemon, types::PokemonType};
 
-use crate::{moves::target::TargetLocation, pokemon::battle::BattlePokemon};
+use crate::pokemon::{battle::BattlePokemon, PokemonIndex};
 
 use super::{moves::ScriptMove, ScriptDamage, ScriptRandom};
 
 #[derive(Clone, Copy)]
-pub struct ScriptPokemon(
-    TargetLocation,
+pub struct ScriptPokemon<ID>(
+    PokemonIndex<ID>,
     *const BattlePokemon<'static>,
     // PhantomData<R>,
 );
 
-impl ScriptPokemon {
-    pub fn new<'a>(pokemon: (TargetLocation, &BattlePokemon<'a>)) -> Self {
+impl<ID> ScriptPokemon<ID> {
+    pub fn new<'a>(pokemon: (PokemonIndex<ID>, &BattlePokemon<'a>)) -> Self {
         let p = pokemon.1 as *const BattlePokemon<'a>;
         let p = unsafe {
             core::mem::transmute::<*const BattlePokemon<'a>, *const BattlePokemon<'static>>(p)
@@ -59,7 +59,7 @@ impl ScriptPokemon {
     }
 }
 
-impl Deref for ScriptPokemon {
+impl<ID> Deref for ScriptPokemon<ID> {
     type Target = BattlePokemon<'static>;
 
     fn deref(&self) -> &Self::Target {
@@ -67,8 +67,8 @@ impl Deref for ScriptPokemon {
     }
 }
 
-impl Into<TargetLocation> for ScriptPokemon {
-    fn into(self) -> TargetLocation {
+impl<ID> Into<PokemonIndex<ID>> for ScriptPokemon<ID> {
+    fn into(self) -> PokemonIndex<ID> {
         self.0
     }
 }

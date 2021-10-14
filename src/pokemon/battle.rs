@@ -1,8 +1,9 @@
 use core::ops::{Deref, DerefMut};
 use hashbrown::HashSet;
+use rand::Rng;
 
 use pokedex::{
-    moves::{Move, MoveId},
+    moves::{Move, MoveId, CriticalRate},
     pokemon::{
         owned::OwnedPokemon,
         stat::{BaseStat, StatType},
@@ -60,6 +61,21 @@ impl<'d> BattlePokemon<'d> {
             self.stages.get(BattleStatType::Basic(stat)),
         )
     }
+
+    pub fn crit(random: &mut impl Rng, crit_rate: CriticalRate) -> bool {
+        random.gen_bool(match crit_rate {
+            0 => 0.0625, // 1 / 16
+            1 => 0.125,  // 1 / 8
+            2 => 0.25,   // 1 / 4
+            3 => 1.0 / 3.0,
+            _ => 0.5, // rates 4 and above, 1 / 2
+        })
+    }
+
+    pub fn damage_range(random: &mut impl Rng) -> u8 {
+        random.gen_range(85..=100u8)
+    }
+    
 }
 
 impl<'d> From<OwnedPokemon<'d>> for BattlePokemon<'d> {

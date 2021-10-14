@@ -9,7 +9,7 @@ use pokedex::{
 
 use crate::{
     moves::BattleMove, party::BattleParty, player::BattlePlayer, pokemon::PokemonIndex,
-    BattleEndpoint, BoundAction,
+    BattleEndpoint, Indexed,
 };
 
 use super::collection::BattleMap;
@@ -20,12 +20,10 @@ pub enum MovePriority<ID: Ord> {
     Second(Reverse<Priority>, Reverse<BaseStat>, Option<u16>),
 }
 
-// struct Player<'d, 'a, ID: Copy + Ord, MDEX: Dex<Move>, R: Rng>(&'a mut BattleParty<'d, ID, MDEX>, &'a mut R);
-
-pub fn move_queue<ID: Copy + Ord + Hash, E: BattleEndpoint<ID>, R: Rng>(
-    players: &mut BattleMap<ID, BattlePlayer<ID, E>>,
+pub fn move_queue<ID: Clone + Ord + Hash, E: BattleEndpoint<ID, AS>, R: Rng, const AS: usize>(
+    players: &mut BattleMap<ID, BattlePlayer<ID, E, AS>>,
     random: &mut R,
-) -> Vec<BoundAction<ID, BattleMove>> {
+) -> Vec<Indexed<ID, BattleMove<ID>>> {
     let mut queue = BTreeMap::new();
 
     for mut player in players.values_mut() {
@@ -35,21 +33,16 @@ pub fn move_queue<ID: Copy + Ord + Hash, E: BattleEndpoint<ID>, R: Rng>(
     queue.into_values().collect()
 }
 
-fn queue_player<ID: Copy + Ord, R: Rng>(
-    queue: &mut BTreeMap<MovePriority<ID>, BoundAction<ID, BattleMove>>,
-    party: &mut BattleParty<ID>,
+fn queue_player<ID: Clone + Ord, R: Rng, const AS: usize>(
+    queue: &mut BTreeMap<MovePriority<ID>, Indexed<ID, BattleMove<ID>>>,
+    party: &mut BattleParty<ID, AS>,
     random: &mut R,
 ) {
-    for index in 0..party.active.len() {
+    for index in 0..AS {
         if let Some(pokemon) = party.active.get_mut(index).map(Option::as_mut).flatten() {
             if let Some(action) = pokemon.queued_move.take() {
                 if let Some(instance) = party.active(index) {
-                    let pokemon = PokemonIndex {
-                        team: party.id,
-                        index,
-                    };
-
-                    let id = party.id;
+                    let pokemon = PokemonIndex(party.id().clone(), index);
 
                     let mut priority = match action {
                         BattleMove::Move(index, ..) => MovePriority::Second(
@@ -63,11 +56,11 @@ fn queue_player<ID: Copy + Ord, R: Rng>(
                             Reverse(instance.stat(StatType::Speed)),
                             None,
                         ),
-                        _ => MovePriority::First(id, index),
+                        _ => MovePriority::First(party.id().clone(), index),
                     };
 
                     fn tie_break<ID: Ord, R: Rng>(
-                        queue: &mut BTreeMap<MovePriority<ID>, BoundAction<ID, BattleMove>>,
+                        queue: &mut BTreeMap<MovePriority<ID>, Indexed<ID, BattleMove<ID>>>,
                         random: &mut R,
                         priority: &mut MovePriority<ID>,
                     ) {
@@ -83,7 +76,7 @@ fn queue_player<ID: Copy + Ord, R: Rng>(
                         tie_break(queue, random, &mut priority);
                     }
 
-                    queue.insert(priority, BoundAction { pokemon, action });
+                    queue.insert(priority, Indexed(pokemon, action));
                 }
             }
         }

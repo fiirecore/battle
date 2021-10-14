@@ -1,4 +1,3 @@
-use core::fmt::Display;
 use serde::{Deserialize, Serialize};
 
 use pokedex::pokemon::owned::OwnedPokemon;
@@ -11,14 +10,22 @@ pub type ActivePosition = usize;
 pub type PartyPosition = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
-pub struct PokemonIndex<ID> {
-    pub team: ID,
-    pub index: usize,
+pub struct PokemonIndex<ID>(pub ID, pub usize);
+
+impl<ID> PokemonIndex<ID> {
+    pub fn team(&self) -> &ID {
+        &self.0
+    }
+
+    pub fn index(&self) -> usize {
+        self.1
+    }
+
 }
 
-impl<ID: Sized + Display> Display for PokemonIndex<ID> {
+impl<ID: core::fmt::Display> core::fmt::Display for PokemonIndex<ID> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{} #{}", self.team, self.index)
+        write!(f, "{} #{}", self.0, self.1)
     }
 }
 
@@ -44,19 +51,34 @@ impl<P> PokemonView for Option<battle::UnknownPokemon<P>> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct ActivePokemon {
+// remove Serialize + Deserialize when serde supports const generics
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct ActivePokemon<ID> {
     pub index: usize,
-    pub queued_move: Option<BattleMove>,
+    pub queued_move: Option<BattleMove<ID>>,
 }
 
-impl PartyIndex for ActivePokemon {
+impl<ID> ActivePokemon<ID> {
+
+    pub fn into_remote<const AS: usize>(this: &[Option<Self>; AS]) -> [Option<usize>; AS] {
+        let mut active = [None; AS];
+
+        for (i, a) in this.iter().enumerate() {
+            active[i] = a.as_ref().map(PartyIndex::index);
+        }
+
+        return active;
+    }
+
+}
+
+impl<ID> PartyIndex for ActivePokemon<ID> {
     fn index(&self) -> usize {
         self.index
     }
 }
 
-impl From<usize> for ActivePokemon {
+impl<ID> From<usize> for ActivePokemon<ID> {
     fn from(index: usize) -> Self {
         Self {
             index,

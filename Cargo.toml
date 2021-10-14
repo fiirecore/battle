@@ -22,4 +22,5 @@ rand = { version = "0.8", default-features = false }
 log = "0.4"
 hashbrown = "0.11"
 serde = { version = "1", features = ["derive"] }
+serde-big-array = { version = "0.3", features = ["const-generics"] }
 rhai = { version = "1", optional = true }

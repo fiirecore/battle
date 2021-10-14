@@ -1,28 +1,36 @@
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
-    ailment::{Ailment, AilmentLength, LiveAilment},
-    pokemon::{Health, Experience, Level},
-    moves::MoveId,
+    ailment::LiveAilment,
     item::ItemId,
+    moves::{MoveId, PP},
+    pokemon::{Experience, Level},
 };
 
-use crate::pokemon::battle::stat::{BattleStatType, Stage};
+use crate::{
+    pokemon::{
+        battle::stat::{BattleStatType, Stage},
+        PokemonIndex,
+    },
+    Indexed,
+};
 
 pub mod damage;
 pub mod engine;
 pub mod target;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum BattleMove {
-    Move(usize, target::MoveTargetInstance),
-    UseItem(ItemId, usize),
+pub enum BattleMove<ID> {
+    /// Move (by its index), and its optional target.
+    Move(usize, Option<PokemonIndex<ID>>),
+    UseItem(ItemId, PokemonIndex<ID>),
     Switch(usize),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum ClientMove {
-    Move(MoveId, Vec<(target::TargetLocation, ClientMoveAction)>),
+pub enum ClientMove<ID> {
+    /// Id of move, PP lost from using the move, client move actions
+    Move(MoveId, PP, Vec<Indexed<ID, ClientMoveAction>>),
     Switch(usize),
     UseItem(ItemId, usize),
 }
@@ -47,53 +55,12 @@ pub type Critical = bool;
 /// 0 through 100
 pub type Percent = u8;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum MoveExecution {
-    /// Load a vector of actions
-    Actions(Vec<MoveUse>),
-    /// Use a script defined in the instance of the object that uses this
-    Script,
-    /// Placeholder to show that object does not have a defined use yet.
-    None,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub enum MoveUse {
-    Damage(damage::DamageKind),
-    Ailment(Ailment, AilmentLength, Percent),
-    Drain(damage::DamageKind, i8),
-    Stat(BattleStatType, Stage),
-    Flinch,
-    Chance(Vec<Self>, Percent),
-}
-
-impl MoveExecution {
-    pub fn len(&self) -> usize {
+impl<ID: core::fmt::Display> core::fmt::Display for BattleMove<ID> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Actions(actions) => actions.iter().map(MoveUse::len).sum(),
-            Self::Script | Self::None => 1,
+            BattleMove::Move(index, target) => write!(f, "Move #{}", index),
+            BattleMove::UseItem(id, target) => write!(f, "Item {}", id),
+            BattleMove::Switch(index) => write!(f, "Switch to {}", index),
         }
     }
-}
-
-impl MoveUse {
-    pub fn len(&self) -> usize {
-        match self {
-            Self::Chance(uses, ..) => uses.iter().map(Self::len).sum(),
-            Self::Drain(..) => 2,
-            _ => 1,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MoveResult {
-    Damage(damage::DamageResult<Health>),
-    Heal(i16),
-    Ailment(LiveAilment),
-    Stat(BattleStatType, Stage),
-    Flinch,
-    Miss,
-    Error,
 }

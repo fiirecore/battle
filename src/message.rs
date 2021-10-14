@@ -1,36 +1,33 @@
 use core::fmt::Debug;
 use serde::{Deserialize, Serialize};
 
-use pokedex::{
-    moves::MoveId,
-    pokemon::{owned::SavedPokemon, PokemonId},
-};
+use pokedex::{moves::MoveId, pokemon::owned::SavedPokemon};
 
 use crate::{
     moves::{BattleMove, ClientMove},
     player::ValidatedPlayer,
     pokemon::{battle::UninitUnknownPokemon, ActivePosition, PartyPosition, PokemonIndex},
-    BoundAction,
+    Indexed,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
-pub enum ClientMessage {
-    Move(ActivePosition, BattleMove),            // active pokemon, move
-    ReplaceFaint(ActivePosition, PartyPosition), // active pokemon, party index
+pub enum ClientMessage<ID> {
+    Move(ActivePosition, BattleMove<ID>),
+    ReplaceFaint(ActivePosition, PartyPosition),
     FinishedTurnQueue,
     Forfeit,
     LearnMove(PartyPosition, MoveId, u8), // pokemon index, move, move index (0 - 3)
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub enum ServerMessage<ID> {
-    Begin(ValidatedPlayer<ID, PokemonId>),
+pub enum ServerMessage<ID, const AS: usize> {
+    Begin(ValidatedPlayer<ID, AS>),
     StartSelecting,
     Catch(SavedPokemon),
-    TurnQueue(Vec<BoundAction<ID, ClientMove>>),
+    TurnQueue(Vec<Indexed<ID, ClientMove<ID>>>),
     ConfirmFaintReplace(ActivePosition, bool),
     FaintReplace(PokemonIndex<ID>, usize),
-    AddUnknown(ID, PartyPosition, UninitUnknownPokemon),
+    AddUnknown(PokemonIndex<ID>, UninitUnknownPokemon),
     End(EndState),
 }
 

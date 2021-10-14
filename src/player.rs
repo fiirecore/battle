@@ -1,107 +1,98 @@
-use pokedex::{
-    pokemon::{owned::OwnedPokemon, party::Party},
-    Uninitializable,
+use core::cell::Ref;
+
+use serde::{Deserialize, Serialize};
+use serde_big_array::BigArray;
+
+use pokedex::pokemon::{owned::OwnedPokemon, party::Party};
+
+use crate::{
+    message::{ClientMessage, ServerMessage},
+    party::{BattleParty, RemoteParty},
+    pokemon::ActivePokemon,
+    BattleData, BattleEndpoint,
 };
 
-use crate::{BattleEndpoint, message::{ClientMessage, ServerMessage}, party::{BattleParty, PlayerParty}, player::UninitRemotePlayer, pokemon::battle::{BattlePokemon, UnknownPokemon}};
-
-mod settings;
-pub use settings::*;
-
-mod knowable;
-pub use knowable::*;
-
-mod validate;
-pub use validate::*;
-
-#[cfg(feature = "ai")]
-pub mod ai;
-
-pub struct BattlePlayer<'d, ID, E> {
-    name: Option<String>,
-    pub party: BattleParty<'d, ID>,
-    endpoint: E,
-    pub settings: PlayerSettings,
-    /// Player's turn has finished
-    pub waiting: bool,
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub struct PlayerSettings {
+    pub gains_exp: bool,
 }
 
-impl<'d, ID, E: BattleEndpoint<ID>> BattlePlayer<'d, ID, E> {
+impl Default for PlayerSettings {
+    fn default() -> Self {
+        Self { gains_exp: true }
+    }
+}
+
+#[derive(Debug)]
+pub struct BattlePlayer<'d, ID, E: BattleEndpoint<ID, AS>, const AS: usize> {
+    pub(crate) party: BattleParty<'d, ID, AS>,
+    endpoint: E,
+    pub settings: PlayerSettings,
+}
+
+impl<'d, ID, E: BattleEndpoint<ID, AS>, const AS: usize> BattlePlayer<'d, ID, E, AS> {
     pub fn new(
         id: ID,
-        party: Party<OwnedPokemon<'d>>,
         name: Option<String>,
+        pokemon: Party<OwnedPokemon<'d>>,
         settings: PlayerSettings,
         endpoint: E,
-        active_size: usize,
     ) -> Self {
-        let mut active = Vec::with_capacity(active_size);
-        let mut count = 0;
-
-        while active.len() < active_size {
-            match party.get(count) {
-                Some(p) => {
-                    if !p.fainted() {
-                        active.push(Some(count.into()));
-                    }
-                }
-                None => active.push(None),
-            }
-            count += 1;
-        }
-
         Self {
             endpoint,
-            party: BattleParty {
-                id,
-                active,
-                pokemon: party.into_iter().map(BattlePokemon::from).collect(),
-            },
-            name,
+            party: BattleParty::new(id, name, pokemon.into_iter().map(Into::into).collect()),
             settings,
-            waiting: false,
         }
+    }
+
+    pub fn id(&self) -> &ID {
+        self.party.id()
     }
 
     pub fn name(&self) -> &str {
-        self.name.as_deref().unwrap_or("Unknown")
+        self.party.name()
     }
 
-    pub fn send(&mut self, message: ServerMessage<ID>) {
+    pub fn send(&mut self, message: ServerMessage<ID, AS>) {
         self.endpoint.send(message)
     }
 
-    pub fn receive(&mut self) -> Option<ClientMessage> {
+    pub fn receive(&mut self) -> Option<ClientMessage<ID>> {
         self.endpoint.receive()
     }
-
 }
 
-impl<'d, ID: core::fmt::Debug, E: BattleEndpoint<ID>> core::fmt::Debug for BattlePlayer<'d, ID, E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BattlePlayer").field("party", &self.party).field("name", &self.name).finish()
-    }
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ValidatedPlayer<ID, const AS: usize> {
+    pub id: ID,
+    pub name: Option<String>,
+    #[serde(with = "BigArray")]
+    pub active: [Option<usize>; AS],
+    pub data: BattleData,
+    pub remotes: Vec<RemoteParty<ID, AS>>,
 }
 
-impl<'d, ID: Copy, E: BattleEndpoint<ID>> BattlePlayer<'d, ID, E> {
-    pub fn as_remote(&self) -> UninitRemotePlayer<ID> {
-        PlayerKnowable {
-            name: self.name.clone(),
-            party: PlayerParty {
-                id: self.party.id,
-                pokemon: self
-                    .party
-                    .pokemon
-                    .iter()
-                    .map(|p| p.known.then(|| UnknownPokemon::new(p).uninit()))
-                    .collect(),
-                active: self
-                    .party
-                    .active
-                    .iter()
-                    .map(|active| active.as_ref().map(|a| a.index))
-                    .collect(),
-            },
+impl<ID: Clone, const AS: usize> ValidatedPlayer<ID, AS> {
+    pub fn new<
+        'd: 'a,
+        'a,
+        E: BattleEndpoint<ID, AS>,
+        I: Iterator<Item = Ref<'a, BattlePlayer<'d, ID, E, AS>>> + 'a,
+    >(
+        data: BattleData,
+        player: &BattlePlayer<ID, E, AS>,
+        others: I,
+    ) -> Self
+    where
+        ID: 'a,
+        E: 'a,
+    {
+        Self {
+            id: player.party.id().clone(),
+            name: player.party.name.clone(),
+            active: ActivePokemon::into_remote(&player.party.active),
+            data,
+            remotes: others.map(|player| player.party.as_remote()).collect(),
         }
     }
 }

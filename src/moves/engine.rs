@@ -1,27 +1,54 @@
+use core::hash::Hash;
 use rand::Rng;
 use std::error::Error;
 
-use pokedex::moves::Move;
+use pokedex::{ailment::LiveAilment, moves::Move, pokemon::Health};
 
 use crate::{
-    moves::{target::TargetLocation, MoveResult},
-    pokemon::battle::BattlePokemon,
+    moves::damage::DamageResult,
+    player::BattlePlayer,
+    pokemon::{
+        battle::{
+            stat::{BattleStatType, Stage},
+            BattlePokemon,
+        },
+        PokemonIndex,
+    },
+    prelude::BattleMap,
+    BattleEndpoint,
 };
+
+pub use hashbrown::HashMap;
 
 #[cfg(feature = "scripting")]
 pub mod default;
 
-#[cfg(feature = "scripting")]
-pub use default::DefaultMoveEngine;
-
 pub trait MoveEngine {
     type Error: Error;
 
-    fn execute<'d, R: Rng + Clone + 'static>(
+    fn execute<
+        'd,
+        ID: Clone + Hash + Eq + 'static,
+        R: Rng + Clone + 'static,
+        E: BattleEndpoint<ID, AS>,
+        const AS: usize,
+    >(
         &mut self,
         random: &mut R,
         used_move: &Move,
-        user: &BattlePokemon<'d>,
-        targets: Vec<(TargetLocation, &BattlePokemon<'d>)>,
-    ) -> Result<Vec<(TargetLocation, MoveResult)>, Self::Error>;
+        user: (PokemonIndex<ID>, &BattlePokemon<'d>),
+        targets: Option<PokemonIndex<ID>>,
+        players: &BattleMap<ID, BattlePlayer<'d, ID, E, AS>>,
+    ) -> Result<HashMap<PokemonIndex<ID>, Vec<MoveResult>>, Self::Error>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MoveResult {
+    Damage(DamageResult<Health>),
+    Heal(i16),
+    Ailment(LiveAilment),
+    Stat(BattleStatType, Stage),
+    Flinch,
+    Miss,
+    Error,
 }

@@ -1,109 +1,14 @@
 use rand::Rng;
 
 use pokedex::{
-    moves::{owned::OwnedMove, CriticalRate, Move, MoveCategory, MoveId, Power},
+    moves::{CriticalRate, MoveCategory, Power},
     pokemon::Health,
     types::{Effective, PokemonType},
 };
 
-use crate::moves::{
-    damage::{DamageKind, DamageResult},
-    engine::MoveEngine,
-    target::TargetLocation,
-    MoveResult, MoveUse,
-};
+use crate::moves::damage::{DamageKind, DamageResult};
 
 impl<'d> super::BattlePokemon<'d> {
-    // To - do: uses PP on use
-    pub fn use_own_move<R: Rng + Clone + 'static, E: MoveEngine>(
-        &self,
-        random: &mut R,
-        engine: &mut E,
-        move_index: usize,
-        targets: Vec<(TargetLocation, &Self)>,
-    ) -> Option<(MoveId, Vec<(TargetLocation, MoveResult)>)> {
-        let m = self
-            .moves
-            .get(move_index)
-            .map(OwnedMove::try_use)
-            .flatten()?;
-
-        let results = engine
-            .execute(random, &m, self, targets)
-            .unwrap_or_else(|err| {
-                log::error!("Could not use move {} with error {}", m.name, err);
-                vec![(TargetLocation::User, MoveResult::Error)]
-            });
-
-        Some((m.id, results))
-    }
-
-    pub fn move_usage<R: Rng>(
-        &self,
-        random: &mut R,
-        results: &mut Vec<(TargetLocation, MoveResult)>,
-        actions: &Vec<MoveUse>,
-        m: &Move,
-        target: (TargetLocation, &Self),
-    ) {
-        for action in actions {
-            match action {
-                MoveUse::Damage(kind) => {
-                    results.push((
-                        target.0,
-                        MoveResult::Damage(target.1.damage_kind(
-                            random,
-                            target.1,
-                            *kind,
-                            m.category,
-                            m.pokemon_type,
-                            m.crit_rate,
-                        )),
-                    ));
-                }
-                MoveUse::Ailment(status, length, chance) => {
-                    if target.1.ailment.is_none() {
-                        if random.gen_bool(*chance as f64 / 100.0) {
-                            results.push((
-                                target.0,
-                                MoveResult::Ailment(length.init(*status, random)),
-                            ));
-                        }
-                    }
-                }
-                MoveUse::Drain(kind, percent) => {
-                    let result = self.damage_kind(
-                        random,
-                        target.1,
-                        *kind,
-                        m.category,
-                        m.pokemon_type,
-                        m.crit_rate,
-                    );
-
-                    let healing = (result.damage as f32 * *percent as f32 / 100.0) as i16;
-
-                    results.push((target.0, MoveResult::Damage(result)));
-                    results.push((TargetLocation::User, MoveResult::Heal(healing)))
-                }
-                MoveUse::Stat(stat, stage) => {
-                    if target.1.stages.can_change(*stat, *stage) {
-                        results.push((target.0, MoveResult::Stat(*stat, *stage)));
-                    }
-                }
-                // MoveUseType::Linger(..) => {
-                // 	results.insert(target.instance, Some(MoveAction::Todo));
-                // }
-                MoveUse::Flinch => results.push((target.0, MoveResult::Flinch)),
-                MoveUse::Chance(actions, chance) => {
-                    if random.gen_range(0..=100) < *chance {
-                        self.move_usage(random, results, actions, m, target);
-                    }
-                }
-            }
-        }
-    }
-
     pub fn damage_kind(
         &self,
         random: &mut impl Rng,
@@ -158,20 +63,6 @@ impl<'d> super::BattlePokemon<'d> {
             crit,
             Self::damage_range(random),
         )
-    }
-
-    pub fn crit(random: &mut impl Rng, crit_rate: CriticalRate) -> bool {
-        random.gen_bool(match crit_rate {
-            0 => 0.0625, // 1 / 16
-            1 => 0.125,  // 1 / 8
-            2 => 0.25,   // 1 / 4
-            3 => 1.0 / 3.0,
-            _ => 0.5, // rates 4 and above, 1 / 2
-        })
-    }
-
-    pub fn damage_range(random: &mut impl Rng) -> u8 {
-        random.gen_range(85..=100u8)
     }
 
     pub fn move_power_damage(
