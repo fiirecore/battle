@@ -1,14 +1,99 @@
+use core::ops::{Deref, DerefMut};
+use hashbrown::HashSet;
 use rand::Rng;
 
 use pokedex::{
-    moves::{CriticalRate, MoveCategory, Power},
-    pokemon::Health,
+    moves::{CriticalRate, Move, MoveCategory, MoveId, Power},
+    pokemon::{
+        owned::OwnedPokemon,
+        stat::{BaseStat, StatType},
+        Health, Experience,
+    },
     types::{Effective, PokemonType},
+    Uninitializable,
 };
 
-use crate::moves::damage::{DamageKind, DamageResult};
+use crate::{
+    moves::damage::{DamageKind, DamageResult},
+    pokemon::{
+        remote::{RemotePokemon, UnknownPokemon},
+        stat::{BattleStatType, StatStages},
+        PokemonView,
+    },
+    BattleType,
+};
 
-impl<'d> super::BattlePokemon<'d> {
+#[derive(Debug)]
+pub struct BattlePokemon<'d> {
+    pub instance: OwnedPokemon<'d>,
+    pub learnable_moves: HashSet<MoveId>,
+    // pub persistent: Option<PersistentMove>,
+    pub caught: bool,
+    pub known: bool,
+    pub flinch: bool,
+    pub requestable: bool,
+    pub stages: StatStages,
+}
+
+impl<'d> BattlePokemon<'d> {
+    pub fn know(&mut self) -> Option<RemotePokemon> {
+        (!self.known).then(|| {
+            self.known = true;
+            UnknownPokemon::new(&self.instance).uninit()
+        })
+    }
+
+    pub fn try_flinch(&mut self) -> bool {
+        if self.flinch {
+            self.flinch = false;
+            true
+        } else {
+            false
+        }
+    }
+
+    // To - do: factor in accuracy
+    pub fn throw_move<R: rand::Rng>(&self, random: &mut R, m: &Move) -> bool {
+        m.accuracy
+            .map(|accuracy| random.gen_range(0..100) < accuracy)
+            .unwrap_or(true)
+    }
+
+    pub fn battle_exp_from(&self, type_: &BattleType) -> Experience {
+        let experience = self.exp_from();
+        let experience = match matches!(type_, BattleType::Wild) {
+            true => experience.saturating_mul(3) / 2,
+            false => experience,
+        };
+
+        #[cfg(debug_assertions)]
+        let experience = experience.saturating_mul(7);
+
+        experience
+
+    }
+
+    pub fn stat(&self, stat: StatType) -> BaseStat {
+        StatStages::mult(
+            self.instance.stat(stat),
+            self.stages.get(BattleStatType::Basic(stat)),
+        )
+    }
+
+    pub fn crit(random: &mut impl Rng, crit_rate: CriticalRate) -> bool {
+        random.gen_bool(match crit_rate {
+            0 => 0.0625, // 1 / 16
+            1 => 0.125,  // 1 / 8
+            2 => 0.25,   // 1 / 4
+            3 => 1.0 / 3.0,
+            _ => 0.5, // rates 4 and above, 1 / 2
+        })
+    }
+
+    pub fn damage_range(random: &mut impl Rng) -> u8 {
+        random.gen_range(85..=100u8)
+    }
+
     pub fn damage_kind(
         &self,
         random: &mut impl Rng,
@@ -102,5 +187,39 @@ impl<'d> super::BattlePokemon<'d> {
             effective,
             crit,
         }
+    }
+}
+
+impl<'d> From<OwnedPokemon<'d>> for BattlePokemon<'d> {
+    fn from(instance: OwnedPokemon<'d>) -> Self {
+        Self {
+            instance,
+            learnable_moves: Default::default(),
+            caught: false,
+            known: false,
+            flinch: false,
+            requestable: false,
+            stages: Default::default(),
+        }
+    }
+}
+
+impl<'d> PokemonView for BattlePokemon<'d> {
+    fn fainted(&self) -> bool {
+        OwnedPokemon::fainted(self)
+    }
+}
+
+impl<'d> Deref for BattlePokemon<'d> {
+    type Target = OwnedPokemon<'d>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.instance
+    }
+}
+
+impl<'d> DerefMut for BattlePokemon<'d> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.instance
     }
 }

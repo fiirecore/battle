@@ -1,6 +1,6 @@
 [package]
 name = "firecore-battle"
-version = "0.0.2" # "0.5.0-beta.2021-08-22"
+version = "0.0.3" # "0.5.0-beta.2021-08-22"
 authors = ["Rhys H <donotdoughnut99@gmail.com>"]
 edition = "2018"
 description = "Pokemon battle simulation"
@@ -11,8 +11,9 @@ categories = ["game-development", "game-engines"]
 keywords = ["pokemon", "battle", "turn-based"]
 
 [features]
-default = ["host", "scripting", "ai"]
-scripting = ["rhai"]
+default = ["host", "default_engine", "default_scripting", "ai"]
+default_engine = ["host"]
+default_scripting = ["rhai", "default_engine"]
 host = []
 ai = []
 
@@ -24,3 +25,7 @@ hashbrown = "0.11"
 serde = { version = "1", features = ["derive"] }
 serde-big-array = { version = "0.3", features = ["const-generics"] }
 rhai = { version = "1", optional = true }
+
+[dev-dependencies]
+simple_logger = "1"
+rand = "0.8"

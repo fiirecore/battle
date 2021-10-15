@@ -6,8 +6,7 @@ use pokedex::{
     Dex, Initializable, Uninitializable,
 };
 
-pub type UninitUnknownPokemon = UnknownPokemon<PokemonId>;
-pub type InitUnknownPokemon<'d> = UnknownPokemon<&'d Pokemon>;
+pub type RemotePokemon = UnknownPokemon<PokemonId>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UnknownPokemon<P> {
@@ -19,7 +18,7 @@ pub struct UnknownPokemon<P> {
     pub ailment: Option<LiveAilment>,
 }
 
-impl<'d> InitUnknownPokemon<'d> {
+impl<'d> UnknownPokemon<&'d Pokemon> {
     pub fn new(pokemon: &OwnedPokemon<'d>) -> Self {
         Self {
             pokemon: pokemon.pokemon,
@@ -31,15 +30,19 @@ impl<'d> InitUnknownPokemon<'d> {
         }
     }
 
+}
+
+impl<'d> UnknownPokemon<&'d Pokemon> {
+
     pub fn name<'b: 'd>(&'b self) -> &'b str {
         self.nickname.as_ref().unwrap_or(&self.pokemon.name)
     }
 
 }
 
-impl<'d> Uninitializable for InitUnknownPokemon<'d> {
+impl<'d> Uninitializable for UnknownPokemon<&'d Pokemon> {
 
-    type Output = UninitUnknownPokemon;
+    type Output = RemotePokemon;
 
     fn uninit(self) -> Self::Output {
         Self::Output {
@@ -53,8 +56,8 @@ impl<'d> Uninitializable for InitUnknownPokemon<'d> {
     }
 }
 
-impl<'d, D: Dex<Pokemon> + 'd> Initializable<'d, D> for UninitUnknownPokemon {
-    type Output = InitUnknownPokemon<'d>;
+impl<'d, D: Dex<Pokemon> + 'd> Initializable<'d, D> for RemotePokemon {
+    type Output = UnknownPokemon<&'d Pokemon>;
 
     fn init(self, dex: &'d D) -> Option<Self::Output> {
         Some(Self::Output {

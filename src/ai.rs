@@ -11,6 +11,7 @@ use crate::{
     BattleEndpoint, Indexed,
 };
 
+#[derive(Clone)]
 pub struct BattleAi<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> {
     random: R,
     local: PlayerParty<ID, usize, OwnedPokemon<'d>, AS>,
@@ -59,48 +60,73 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleEndpoin
                         .choose(&mut self.random)
                         .unwrap_or(0);
 
+                    log::trace!(
+                        "AI {}'s {} used {}!",
+                        self.local.name(),
+                        pokemon.name(),
+                        pokemon.moves.get(index).unwrap().0.name
+                    );
+
                     self.messages
                         .push(ClientMessage::Move(active, BattleMove::Move(index, None)));
                 }
             }
 
             ServerMessage::TurnQueue(actions) => {
-                for instance in actions {
-                    if let ClientMove::Move(.., instances) = &instance.1 {
-                        for Indexed(location, action) in instances {
+                for Indexed(.., m) in actions {
+                    if let ClientMove::Move(.., instances) = m {
+                        for Indexed(target_id, action) in instances {
                             match action {
                                 ClientMoveAction::SetDamage(DamageResult {
                                     damage: hp, ..
                                 })
                                 | ClientMoveAction::SetHP(hp) => {
-                                    match instance.0.team() == self.local.id() {
+                                    match target_id.team() == self.local.id() {
                                         true => {
-                                            if let Some(pokemon) = self.local.active_mut(instance.0.index()) {
-                                                pokemon.hp = (*hp * pokemon.max_hp() as f32) as Health;
+                                            if let Some(pokemon) =
+                                                self.local.active_mut(target_id.index())
+                                            {
+                                                pokemon.hp =
+                                                    (hp * pokemon.max_hp() as f32) as Health;
 
                                                 if pokemon.hp == 0 {
+                                                    log::trace!(
+                                                        "AI {}'s pokemon at {:?} fainted!",
+                                                        self.local.name(),
+                                                        self.local.index(target_id.index())
+                                                    );
 
-                                                    let index = self.local.pokemon.iter().enumerate().filter(|(index, pokemon)| !self.local.active_contains(*index) && !pokemon.fainted()).map(|(index, ..)| index).choose(&mut self.random);
+                                                    let index = self
+                                                        .local
+                                                        .remaining()
+                                                        .map(|(index, ..)| index)
+                                                        .choose(&mut self.random);
 
-                                                    self.local.replace(instance.0.index(), index);
+                                                    self.local.replace(target_id.index(), index);
 
-                                                    match index {
-                                                        Some(index) => {
-                                                            self.messages.push(ClientMessage::ReplaceFaint(
-                                                                instance.0.index(),
+                                                    if let Some(index) = index {
+                                                        self.messages.push(
+                                                            ClientMessage::ReplaceFaint(
+                                                                target_id.index(),
                                                                 index,
-                                                            ));
-                                                        },
-                                                        None => log::warn!("Cannot replace AI {}'s pokemon #{} because it cannot find a replacement.", instance.0.index(), self.local.name()),
+                                                            ),
+                                                        );
                                                     }
-
                                                 }
-
                                             }
-                                        },
-                                        false => if let Some(pokemon) = self.remotes.get_mut(instance.0.team()).map(|party| party.active_mut(instance.0.index())).flatten().map(Option::as_mut).flatten() {
-                                            pokemon.hp = *hp;
-                                        },
+                                        }
+                                        false => {
+                                            if let Some(pokemon) = self
+                                                .remotes
+                                                .get_mut(target_id.team())
+                                                .map(|party| party.active_mut(target_id.index()))
+                                                .flatten()
+                                                .map(Option::as_mut)
+                                                .flatten()
+                                            {
+                                                pokemon.hp = hp;
+                                            }
+                                        }
                                     }
                                 }
                                 _ => (),
@@ -126,7 +152,7 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleEndpoin
                     *index = Some(new)
                 }
             }
-            ServerMessage::AddUnknown(index, unknown) => {
+            ServerMessage::AddRemote(index, unknown) => {
                 if let Some(r) = self.remotes.get_mut(index.team()) {
                     r.add(index.index(), Some(unknown));
                 }

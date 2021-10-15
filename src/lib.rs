@@ -2,9 +2,9 @@
 
 pub extern crate firecore_pokedex as pokedex;
 #[cfg(feature = "host")]
-mod host;
+pub mod host;
 #[cfg(feature = "ai")]
-mod ai;
+pub mod ai;
 
 mod data;
 pub use data::*;
@@ -16,7 +16,7 @@ pub mod player;
 pub mod pokemon;
 
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
-pub struct Indexed<ID, T>(pokemon::PokemonIndex<ID>, T);
+pub struct Indexed<ID, T>(pokemon::PokemonIdentifier<ID>, T);
 
 pub trait BattleEndpoint<ID, const AS: usize> {
     fn send(&mut self, message: message::ServerMessage<ID, AS>);
@@ -27,11 +27,9 @@ pub trait BattleEndpoint<ID, const AS: usize> {
 pub mod prelude {
 
     #[cfg(feature = "host")]
-    pub use crate::host::*;
+    pub use crate::host::prelude::*;
     #[cfg(feature = "ai")]
-    pub use crate::ai::*;
-    #[cfg(feature = "scripting")]
-    pub use crate::moves::engine::default::*;
+    pub use crate::ai::BattleAi;
 
     pub use crate::message::*;
     pub use crate::player::*;

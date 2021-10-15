@@ -32,6 +32,10 @@ impl<K: Eq + Hash, V> BattleMap<K, V> {
         self.0.len()
     }
 
+    pub fn active(&self) -> usize {
+        self.0.values().filter(|(p, ..)| p.active.get()).count()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&K, Ref<V>)> {
         self.0
             .iter()
@@ -47,7 +51,7 @@ impl<K: Eq + Hash, V> BattleMap<K, V> {
     }
 
     pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.0.keys()
+        self.0.iter().filter(|(.., (p, ..))| p.active.get()).map(|(k, ..)| k)
     }
 
     pub fn values(&self) -> impl Iterator<Item = Ref<V>> {

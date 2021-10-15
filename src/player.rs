@@ -1,14 +1,12 @@
-use core::cell::Ref;
-
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 
-use pokedex::pokemon::{owned::OwnedPokemon, party::Party};
+use pokedex::pokemon::{party::Party, owned::SavedPokemon};
 
 use crate::{
     message::{ClientMessage, ServerMessage},
-    party::{BattleParty, RemoteParty},
-    pokemon::ActivePokemon,
+    party::{PartyIndex, PlayerParty, RemoteParty},
+    pokemon::PokemonView,
     BattleData, BattleEndpoint,
 };
 
@@ -24,23 +22,25 @@ impl Default for PlayerSettings {
 }
 
 #[derive(Debug)]
-pub struct BattlePlayer<'d, ID, E: BattleEndpoint<ID, AS>, const AS: usize> {
-    pub(crate) party: BattleParty<'d, ID, AS>,
+pub struct Player<ID, A: PartyIndex, P, E: BattleEndpoint<ID, AS>, const AS: usize> {
+    pub party: PlayerParty<ID, A, P, AS>,
     endpoint: E,
     pub settings: PlayerSettings,
 }
 
-impl<'d, ID, E: BattleEndpoint<ID, AS>, const AS: usize> BattlePlayer<'d, ID, E, AS> {
+impl<ID, A: PartyIndex, P: PokemonView, E: BattleEndpoint<ID, AS>, const AS: usize>
+    Player<ID, A, P, E, AS>
+{
     pub fn new(
         id: ID,
         name: Option<String>,
-        pokemon: Party<OwnedPokemon<'d>>,
+        pokemon: Party<P>,
         settings: PlayerSettings,
         endpoint: E,
     ) -> Self {
         Self {
+            party: PlayerParty::new(id, name, pokemon),
             endpoint,
-            party: BattleParty::new(id, name, pokemon.into_iter().map(Into::into).collect()),
             settings,
         }
     }
@@ -62,7 +62,16 @@ impl<'d, ID, E: BattleEndpoint<ID, AS>, const AS: usize> BattlePlayer<'d, ID, E,
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LocalPlayer<ID, E: BattleEndpoint<ID, AS>, const AS: usize> {
+    pub id: ID,
+    pub name: Option<String>,
+    pub party: Party<SavedPokemon>,
+    pub settings: PlayerSettings,
+    pub endpoint: E,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ValidatedPlayer<ID, const AS: usize> {
     pub id: ID,
     pub name: Option<String>,
@@ -70,29 +79,4 @@ pub struct ValidatedPlayer<ID, const AS: usize> {
     pub active: [Option<usize>; AS],
     pub data: BattleData,
     pub remotes: Vec<RemoteParty<ID, AS>>,
-}
-
-impl<ID: Clone, const AS: usize> ValidatedPlayer<ID, AS> {
-    pub fn new<
-        'd: 'a,
-        'a,
-        E: BattleEndpoint<ID, AS>,
-        I: Iterator<Item = Ref<'a, BattlePlayer<'d, ID, E, AS>>> + 'a,
-    >(
-        data: BattleData,
-        player: &BattlePlayer<ID, E, AS>,
-        others: I,
-    ) -> Self
-    where
-        ID: 'a,
-        E: 'a,
-    {
-        Self {
-            id: player.party.id().clone(),
-            name: player.party.name.clone(),
-            active: ActivePokemon::into_remote(&player.party.active),
-            data,
-            remotes: others.map(|player| player.party.as_remote()).collect(),
-        }
-    }
 }

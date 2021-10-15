@@ -9,21 +9,19 @@ use pokedex::{
 
 use crate::{
     pokemon::{
-        battle::stat::{BattleStatType, Stage},
-        PokemonIndex,
+        stat::{BattleStatType, Stage},
+        PokemonIdentifier,
     },
     Indexed,
 };
 
 pub mod damage;
-pub mod engine;
-pub mod target;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum BattleMove<ID> {
     /// Move (by its index), and its optional target.
-    Move(usize, Option<PokemonIndex<ID>>),
-    UseItem(ItemId, PokemonIndex<ID>),
+    Move(usize, Option<PokemonIdentifier<ID>>),
+    UseItem(ItemId, PokemonIdentifier<ID>),
     Switch(usize),
 }
 
@@ -58,8 +56,8 @@ pub type Percent = u8;
 impl<ID: core::fmt::Display> core::fmt::Display for BattleMove<ID> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BattleMove::Move(index, target) => write!(f, "Move #{}", index),
-            BattleMove::UseItem(id, target) => write!(f, "Item {}", id),
+            BattleMove::Move(index, ..) => write!(f, "Move #{}", index),
+            BattleMove::UseItem(id, ..) => write!(f, "Item {}", id),
             BattleMove::Switch(index) => write!(f, "Switch to {}", index),
         }
     }

@@ -4,15 +4,16 @@ use pokedex::pokemon::owned::OwnedPokemon;
 
 use crate::{moves::BattleMove, party::PartyIndex};
 
-pub mod battle;
+pub mod remote;
+pub mod stat;
 
 pub type ActivePosition = usize;
 pub type PartyPosition = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
-pub struct PokemonIndex<ID>(pub ID, pub usize);
+pub struct PokemonIdentifier<ID>(pub ID, pub usize);
 
-impl<ID> PokemonIndex<ID> {
+impl<ID> PokemonIdentifier<ID> {
     pub fn team(&self) -> &ID {
         &self.0
     }
@@ -23,7 +24,7 @@ impl<ID> PokemonIndex<ID> {
 
 }
 
-impl<ID: core::fmt::Display> core::fmt::Display for PokemonIndex<ID> {
+impl<ID: core::fmt::Display> core::fmt::Display for PokemonIdentifier<ID> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{} #{}", self.0, self.1)
     }
@@ -33,21 +34,15 @@ pub trait PokemonView {
     fn fainted(&self) -> bool;
 }
 
-impl<'d> PokemonView for battle::BattlePokemon<'d> {
+impl<P> PokemonView for Option<remote::UnknownPokemon<P>> {
     fn fainted(&self) -> bool {
-        OwnedPokemon::fainted(self)
+        self.as_ref().map(|u| u.fainted()).unwrap_or_default()
     }
 }
 
 impl<'d> PokemonView for OwnedPokemon<'d> {
     fn fainted(&self) -> bool {
         OwnedPokemon::fainted(self)
-    }
-}
-
-impl<P> PokemonView for Option<battle::UnknownPokemon<P>> {
-    fn fainted(&self) -> bool {
-        self.as_ref().map(|u| u.fainted()).unwrap_or_default()
     }
 }
 

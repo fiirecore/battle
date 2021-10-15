@@ -1,19 +1,19 @@
 use rhai::INT;
 
-use crate::{moves::engine::MoveResult, pokemon::PokemonIndex};
+use crate::{Indexed, host::engine::MoveResult, pokemon::PokemonIdentifier};
 
 use super::{damage::ScriptDamage, pokemon::ScriptPokemon};
 
 #[derive(Clone, Copy)]
-pub struct ScriptMoveResult<ID>(pub Option<PokemonIndex<ID>>, pub MoveResult);
+pub struct ScriptMoveResult<ID>(pub Indexed<ID, MoveResult>);
 
 impl<ID> ScriptMoveResult<ID> {
     pub fn new(pokemon: ScriptPokemon<ID>, result: MoveResult) -> Self {
-        Self(Some(pokemon.into()), result)
+        Self(Indexed(pokemon.into(), result))
     }
 
-    pub fn miss() -> ScriptMoveResult<ID> {
-        ScriptMoveResult(None, MoveResult::Miss)
+    pub fn miss(user: PokemonIdentifier<ID>) -> ScriptMoveResult<ID> {
+        ScriptMoveResult(Indexed(user, MoveResult::Miss))
     }
 
     pub fn damage(damage: ScriptDamage, pokemon: ScriptPokemon<ID>) -> ScriptMoveResult<ID> {

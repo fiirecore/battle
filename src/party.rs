@@ -1,9 +1,9 @@
-use pokedex::{pokemon::party::Party, Uninitializable};
+use pokedex::{pokemon::party::Party};
 
-use crate::pokemon::{
-    battle::{BattlePokemon, InitUnknownPokemon, UninitUnknownPokemon},
-    ActivePokemon, PokemonView,
-};
+use crate::pokemon::{remote::RemotePokemon, PokemonView};
+
+pub type RemoteParty<ID, const AS: usize> =
+    crate::party::PlayerParty<ID, usize, Option<RemotePokemon>, AS>;
 
 #[derive(Debug, Clone)]
 pub struct PlayerParty<ID, A: PartyIndex, P, const AS: usize> {
@@ -73,13 +73,19 @@ impl<ID, A: PartyIndex, P, const AS: usize> PlayerParty<ID, A, P, AS> {
             .flatten()
     }
 
+    pub fn remove_active(&mut self, active: usize) {
+        if let Some(active) = self.active.get_mut(active) {
+            *active = None;
+        }
+    }
+
     pub fn add(&mut self, index: usize, pokemon: P) {
         if self.pokemon.len() > index {
             self.pokemon[index] = pokemon;
         }
     }
 
-    pub fn remove(&mut self, active: usize) -> Option<P> {
+    pub fn take(&mut self, active: usize) -> Option<P> {
         self.index(active)
             .map(|index| {
                 if self.pokemon.len() < index {
@@ -95,10 +101,10 @@ impl<ID, A: PartyIndex, P, const AS: usize> PlayerParty<ID, A, P, AS> {
 impl<ID, A: PartyIndex, P: PokemonView, const AS: usize> PlayerParty<ID, A, P, AS> {
     pub fn new(id: ID, name: Option<String>, pokemon: Party<P>) -> Self {
         let mut active = {
-
             // temporary fix for const generics not implementing Default
 
-            let mut active: [Option<A>; AS] = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
+            let mut active: [Option<A>; AS] =
+                unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
 
             for a in active.iter_mut() {
                 *a = None;
@@ -126,6 +132,10 @@ impl<ID, A: PartyIndex, P: PokemonView, const AS: usize> PlayerParty<ID, A, P, A
         }
     }
 
+    pub fn remaining(&self) -> impl Iterator<Item = (usize, &P)> + '_ {
+        self.pokemon.iter().enumerate().filter(move |(index, p)| !self.active_contains(*index) && !p.fainted())
+    }
+
     pub fn all_fainted(&self) -> bool {
         !self.pokemon.iter().any(|p| !p.fainted()) || self.pokemon.is_empty()
     }
@@ -145,52 +155,6 @@ impl<ID, A: PartyIndex, P: PokemonView, const AS: usize> PlayerParty<ID, A, P, A
     pub fn replace(&mut self, active: usize, new: Option<usize>) {
         if let Some(a) = self.active.get_mut(active) {
             *a = new.map(Into::into);
-        }
-    }
-}
-
-pub type BattleParty<'d, ID, const AS: usize> =
-    PlayerParty<ID, ActivePokemon<ID>, BattlePokemon<'d>, AS>;
-
-pub type RemoteParty<ID, const AS: usize> =
-    PlayerParty<ID, usize, Option<UninitUnknownPokemon>, AS>;
-
-impl<'d, ID, const AS: usize> BattleParty<'d, ID, AS> {
-    pub fn know(&mut self, index: usize) -> Option<InitUnknownPokemon<'d>> {
-        self.pokemon
-            .get_mut(index)
-            .map(BattlePokemon::know)
-            .flatten()
-    }
-
-    pub fn reveal_active(&mut self) {
-        for index in self.active.iter().flatten().map(PartyIndex::index) {
-            if let Some(pokemon) = self.pokemon.get_mut(index) {
-                pokemon.known = true;
-            }
-        }
-    }
-
-    pub fn ready_to_move(&self) -> bool {
-        self.active
-            .iter()
-            .flatten()
-            .all(|a| a.queued_move.is_some())
-    }
-
-    pub fn as_remote(&self) -> RemoteParty<ID, AS>
-    where
-        ID: Clone,
-    {
-        RemoteParty {
-            id: self.id.clone(),
-            name: self.name.clone(),
-            pokemon: self
-                .pokemon
-                .iter()
-                .map(|p| p.known.then(|| InitUnknownPokemon::new(p).uninit()))
-                .collect(),
-            active: ActivePokemon::into_remote(&self.active),
         }
     }
 }

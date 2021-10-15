@@ -1,28 +1,37 @@
-use core::ops::{Deref, DerefMut};
+use core::{
+    cell::Ref,
+    ops::{Deref, DerefMut},
+};
 
 use rand::Rng;
 use rhai::INT;
 
 use pokedex::{moves::MoveCategory, pokemon::owned::OwnedPokemon, types::PokemonType};
 
-use crate::pokemon::{battle::BattlePokemon, PokemonIndex};
+use crate::{
+    host::{player::BattlePlayer, pokemon::BattlePokemon},
+    pokemon::PokemonIdentifier,
+    Indexed,
+};
 
 use super::{moves::ScriptMove, ScriptDamage, ScriptRandom};
 
 #[derive(Clone, Copy)]
-pub struct ScriptPokemon<ID>(
-    PokemonIndex<ID>,
-    *const BattlePokemon<'static>,
-    // PhantomData<R>,
-);
+pub struct ScriptPokemon<ID>(Indexed<ID, *const BattlePokemon<'static>>);
 
 impl<ID> ScriptPokemon<ID> {
-    pub fn new<'a>(pokemon: (PokemonIndex<ID>, &BattlePokemon<'a>)) -> Self {
-        let p = pokemon.1 as *const BattlePokemon<'a>;
+    pub fn from_player<'d, E: crate::BattleEndpoint<ID, AS>, const AS: usize>(
+        (id, p): (PokemonIdentifier<ID>, Ref<BattlePlayer<'d, ID, E, AS>>),
+    ) -> Option<Self> {
+        p.party.active(id.index()).map(|p| Self::new(Indexed(id, p)))
+    }
+
+    pub fn new<'d>(pokemon: Indexed<ID, &BattlePokemon<'d>>) -> Self {
+        let p = pokemon.1 as *const BattlePokemon<'d>;
         let p = unsafe {
-            core::mem::transmute::<*const BattlePokemon<'a>, *const BattlePokemon<'static>>(p)
+            core::mem::transmute::<*const BattlePokemon<'d>, *const BattlePokemon<'static>>(p)
         };
-        Self(pokemon.0, p)
+        Self(Indexed(pokemon.0, p))
     }
 
     pub fn throw_move<R: Rng + Clone + 'static>(
@@ -63,12 +72,12 @@ impl<ID> Deref for ScriptPokemon<ID> {
     type Target = BattlePokemon<'static>;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.1 }
+        unsafe { &*self.0 .1 }
     }
 }
 
-impl<ID> Into<PokemonIndex<ID>> for ScriptPokemon<ID> {
-    fn into(self) -> PokemonIndex<ID> {
-        self.0
+impl<ID> Into<PokemonIdentifier<ID>> for ScriptPokemon<ID> {
+    fn into(self) -> PokemonIdentifier<ID> {
+        self.0 .0
     }
 }

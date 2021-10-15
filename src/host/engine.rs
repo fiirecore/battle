@@ -6,21 +6,16 @@ use pokedex::{ailment::LiveAilment, moves::Move, pokemon::Health};
 
 use crate::{
     moves::damage::DamageResult,
-    player::BattlePlayer,
     pokemon::{
-        battle::{
-            stat::{BattleStatType, Stage},
-            BattlePokemon,
-        },
-        PokemonIndex,
+        stat::{BattleStatType, Stage},
+        PokemonIdentifier,
     },
-    prelude::BattleMap,
-    BattleEndpoint,
+    BattleEndpoint, Indexed,
 };
 
-pub use hashbrown::HashMap;
+use super::{player::BattlePlayer, pokemon::BattlePokemon, collections::BattleMap};
 
-#[cfg(feature = "scripting")]
+#[cfg(feature = "default_engine")]
 pub mod default;
 
 pub trait MoveEngine {
@@ -33,13 +28,13 @@ pub trait MoveEngine {
         E: BattleEndpoint<ID, AS>,
         const AS: usize,
     >(
-        &mut self,
+        &self,
         random: &mut R,
         used_move: &Move,
-        user: (PokemonIndex<ID>, &BattlePokemon<'d>),
-        targets: Option<PokemonIndex<ID>>,
+        user: Indexed<ID, &BattlePokemon<'d>>,
+        targeting: Option<PokemonIdentifier<ID>>,
         players: &BattleMap<ID, BattlePlayer<'d, ID, E, AS>>,
-    ) -> Result<HashMap<PokemonIndex<ID>, Vec<MoveResult>>, Self::Error>;
+    ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
