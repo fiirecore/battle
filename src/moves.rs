@@ -7,17 +7,14 @@ use pokedex::{
     pokemon::{Experience, Level},
 };
 
-use crate::{
-    pokemon::{
-        stat::{BattleStatType, Stage},
-        PokemonIdentifier,
-    },
-    Indexed,
+use crate::pokemon::{
+    stat::{BattleStatType, Stage},
+    Indexed, PokemonIdentifier,
 };
 
 pub mod damage;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BattleMove<ID> {
     /// Move (by its index), and its optional target.
     Move(usize, Option<PokemonIdentifier<ID>>),
@@ -37,9 +34,7 @@ pub enum ClientMove<ID> {
 pub enum ClientMoveAction {
     /// This contains the percent HP the pokemon was left at, how effective the attack was, and if it was a critical hit.
     /// A Pokemon faints when it's hp is set to 0.0
-    SetDamage(damage::DamageResult<f32>),
-    /// A Pokemon faints when it's hp is set to 0.0
-    SetHP(f32),
+    SetHP(damage::ClientDamage<f32>),
     AddStat(BattleStatType, Stage),
     Ailment(LiveAilment),
     Miss,

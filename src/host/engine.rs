@@ -8,12 +8,11 @@ use crate::{
     moves::damage::DamageResult,
     pokemon::{
         stat::{BattleStatType, Stage},
-        PokemonIdentifier,
+        Indexed, PokemonIdentifier,
     },
-    BattleEndpoint, Indexed,
 };
 
-use super::{player::BattlePlayer, pokemon::BattlePokemon, collections::BattleMap};
+use super::{collections::BattleMap, player::BattlePlayer, pokemon::BattlePokemon};
 
 #[cfg(feature = "default_engine")]
 pub mod default;
@@ -21,19 +20,13 @@ pub mod default;
 pub trait MoveEngine {
     type Error: Error;
 
-    fn execute<
-        'd,
-        ID: Clone + Hash + Eq + 'static,
-        R: Rng + Clone + 'static,
-        E: BattleEndpoint<ID, AS>,
-        const AS: usize,
-    >(
+    fn execute<'d, ID: Clone + Hash + Eq + 'static, R: Rng + Clone + 'static, const AS: usize>(
         &self,
         random: &mut R,
         used_move: &Move,
         user: Indexed<ID, &BattlePokemon<'d>>,
         targeting: Option<PokemonIdentifier<ID>>,
-        players: &BattleMap<ID, BattlePlayer<'d, ID, E, AS>>,
+        players: &BattleMap<ID, BattlePlayer<'d, ID, AS>>,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error>;
 }
 

@@ -16,8 +16,8 @@ use crate::{
     pokemon::{
         stat::{BattleStatType, Stage},
         PokemonIdentifier,
+        Indexed,
     },
-    BattleEndpoint, Indexed,
 };
 
 use crate::host::{collections::BattleMap, player::BattlePlayer};
@@ -52,7 +52,6 @@ impl MoveEngine for DefaultMoveEngine {
         'd,
         ID: Clone + Hash + Eq + 'static,
         R: Rng + Clone + 'static,
-        E: BattleEndpoint<ID, AS>,
         const AS: usize,
     >(
         &self,
@@ -60,7 +59,7 @@ impl MoveEngine for DefaultMoveEngine {
         m: &Move,
         user: Indexed<ID, &BattlePokemon<'d>>,
         targeting: Option<PokemonIdentifier<ID>>,
-        players: &BattleMap<ID, BattlePlayer<'d, ID, E, AS>>,
+        players: &BattleMap<ID, BattlePlayer<'d, ID, AS>>,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error> {
         match self.moves.get(&m.id) {
             Some(usage) => {
@@ -85,7 +84,7 @@ impl MoveEngine for DefaultMoveEngine {
                             .flatten()
                         {
                             Some(id) => vec![id],
-                            None => return Err(DefaultMoveError::NoTarget),
+                            None => return Ok(Vec::new()),//return Err(DefaultMoveError::NoTarget),
                         },
                     },
                     MoveTarget::Ally => match targeting {
@@ -125,7 +124,7 @@ impl MoveEngine for DefaultMoveEngine {
                             .flatten()
                         {
                             Some(id) => vec![id],
-                            None => return Err(DefaultMoveError::NoTarget),
+                            None => return Ok(Vec::new()),//return Err(DefaultMoveError::NoTarget),
                         },
                     },
                     MoveTarget::AllOpponents => todo!(),

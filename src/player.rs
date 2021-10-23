@@ -1,13 +1,14 @@
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 
-use pokedex::pokemon::{party::Party, owned::SavedPokemon};
+use pokedex::pokemon::{owned::SavedPokemon, party::Party};
 
 use crate::{
+    endpoint::{BattleEndpoint, ReceiveError},
     message::{ClientMessage, ServerMessage},
     party::{PartyIndex, PlayerParty, RemoteParty},
     pokemon::PokemonView,
-    BattleData, BattleEndpoint,
+    BattleData,
 };
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -21,22 +22,19 @@ impl Default for PlayerSettings {
     }
 }
 
-#[derive(Debug)]
-pub struct Player<ID, A: PartyIndex, P, E: BattleEndpoint<ID, AS>, const AS: usize> {
+pub struct Player<ID, A: PartyIndex, P, const AS: usize> {
     pub party: PlayerParty<ID, A, P, AS>,
-    endpoint: E,
+    endpoint: Box<dyn BattleEndpoint<ID, AS>>,
     pub settings: PlayerSettings,
 }
 
-impl<ID, A: PartyIndex, P: PokemonView, E: BattleEndpoint<ID, AS>, const AS: usize>
-    Player<ID, A, P, E, AS>
-{
+impl<ID, A: PartyIndex, P: PokemonView, const AS: usize> Player<ID, A, P, AS> {
     pub fn new(
         id: ID,
         name: Option<String>,
         pokemon: Party<P>,
         settings: PlayerSettings,
-        endpoint: E,
+        endpoint: Box<dyn BattleEndpoint<ID, AS>>,
     ) -> Self {
         Self {
             party: PlayerParty::new(id, name, pokemon),
@@ -57,18 +55,22 @@ impl<ID, A: PartyIndex, P: PokemonView, E: BattleEndpoint<ID, AS>, const AS: usi
         self.endpoint.send(message)
     }
 
-    pub fn receive(&mut self) -> Option<ClientMessage<ID>> {
+    pub fn receive(&mut self) -> Result<ClientMessage<ID>, Option<ReceiveError>> {
         self.endpoint.receive()
     }
 }
 
+pub struct PlayerWithEndpoint<ID, const AS: usize>(
+    pub LocalPlayer<ID, AS>,
+    pub Box<dyn BattleEndpoint<ID, AS>>,
+);
+
 #[derive(Debug, Serialize, Deserialize)]
-pub struct LocalPlayer<ID, E: BattleEndpoint<ID, AS>, const AS: usize> {
+pub struct LocalPlayer<ID, const AS: usize> {
     pub id: ID,
     pub name: Option<String>,
     pub party: Party<SavedPokemon>,
     pub settings: PlayerSettings,
-    pub endpoint: E,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

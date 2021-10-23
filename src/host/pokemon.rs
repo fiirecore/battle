@@ -7,14 +7,18 @@ use pokedex::{
     pokemon::{
         owned::OwnedPokemon,
         stat::{BaseStat, StatType},
-        Health, Experience,
+        Experience, Health,
     },
     types::{Effective, PokemonType},
     Uninitializable,
 };
 
 use crate::{
-    moves::damage::{DamageKind, DamageResult},
+    moves::{
+        damage::{DamageKind, DamageResult},
+        BattleMove,
+    },
+    party::PartyIndex,
     pokemon::{
         remote::{RemotePokemon, UnknownPokemon},
         stat::{BattleStatType, StatStages},
@@ -23,7 +27,28 @@ use crate::{
     BattleType,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Copy)]
+pub struct ActivePokemon<ID> {
+    pub index: usize,
+    pub queued_move: Option<BattleMove<ID>>,
+}
+
+impl<ID> ActivePokemon<ID> {
+    pub fn into_remote<const AS: usize>(this: &[Option<Self>; AS]) -> [Option<usize>; AS] {
+        let mut active = [None; AS];
+
+        for (i, a) in this.iter().enumerate() {
+            active[i] = a.as_ref().map(PartyIndex::index);
+        }
+
+        return active;
+    }
+
+    pub fn queued(&self) -> bool {
+        self.queued_move.is_some()
+    }
+}
+
 pub struct BattlePokemon<'d> {
     pub instance: OwnedPokemon<'d>,
     pub learnable_moves: HashSet<MoveId>,
@@ -70,7 +95,6 @@ impl<'d> BattlePokemon<'d> {
         let experience = experience.saturating_mul(7);
 
         experience
-
     }
 
     pub fn stat(&self, stat: StatType) -> BaseStat {
@@ -190,6 +214,30 @@ impl<'d> BattlePokemon<'d> {
     }
 }
 
+impl<ID> PartyIndex for ActivePokemon<ID> {
+    fn index(&self) -> usize {
+        self.index
+    }
+}
+
+impl<ID> From<usize> for ActivePokemon<ID> {
+    fn from(index: usize) -> Self {
+        Self {
+            index,
+            queued_move: None,
+        }
+    }
+}
+
+impl<ID> core::fmt::Debug for ActivePokemon<ID> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ActivePokemon")
+            .field("index", &self.index)
+            .field("queued_move", &self.queued_move.is_some())
+            .finish()
+    }
+}
+
 impl<'d> From<OwnedPokemon<'d>> for BattlePokemon<'d> {
     fn from(instance: OwnedPokemon<'d>) -> Self {
         Self {
@@ -221,5 +269,18 @@ impl<'d> Deref for BattlePokemon<'d> {
 impl<'d> DerefMut for BattlePokemon<'d> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.instance
+    }
+}
+
+impl<'d> core::fmt::Debug for BattlePokemon<'d> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "\"{}\": {}, {}/{} HP",
+            self.name(),
+            self.level,
+            self.hp(),
+            self.max_hp()
+        )
     }
 }

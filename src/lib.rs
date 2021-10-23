@@ -14,15 +14,7 @@ pub mod moves;
 pub mod party;
 pub mod player;
 pub mod pokemon;
-
-#[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
-pub struct Indexed<ID, T>(pokemon::PokemonIdentifier<ID>, T);
-
-pub trait BattleEndpoint<ID, const AS: usize> {
-    fn send(&mut self, message: message::ServerMessage<ID, AS>);
-
-    fn receive(&mut self) -> Option<message::ClientMessage<ID>>;
-}
+pub mod endpoint;
 
 pub mod prelude {
 
@@ -31,8 +23,9 @@ pub mod prelude {
     #[cfg(feature = "ai")]
     pub use crate::ai::BattleAi;
 
+    pub use crate::endpoint::*;
     pub use crate::message::*;
     pub use crate::player::*;
-    pub use crate::{BattleData, BattleType, BattleEndpoint};
+    pub use crate::{BattleData, BattleType};
 
 }

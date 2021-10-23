@@ -4,11 +4,10 @@ use crate::{
     party::{PartyIndex, PlayerParty, RemoteParty},
     pokemon::{
         remote::{RemotePokemon, UnknownPokemon},
-        ActivePokemon,
     },
 };
 
-use super::pokemon::BattlePokemon;
+use super::pokemon::{ActivePokemon, BattlePokemon};
 
 pub type BattleParty<'d, ID, const AS: usize> =
     PlayerParty<ID, ActivePokemon<ID>, BattlePokemon<'d>, AS>;
@@ -33,7 +32,7 @@ impl<'d, ID, const AS: usize> BattleParty<'d, ID, AS> {
         self.active
             .iter()
             .flatten()
-            .all(|a| a.queued_move.is_some())
+            .all(ActivePokemon::queued) || self.active.iter().all(Option::is_none)
     }
 
     pub fn as_remote(&self) -> RemoteParty<ID, AS>

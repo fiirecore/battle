@@ -25,8 +25,7 @@ use crate::{
         collections::BattleMap, engine::MoveResult, player::BattlePlayer, pokemon::BattlePokemon,
     },
     moves::damage::DamageResult,
-    pokemon::PokemonIdentifier,
-    BattleEndpoint, Indexed,
+    pokemon::{Indexed, PokemonIdentifier},
 };
 
 use super::DefaultMoveError;
@@ -74,7 +73,6 @@ impl DefaultScriptingEngine {
         'd,
         R: Rng + Clone + 'static,
         ID: Eq + Hash + Clone + 'static,
-        E: BattleEndpoint<ID, AS>,
         const AS: usize,
     >(
         &self,
@@ -82,7 +80,7 @@ impl DefaultScriptingEngine {
         m: &Move,
         user: Indexed<ID, &BattlePokemon<'d>>,
         targets: Vec<PokemonIdentifier<ID>>,
-        players: &BattleMap<ID, BattlePlayer<'d, ID, E, AS>>,
+        players: &BattleMap<ID, BattlePlayer<'d, ID, AS>>,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, DefaultMoveError> {
         match self.scripts.get(&m.id) {
             Some(script) => {

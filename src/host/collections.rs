@@ -8,7 +8,6 @@ pub struct BattleMap<K: Eq + Hash, V>(hashbrown::HashMap<K, (Properties, RefCell
 
 pub struct Properties {
     pub active: Cell<bool>,
-    pub waiting: Cell<bool>,
 }
 
 impl<K: Eq + Hash, V> BattleMap<K, V> {
@@ -28,9 +27,9 @@ impl<K: Eq + Hash, V> BattleMap<K, V> {
             .flatten()
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
+    // pub fn len(&self) -> usize {
+    //     self.0.len()
+    // }
 
     pub fn active(&self) -> usize {
         self.0.values().filter(|(p, ..)| p.active.get()).count()
@@ -81,14 +80,6 @@ impl<K: Eq + Hash, V> BattleMap<K, V> {
         }
     }
 
-    pub fn values_waiting_mut(&self) -> impl Iterator<Item = (&Cell<bool>, RefMut<V>)> {
-        self.0.values().filter(|(p, ..)| p.active.get()).flat_map(|(p, v)| v.try_borrow_mut().map(|v| (&p.waiting, v)))
-    }
-
-    pub fn all_waiting(&self) -> bool {
-        self.0.values().all(|(p, ..)| p.waiting.get())
-    }
-
     // pub fn inactives(&self)
 
     // pub fn inactives_mut(&self)
@@ -98,7 +89,7 @@ impl<K: Eq + Hash, V> BattleMap<K, V> {
 
 impl Default for Properties {
     fn default() -> Self {
-        Self { active: Cell::new(true), waiting: Default::default() }
+        Self { active: Cell::new(true) }
     }
 }
 

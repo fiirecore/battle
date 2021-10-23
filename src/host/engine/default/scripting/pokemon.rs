@@ -10,8 +10,7 @@ use pokedex::{moves::MoveCategory, pokemon::owned::OwnedPokemon, types::PokemonT
 
 use crate::{
     host::{player::BattlePlayer, pokemon::BattlePokemon},
-    pokemon::PokemonIdentifier,
-    Indexed,
+    pokemon::{Indexed, PokemonIdentifier},
 };
 
 use super::{moves::ScriptMove, ScriptDamage, ScriptRandom};
@@ -20,10 +19,12 @@ use super::{moves::ScriptMove, ScriptDamage, ScriptRandom};
 pub struct ScriptPokemon<ID>(Indexed<ID, *const BattlePokemon<'static>>);
 
 impl<ID> ScriptPokemon<ID> {
-    pub fn from_player<'d, E: crate::BattleEndpoint<ID, AS>, const AS: usize>(
-        (id, p): (PokemonIdentifier<ID>, Ref<BattlePlayer<'d, ID, E, AS>>),
+    pub fn from_player<'d, const AS: usize>(
+        (id, p): (PokemonIdentifier<ID>, Ref<BattlePlayer<'d, ID, AS>>),
     ) -> Option<Self> {
-        p.party.active(id.index()).map(|p| Self::new(Indexed(id, p)))
+        p.party
+            .active(id.index())
+            .map(|p| Self::new(Indexed(id, p)))
     }
 
     pub fn new<'d>(pokemon: Indexed<ID, &BattlePokemon<'d>>) -> Self {

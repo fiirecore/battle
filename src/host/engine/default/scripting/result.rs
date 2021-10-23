@@ -1,6 +1,9 @@
 use rhai::INT;
 
-use crate::{Indexed, host::engine::MoveResult, pokemon::PokemonIdentifier};
+use crate::{
+    host::engine::MoveResult,
+    pokemon::{Indexed, PokemonIdentifier},
+};
 
 use super::{damage::ScriptDamage, pokemon::ScriptPokemon};
 

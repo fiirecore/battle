@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::Percent;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub enum DamageKind {
     Power(Power),
     PercentCurrent(Percent),
@@ -11,17 +11,32 @@ pub enum DamageKind {
     Constant(Health),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub enum ClientDamage<N> {
+    Result(DamageResult<N>),
+    Number(N),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DamageResult<INT> {
+pub struct DamageResult<N> {
     /// Inflicted damage
-    pub damage: INT,
+    pub damage: N,
     /// Whether the attack was effective
     pub effective: Effective,
     /// If the attack was a critical hit
     pub crit: bool,
 }
 
-impl<INT: Default> Default for DamageResult<INT> {
+impl<N> ClientDamage<N> {
+    pub fn damage(self) -> N {
+        match self {
+            ClientDamage::Result(result) => result.damage,
+            ClientDamage::Number(n) => n,
+        }
+    }
+}
+
+impl<N: Default> Default for DamageResult<N> {
     fn default() -> Self {
         Self {
             damage: Default::default(),

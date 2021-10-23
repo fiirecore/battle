@@ -148,6 +148,10 @@ impl<ID, A: PartyIndex, P: PokemonView, const AS: usize> PlayerParty<ID, A, P, A
             .any(|(.., pokemon)| !pokemon.fainted())
     }
 
+    pub fn active_fainted(&self) -> Option<usize> {
+        self.active_iter().find(|(.., p)| p.fainted()).map(|(i, ..)| i)
+    }
+
     pub fn needs_replace(&self) -> bool {
         self.any_inactive() && self.active.iter().any(Option::is_none)
     }

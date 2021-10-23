@@ -1,4 +1,4 @@
-use core::{cmp::Reverse, fmt::Display, hash::Hash};
+use core::{cmp::Reverse, fmt::Display, hash::Hash, cell::{RefMut}};
 use log::{info, warn};
 use rand::Rng;
 
@@ -9,19 +9,12 @@ use pokedex::{
     Dex, Uninitializable,
 };
 
-use crate::{
-    data::*,
-    message::{ClientMessage, EndState, ServerMessage},
-    moves::{damage::DamageResult, BattleMove, ClientMove, ClientMoveAction},
-    party::PartyIndex,
-    player::{LocalPlayer, ValidatedPlayer},
-    pokemon::PokemonIdentifier,
-    BattleEndpoint, Indexed,
-};
+use crate::{data::*, endpoint::ReceiveError, message::{ClientMessage, ServerMessage, TimedAction, StartableAction, FailedAction}, moves::{BattleMove, ClientMove, ClientMoveAction, damage::{ClientDamage, DamageResult}}, party::PartyIndex, player::{ValidatedPlayer, PlayerWithEndpoint}, pokemon::{Indexed, PokemonIdentifier}};
 
 mod collections;
 mod party;
 mod pokemon;
+mod timer;
 
 pub mod engine;
 pub mod player;
@@ -32,6 +25,7 @@ use player::BattlePlayer;
 use party::BattleParty;
 use pokemon::BattlePokemon;
 use std::collections::BTreeMap;
+use timer::*;
 
 pub mod prelude {
 
@@ -43,15 +37,16 @@ pub mod prelude {
 
 }
 
+/// A battle host.
 pub struct Battle<
     'd,
     ID: Display + Clone + Ord + Hash + 'static,
-    E: BattleEndpoint<ID, AS>,
     const AS: usize,
 > {
     state: BattleState,
     data: BattleData,
-    players: BattleMap<ID, BattlePlayer<'d, ID, E, AS>>, // can change to dex implementation, and impl Identifiable for BattlePlayer
+    players: BattleMap<ID, BattlePlayer<'d, ID, AS>>, // can change to dex implementation, and impl Identifiable for BattlePlayer
+    timer: Timer,
 }
 
 #[derive(Debug)]
@@ -59,8 +54,8 @@ enum BattleState {
     Start,
     StartSelecting,
     WaitSelecting,
-    StartMoving,
-    WaitMoving,
+    QueueMoves,
+    WaitReplace,
     End,
 }
 
@@ -79,9 +74,8 @@ pub enum MovePriority<ID: Ord> {
 impl<
         'd,
         ID: Display + Clone + Ord + Hash + 'static,
-        E: BattleEndpoint<ID, AS>,
         const AS: usize,
-    > Battle<'d, ID, E, AS>
+    > Battle<'d, ID, AS>
 {
     pub fn new<R: Rng>(
         data: BattleData,
@@ -89,7 +83,7 @@ impl<
         pokedex: &'d impl Dex<Pokemon>,
         movedex: &'d impl Dex<Move>,
         itemdex: &'d impl Dex<Item>,
-        players: impl IntoIterator<Item = LocalPlayer<ID, E, AS>>,
+        players: impl IntoIterator<Item = PlayerWithEndpoint<ID, AS>>,
     ) -> Self {
         Self {
             state: BattleState::default(),
@@ -101,6 +95,7 @@ impl<
                     (p.id().clone(), p)
                 })
                 .collect(),
+            timer: Default::default(),
         }
     }
 
@@ -121,8 +116,8 @@ impl<
         self.state = BattleState::End;
         for (id, mut player) in self.players.iter_mut() {
             match Some(id) == winner.as_ref() {
-                true => player.send(ServerMessage::End(EndState::Win)),
-                false => player.send(ServerMessage::End(EndState::Lose)),
+                true => player.send(ServerMessage::End),
+                false => player.send(ServerMessage::End),
             }
         }
     }
@@ -133,9 +128,102 @@ impl<
         engine: &mut ENG,
         itemdex: &'d impl Dex<Item>,
     ) {
-        for (waiting, mut player) in self.players.values_waiting_mut() {
-            while let Some(message) = player.receive() {
-                match message {
+        for player in self.players.values_mut() {
+            self.receive(player);
+        }
+
+        self.update_state(random, engine, itemdex);
+
+        // log::trace!("finish {:?}", self.state);
+
+    }
+
+    fn update_state<R: Rng + Clone + 'static, ENG: MoveEngine>(&mut self,
+        random: &mut R,
+        engine: &mut ENG,
+        itemdex: &'d impl Dex<Item>,) {
+        match self.state {
+            BattleState::Start => self.begin(),
+            BattleState::StartSelecting => {
+                for mut player in self.players.values_mut() {
+                    player.send(ServerMessage::Start(StartableAction::Selecting));
+                }
+                self.state = BattleState::WaitSelecting;
+            }
+            BattleState::WaitSelecting => {
+                if self.players.values().all(|p| p.party.ready_to_move()) {
+                    self.state = BattleState::QueueMoves;
+                } else if self.timer.wait(TimedAction::Selecting) {
+                    for mut player in self.players.values_mut().filter(|p| !p.party.ready_to_move()) {
+                        player.send(ServerMessage::Ping(TimedAction::Selecting));
+                    }
+                }
+            }
+            BattleState::QueueMoves => {
+                let queue = move_queue(&mut self.players, random);
+
+                let player_queue = self.client_queue(random, engine, itemdex, queue);
+
+                // end queue calculations
+
+                for mut player in self.players.values_mut() {
+                    player.send(ServerMessage::Start(StartableAction::Turns(player_queue.clone())));
+                }
+
+                for (id, player) in self.players.iter() {
+                    if player.party.all_fainted() {
+                        self.remove_player(id);
+                    }
+                }
+
+                if self.players.active() <= 1 {
+                    let winner = self.players.keys().next().cloned();
+                    self.end(winner);
+                    return;
+                }
+
+                self.state = BattleState::WaitReplace;
+                self.update_state(random, engine, itemdex);
+            }
+            BattleState::WaitReplace => {
+                match self.players.values().all(|p| !p.party.needs_replace()) {
+                    true => self.state = BattleState::StartSelecting,
+                    false => if self.timer.wait(TimedAction::Replace) {
+                        for mut player in self.players.values_mut().filter(|p| p.party.needs_replace()) {
+                            player.send(ServerMessage::Ping(TimedAction::Replace));
+                        }
+                    }
+                }
+            }
+            BattleState::End => (),
+        }
+    }
+
+    pub fn remove_player(&self, id: &ID) {
+        if let Some(mut player) = self.players.deactivate(id) {
+            player.send(ServerMessage::End);
+        }
+    }
+
+    pub fn finished(&self) -> bool {
+        matches!(self.state, BattleState::End)
+    }
+
+    pub fn data(&self) -> &BattleData {
+        &self.data
+    }
+
+    pub fn winner(&self) -> Option<ID> {
+        match &self.state {
+            BattleState::End => self.players.values().next().map(|p| p.id().clone()),
+            _ => None,
+        }
+    }
+
+    fn receive(&self, mut player: RefMut<BattlePlayer<ID, AS>>) {
+        loop {
+            match player.receive() {
+                Ok(message) => match message {
                     ClientMessage::Move(active, bmove) => {
                         match player
                             .party
@@ -164,40 +252,34 @@ impl<
                                         player.party.active[active] = Some(index.into());
                                         let unknown = player.party.know(index);
                                         for mut other in self.players.values_mut() {
+                                            let id = PokemonIdentifier(
+                                                player.party.id().clone(),
+                                                index,
+                                            );
                                             if let Some(pokemon) = unknown.as_ref() {
                                                 other.send(ServerMessage::AddRemote(
-                                                    PokemonIdentifier(
-                                                        player.party.id().clone(),
-                                                        index,
-                                                    ),
+                                                    id.clone(),
                                                     pokemon.clone(),
                                                 ));
                                             }
-                                            other.send(ServerMessage::FaintReplace(
-                                                PokemonIdentifier(
-                                                    player.party.id().clone(),
-                                                    active,
-                                                ),
+                                            other.send(ServerMessage::Replace(
+                                                id,
                                                 index,
                                             ));
                                         }
-
-                                        player
-                                            .send(ServerMessage::ConfirmFaintReplace(active, true));
                                     }
                                     true => player
-                                        .send(ServerMessage::ConfirmFaintReplace(active, false)),
+                                        .send(ServerMessage::Fail(FailedAction::FaintReplace(active))),
                                 },
                                 None => {
-                                    player.send(ServerMessage::ConfirmFaintReplace(active, false))
+                                    player.send(ServerMessage::Fail(FailedAction::FaintReplace(active)))
                                 }
                             },
-                            true => player.send(ServerMessage::ConfirmFaintReplace(active, false)),
+                            true => player.send(ServerMessage::Fail(FailedAction::FaintReplace(active))),
                         }
                     }
                     ClientMessage::Forfeit => {
-                        // self.remove(player.party.id);
-                        // Self::set_winner(Some(other.party.id), player, other),
+                        self.remove_player(player.id());
                     }
                     ClientMessage::LearnMove(pokemon, move_id, index) => {
                         if let Some(pokemon) = player.party.pokemon.get_mut(pokemon) {
@@ -206,81 +288,18 @@ impl<
                             }
                         }
                     }
-                    ClientMessage::FinishedTurnQueue => waiting.set(true),
-                }
-            }
-        }
-
-        match self.state {
-            BattleState::Start => self.begin(),
-            BattleState::StartSelecting => {
-                for (waiting, mut player) in self.players.values_waiting_mut() {
-                    waiting.set(false);
-                    player.send(ServerMessage::StartSelecting);
-                }
-                self.state = BattleState::WaitSelecting;
-            }
-            BattleState::WaitSelecting => {
-                if self.players.values().all(|p| p.party.ready_to_move()) {
-                    self.state = BattleState::StartMoving;
-                }
-            }
-            BattleState::StartMoving => {
-                let queue = move_queue(&mut self.players, random);
-
-                let player_queue = self.client_queue(random, engine, itemdex, queue);
-
-                // end queue calculations
-
-                for mut player in self.players.values_mut() {
-                    player.send(ServerMessage::TurnQueue(player_queue.clone()));
-                }
-
-                self.state = BattleState::WaitMoving;
-            }
-            BattleState::WaitMoving => {
-                if self.players.all_waiting() {
-                    for (id, player) in self.players.iter() {
-                        if player.party.all_fainted() {
-                            self.remove_player(id, EndState::Lose);
-                        }
+                },
+                Err(err) => match err {
+                    Some(err) => match err {
+                        ReceiveError::Disconnected => self.remove_player(player.id()),
                     }
-
-                    if self.players.active() <= 1 {
-                        let winner = self.players.keys().next().cloned();
-                        self.end(winner);
-                        return;
-                    } else if self.players.values().all(|p| !p.party.needs_replace()) {
-                        self.state = BattleState::StartSelecting;
-                    }
+                    None => break,
                 }
             }
-            BattleState::End => (),
         }
     }
 
-    pub fn remove_player(&self, id: &ID, kind: EndState) {
-        if let Some(mut player) = self.players.deactivate(id) {
-            player.send(ServerMessage::End(kind));
-        }
-    }
-
-    pub fn finished(&self) -> bool {
-        matches!(self.state, BattleState::End)
-    }
-
-    pub fn data(&self) -> &BattleData {
-        &self.data
-    }
-
-    pub fn winner(&self) -> Option<ID> {
-        match &self.state {
-            BattleState::End => self.players.values().next().map(|p| p.id().clone()),
-            _ => None,
-        }
-    }
-
-    pub fn client_queue<R: Rng + Clone + 'static, ENG: MoveEngine>(
+    fn client_queue<R: Rng + Clone + 'static, ENG: MoveEngine>(
         &mut self,
         random: &mut R,
         engine: &mut ENG,
@@ -338,11 +357,11 @@ impl<
                                                     pokemon.hp.saturating_sub(result.damage);
                                                 actions.push(Indexed(
                                                     location,
-                                                    ClientMoveAction::SetDamage(DamageResult {
+                                                    ClientMoveAction::SetHP(ClientDamage::Result(DamageResult {
                                                         damage: pokemon.percent_hp(),
                                                         effective: result.effective,
                                                         crit: result.crit,
-                                                    }),
+                                                    })),
                                                 ));
                                             }
 
@@ -370,9 +389,9 @@ impl<
                                                     };
                                                     actions.push(Indexed(
                                                         target_id,
-                                                        ClientMoveAction::SetHP(
+                                                        ClientMoveAction::SetHP(ClientDamage::Number(
                                                             target.percent_hp(),
-                                                        ),
+                                                        )),
                                                     ));
                                                 }
                                                 MoveResult::Stat(stat, stage) => {
@@ -538,8 +557,8 @@ impl<
     }
 }
 
-pub fn move_queue<ID: Clone + Ord + Hash, E: BattleEndpoint<ID, AS>, R: Rng, const AS: usize>(
-    players: &mut BattleMap<ID, BattlePlayer<ID, E, AS>>,
+pub fn move_queue<ID: Clone + Ord + Hash, R: Rng, const AS: usize>(
+    players: &mut BattleMap<ID, BattlePlayer<ID, AS>>,
     random: &mut R,
 ) -> Vec<Indexed<ID, BattleMove<ID>>> {
     let mut queue = BTreeMap::new();

@@ -77,22 +77,9 @@ fn main() {
         .flat_map(|o| o.init(&mut random, &pokedex, &movedex, &itemdex))
         .collect();
 
-    let player = BattleAi::new(random.clone(), owned_party.clone());
-
-    let players = (1..100).into_iter().map(|i| (i, player.clone()));
-
     const AS: usize = 2;
 
-    let players =
-        players.map(
-            |(id, player)| LocalPlayer::<u8, BattleAi<ThreadRng, u8, AS>, AS> {
-                id,
-                name: Some(format!("Player {}", id)),
-                party: party.clone(),
-                settings: Default::default(),
-                endpoint: player,
-            },
-        );
+    let mut players: Vec<_> = (1..100).into_iter().map(|_| BattleAi::<ThreadRng, u8, AS>::new(random.clone(), owned_party.clone())).collect();
 
     let mut battle = Battle::new(
         BattleData::default(),
@@ -100,7 +87,14 @@ fn main() {
         &pokedex,
         &movedex,
         &itemdex,
-        players,
+        players.iter().enumerate().map(
+            |(id, player)| PlayerWithEndpoint(LocalPlayer {
+                id: id as _,
+                name: Some(format!("Player {}", id)),
+                party: party.clone(),
+                settings: Default::default(),
+            }, Box::new(player.endpoint()),
+        )),
     );
 
     let mut engine = DefaultMoveEngine::new::<u8, ThreadRng>();
@@ -116,6 +110,11 @@ fn main() {
 
     while !battle.finished() {
         battle.update(&mut random, &mut engine, &itemdex);
+        for player in players.iter_mut() {
+            if !player.finished() {
+                player.update();
+            }
+        }
     }
 
     log::info!(
