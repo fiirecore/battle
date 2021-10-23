@@ -1,6 +1,6 @@
 [package]
 name = "firecore-battle"
-version = "0.0.4" # "0.5.0-beta.2021-08-22"
+version = "0.0.5" # "0.5.0-beta.2021-08-22"
 authors = ["Rhys H <donotdoughnut99@gmail.com>"]
 edition = "2018"
 description = "Pokemon battle simulation"
@@ -15,7 +15,8 @@ default = ["host", "default_engine", "default_scripting", "ai"]
 default_engine = ["host"]
 default_scripting = ["rhai", "default_engine"]
 host = []
-ai = ["crossbeam-channel"]
+ai = ["default_endpoint"]
+default_endpoint = ["crossbeam-channel"]
 
 [dependencies]
 firecore-pokedex = "0.0.4"

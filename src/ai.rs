@@ -1,13 +1,11 @@
 use core::hash::Hash;
 
-use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
-
 use rand::{prelude::IteratorRandom, Rng};
 
 use pokedex::pokemon::{owned::OwnedPokemon, party::Party, Health};
 
 use crate::{
-    endpoint::{BattleEndpoint, ReceiveError},
+    endpoint::{MpscClient, MpscEndpoint},
     message::{ClientMessage, FailedAction, ServerMessage, StartableAction, TimedAction},
     moves::{BattleMove, ClientMove, ClientMoveAction},
     party::{PlayerParty, RemoteParty},
@@ -19,37 +17,21 @@ pub struct BattleAi<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize
     random: R,
     local: PlayerParty<ID, usize, OwnedPokemon<'d>, AS>,
     remotes: hashbrown::HashMap<ID, RemoteParty<ID, AS>>,
-    client: BattleAiClient<ID, AS>,
-    endpoint: BattleAiEndpoint<ID, AS>,
+    client: MpscClient<ID, AS>,
+    endpoint: MpscEndpoint<ID, AS>,
     finished: bool,
-}
-
-#[derive(Clone)]
-struct BattleAiClient<ID, const AS: usize> {
-    sender: Sender<ClientMessage<ID>>,
-    receiver: Receiver<ServerMessage<ID, AS>>,
-}
-
-#[derive(Clone)]
-pub struct BattleAiEndpoint<ID, const AS: usize> {
-    pub receiver: Receiver<ClientMessage<ID>>,
-    pub sender: Sender<ServerMessage<ID, AS>>,
 }
 
 impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, R, ID, AS> {
     pub fn new(random: R, party: Party<OwnedPokemon<'d>>) -> Self {
-        let (serv_sender, receiver) = unbounded();
-        let (sender, serv_receiver) = unbounded();
+        let (client, endpoint) = crate::endpoint::create();
 
         Self {
             random,
             local: PlayerParty::new(Default::default(), None, party),
             remotes: Default::default(),
-            client: BattleAiClient { sender, receiver },
-            endpoint: BattleAiEndpoint {
-                receiver: serv_receiver,
-                sender: serv_sender,
-            },
+            client,
+            endpoint,
             finished: false,
         }
     }
@@ -62,7 +44,7 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, 
         self.finished
     }
 
-    pub fn endpoint(&self) -> BattleAiEndpoint<ID, AS> {
+    pub fn endpoint(&self) -> MpscEndpoint<ID, AS> {
         self.endpoint.clone()
     }
 
@@ -212,32 +194,6 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, 
 
             self.client
                 .send(ClientMessage::Move(active, BattleMove::Move(index, None)));
-        }
-    }
-}
-
-impl<ID, const AS: usize> BattleAiClient<ID, AS> {
-    pub fn send(&self, message: ClientMessage<ID>) {
-        if let Err(err) = self.sender.try_send(message) {
-            log::error!("AI cannot send client message with error {}", err);
-        }
-    }
-}
-
-impl<ID, const AS: usize> BattleEndpoint<ID, AS> for BattleAiEndpoint<ID, AS> {
-    fn send(&mut self, message: ServerMessage<ID, AS>) {
-        if let Err(err) = self.sender.try_send(message) {
-            log::error!("Cannot send server message to AI with error {}", err);
-        }
-    }
-
-    fn receive(&mut self) -> Result<ClientMessage<ID>, Option<ReceiveError>> {
-        match self.receiver.try_recv() {
-            Ok(m) => Ok(m),
-            Err(err) => Err(match err {
-                TryRecvError::Empty => None,
-                TryRecvError::Disconnected => Some(ReceiveError::Disconnected),
-            }),
         }
     }
 }
