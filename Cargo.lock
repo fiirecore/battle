@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "firecore-battle"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "crossbeam-channel",
  "firecore-pokedex",

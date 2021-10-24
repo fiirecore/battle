@@ -2,7 +2,7 @@
 name = "firecore-battle"
 description = "Pokemon battle simulation"
 authors = ["Rhys H <donotdoughnut99@gmail.com>"]
-version = "0.0.6"
+version = "0.0.7"
 license = "MIT"
 edition = "2018"
 repository = "https://github.com/fiirecore/battle"
