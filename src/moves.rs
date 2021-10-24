@@ -18,7 +18,7 @@ pub mod damage;
 pub enum BattleMove<ID> {
     /// Move (by its index), and its optional target.
     Move(usize, Option<PokemonIdentifier<ID>>),
-    UseItem(ItemId, PokemonIdentifier<ID>),
+    UseItem(Indexed<ID, ItemId>),
     Switch(usize),
 }
 
@@ -26,8 +26,8 @@ pub enum BattleMove<ID> {
 pub enum ClientMove<ID> {
     /// Id of move, PP lost from using the move, client move actions
     Move(MoveId, PP, Vec<Indexed<ID, ClientMoveAction>>),
+    UseItem(Indexed<ID, ItemId>),
     Switch(usize),
-    UseItem(ItemId, PokemonIdentifier<ID>),
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -52,7 +52,7 @@ impl<ID: core::fmt::Display> core::fmt::Display for BattleMove<ID> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BattleMove::Move(index, ..) => write!(f, "Move #{}", index),
-            BattleMove::UseItem(id, ..) => write!(f, "Item {}", id),
+            BattleMove::UseItem(Indexed(.., id)) => write!(f, "Item {}", id),
             BattleMove::Switch(index) => write!(f, "Switch to {}", index),
         }
     }

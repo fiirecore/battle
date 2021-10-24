@@ -22,7 +22,7 @@ impl<ID> PokemonIdentifier<ID> {
 
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Indexed<ID, T>(pub PokemonIdentifier<ID>, pub T);
 
 impl<ID: core::fmt::Display> core::fmt::Display for PokemonIdentifier<ID> {

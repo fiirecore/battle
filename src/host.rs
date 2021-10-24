@@ -474,7 +474,7 @@ impl<
                         ));
                     }
                 }
-                BattleMove::UseItem(id, target) => match itemdex.try_get(&id) {
+                BattleMove::UseItem(Indexed(target, id)) => match itemdex.try_get(&id) {
                     Some(item) => {
                         let mut user = match self.players.get_mut(user_id.team()) {
                             Some(p) => p,
@@ -524,7 +524,7 @@ impl<
                         } {
                             player_queue.push(Indexed(
                                 user_id,
-                                ClientMove::UseItem(item.id, target),
+                                ClientMove::UseItem(Indexed(target, item.id)),
                             ));
                         }
                     }
