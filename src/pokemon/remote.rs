@@ -56,10 +56,10 @@ impl<'d> Uninitializable for UnknownPokemon<&'d Pokemon> {
     }
 }
 
-impl<'d, D: Dex<Pokemon> + 'd> Initializable<'d, D> for RemotePokemon {
+impl<'d> Initializable<'d, Pokemon> for RemotePokemon {
     type Output = UnknownPokemon<&'d Pokemon>;
 
-    fn init(self, dex: &'d D) -> Option<Self::Output> {
+    fn init(self, dex: &'d dyn Dex<Pokemon>) -> Option<Self::Output> {
         Some(Self::Output {
             pokemon: dex.try_get(&self.pokemon)?,
             nickname: self.nickname,
