@@ -7,7 +7,7 @@ use firecore_pokedex::{
         Training,
     },
     types::PokemonType,
-    BasicDex, Dex,
+    BasicDex,
 };
 use rand::rngs::ThreadRng;
 
