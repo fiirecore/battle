@@ -19,7 +19,7 @@ ai = ["default_endpoint"]
 default_endpoint = ["crossbeam-channel"]
 
 [dependencies]
-firecore-pokedex = "0.0.4"
+firecore-pokedex = "0.0.5"
 rand = { version = "0.8", default-features = false }
 log = "0.4"
 hashbrown = "0.11"

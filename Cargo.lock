@@ -106,9 +106,9 @@ dependencies = [
 
 [[package]]
 name = "firecore-pokedex"
-version = "0.0.4"
+version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71d275c5143e7fe1958c0d8fe3bdaf913eeeae55ec0dbbd7264e9fee2b00c0b7"
+checksum = "4891f805d6409785dd59145ce582fc2ea178fd4f0f15d386b464e3340e9382e0"
 dependencies = [
  "arrayvec",
  "hashbrown",
