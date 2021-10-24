@@ -524,7 +524,7 @@ impl<
                         } {
                             player_queue.push(Indexed(
                                 user_id,
-                                ClientMove::UseItem(item.id, target.index()),
+                                ClientMove::UseItem(item.id, target),
                             ));
                         }
                     }

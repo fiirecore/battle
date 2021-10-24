@@ -27,7 +27,7 @@ pub enum ClientMove<ID> {
     /// Id of move, PP lost from using the move, client move actions
     Move(MoveId, PP, Vec<Indexed<ID, ClientMoveAction>>),
     Switch(usize),
-    UseItem(ItemId, usize),
+    UseItem(ItemId, PokemonIdentifier<ID>),
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

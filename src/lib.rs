@@ -23,7 +23,6 @@ pub mod prelude {
     #[cfg(feature = "ai")]
     pub use crate::ai::BattleAi;
 
-    pub use crate::endpoint::*;
     pub use crate::message::*;
     pub use crate::player::*;
     pub use crate::{BattleData, BattleType};
