@@ -147,14 +147,31 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, 
                     }
                     ServerMessage::Catch(..) => (),
                     ServerMessage::Fail(action) => match action {
-                        FailedAction::FaintReplace(index) => {
+                        FailedAction::Replace(active) => {
                             log::error!(
                                 "AI {} cannot replace pokemon at active index {}",
                                 self.local.name(),
-                                index
+                                active
                             );
                             self.client.send(ClientMessage::Forfeit);
                         }
+                        FailedAction::Move(active) => if let Some(pokemon) = self.local.active(active) {
+                            Self::queue_move(active, pokemon, &mut self.random, &self.client);
+                        } else {
+                            log::error!(
+                                "AI {} cannot use move for pokemon at active index {}",
+                                self.local.name(),
+                                active
+                            );
+                        },
+                        FailedAction::Switch(active) => {
+                            log::error!(
+                                "AI {} cannot switch pokemon at active index {}",
+                                self.local.name(),
+                                active
+                            );
+                            self.client.send(ClientMessage::Forfeit);
+                        },
                     },
                     ServerMessage::End => {
                         self.finished = true;
@@ -185,17 +202,21 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, 
 
     fn queue_moves(&mut self) {
         for (active, pokemon) in self.local.active_iter() {
-            let index = pokemon
+            Self::queue_move(active, pokemon, &mut self.random, &self.client);
+        }
+    }
+
+    fn queue_move(active: usize, pokemon: &OwnedPokemon<'d>, random: &mut R, client: &MpscClient<ID, AS>) {
+        let index = pokemon
                 .moves
                 .iter()
                 .enumerate()
                 .filter(|(_, instance)| instance.uses() != 0)
                 .map(|(index, ..)| index)
-                .choose(&mut self.random)
+                .choose(random)
                 .unwrap_or(0);
 
-            self.client
+            client
                 .send(ClientMessage::Move(active, BattleMove::Move(index, None)));
-        }
     }
 }

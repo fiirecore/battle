@@ -135,8 +135,6 @@ impl<
 
         self.update_state(random, engine, itemdex);
 
-        // log::trace!("finish {:?}", self.state);
-
     }
 
     fn update_state<R: Rng + Clone + 'static, ENG: MoveEngine>(&mut self,
@@ -226,27 +224,45 @@ impl<
             match player.receive() {
                 Ok(message) => match message {
                     ClientMessage::Move(active, bmove) => {
-                        match player
-                            .party
-                            .active
-                            .get_mut(active)
-                            .map(Option::as_mut)
-                            .flatten()
-                        {
-                            Some(pokemon) => {
-                                pokemon.queued_move = Some(bmove);
-                                // party.client.confirm_move(active);
+                        if match &bmove {
+                            BattleMove::Move(index, ..) => {
+                                // maybe add check for incorrect targeting here?
+                                if !player.party.active(active).map(|p| p.moves.len() > *index).unwrap_or_default() {
+                                    player.send(ServerMessage::Fail(FailedAction::Move(active)));
+                                    false
+                                } else {
+                                    true
+                                }
+                            },
+                            BattleMove::Switch(to) => {
+                                if player.party.active_contains(*to) {
+                                    player.send(ServerMessage::Fail(FailedAction::Switch(active)));
+                                    false
+                                } else {
+                                    true
+                                }
+                            },
+                            BattleMove::UseItem(..) => true,
+                        } {
+                            match player
+                                .party
+                                .active
+                                .get_mut(active)
+                                .map(Option::as_mut)
+                                .flatten()
+                            {
+                                Some(pokemon) => pokemon.queued_move = Some(bmove),
+                                None => warn!(
+                                    "Party {} could not add move #{} to pokemon #{}",
+                                    player.party.name(),
+                                    bmove,
+                                    active
+                                ),
                             }
-                            None => warn!(
-                                "Party {} could not add move #{} to pokemon #{}",
-                                player.party.name(),
-                                bmove,
-                                active
-                            ),
                         }
                     }
                     ClientMessage::ReplaceFaint(active, index) => {
-                        match player.party.active_contains(index) {
+                        if match player.party.active_contains(index) {
                             false => match player.party.pokemon.get(index) {
                                 Some(pokemon) => match pokemon.fainted() {
                                     false => {
@@ -264,19 +280,20 @@ impl<
                                                 )));
                                             }
                                             other.send(ServerMessage::Replace(Indexed(
-                                                id,
-                                                index,
+                                                PokemonIdentifier(id.team().clone(), index),
+                                                id.index(),
                                             )));
                                         }
+                                        false
                                     }
-                                    true => player
-                                        .send(ServerMessage::Fail(FailedAction::FaintReplace(active))),
+                                    true => true,
                                 },
-                                None => {
-                                    player.send(ServerMessage::Fail(FailedAction::FaintReplace(active)))
-                                }
+                                None => true,
                             },
-                            true => player.send(ServerMessage::Fail(FailedAction::FaintReplace(active))),
+                            true => true,
+                        } {
+                            player
+                                        .send(ServerMessage::Fail(FailedAction::Replace(active)));
                         }
                     }
                     ClientMessage::Forfeit => {

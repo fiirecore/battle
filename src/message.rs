@@ -48,7 +48,9 @@ pub enum TimedAction {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum FailedAction {
-    FaintReplace(ActivePosition),
+    Move(ActivePosition),
+    Switch(ActivePosition),
+    Replace(ActivePosition),
 }
 
 // #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
