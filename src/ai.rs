@@ -1,3 +1,5 @@
+//! Basic Battle AI
+
 use core::hash::Hash;
 
 use rand::{prelude::IteratorRandom, Rng};
@@ -122,25 +124,25 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, 
                             self.client.send(ClientMessage::Forfeit);
                         }
                     },
-                    ServerMessage::Replace(pokemon, new) => {
-                        if let Some(index) = match pokemon.team() == self.local.id() {
+                    ServerMessage::Replace(Indexed(target, new)) => {
+                        if let Some(index) = match target.team() == self.local.id() {
                             true => Some(&mut self.local.active),
                             false => self
                                 .remotes
                                 .values_mut()
-                                .filter(|r| r.id() == pokemon.team())
+                                .filter(|r| r.id() == target.team())
                                 .map(|r| &mut r.active)
                                 .next(),
                         }
-                        .map(|a| a.get_mut(pokemon.index()))
+                        .map(|a| a.get_mut(target.index()))
                         .flatten()
                         {
                             *index = Some(new)
                         }
                     }
-                    ServerMessage::AddRemote(index, unknown) => {
-                        if let Some(r) = self.remotes.get_mut(index.team()) {
-                            r.add(index.index(), Some(unknown));
+                    ServerMessage::AddRemote(Indexed(target, unknown)) => {
+                        if let Some(r) = self.remotes.get_mut(target.team()) {
+                            r.add(target.index(), Some(unknown));
                         }
                     }
                     ServerMessage::Catch(..) => (),

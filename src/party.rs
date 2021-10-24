@@ -1,30 +1,32 @@
-use pokedex::{pokemon::party::Party};
+use pokedex::pokemon::party::Party;
 
 use crate::pokemon::{remote::RemotePokemon, PokemonView};
 
 pub type RemoteParty<ID, const AS: usize> =
     crate::party::PlayerParty<ID, usize, Option<RemotePokemon>, AS>;
 
+pub type Active<A, const AS: usize> = [Option<A>; AS];
+
 #[derive(Debug, Clone)]
-pub struct PlayerParty<ID, A: PartyIndex, P, const AS: usize> {
+pub struct PlayerParty<ID, A: ActivePokemon, P, const AS: usize> {
     pub id: ID,
     pub name: Option<String>,
-    pub active: [Option<A>; AS],
+    pub active: Active<A, AS>,
     pub pokemon: Party<P>,
 }
 
 /// Get the index of the pokemon in the party from this type.
-pub trait PartyIndex: From<usize> {
+pub trait ActivePokemon: From<usize> {
     fn index(&self) -> usize;
 }
 
-impl PartyIndex for usize {
+impl ActivePokemon for usize {
     fn index(&self) -> usize {
         *self
     }
 }
 
-impl<ID, A: PartyIndex, P, const AS: usize> PlayerParty<ID, A, P, AS> {
+impl<ID, A: ActivePokemon, P, const AS: usize> PlayerParty<ID, A, P, AS> {
     pub fn id(&self) -> &ID {
         &self.id
     }
@@ -34,11 +36,11 @@ impl<ID, A: PartyIndex, P, const AS: usize> PlayerParty<ID, A, P, AS> {
     }
 }
 
-impl<ID, A: PartyIndex, P, const AS: usize> PlayerParty<ID, A, P, AS> {
+impl<ID, A: ActivePokemon, P, const AS: usize> PlayerParty<ID, A, P, AS> {
     pub fn index(&self, index: usize) -> Option<usize> {
         self.active
             .get(index)
-            .map(|active| active.as_ref().map(PartyIndex::index))
+            .map(|active| active.as_ref().map(ActivePokemon::index))
             .flatten()
     }
 
@@ -98,7 +100,7 @@ impl<ID, A: PartyIndex, P, const AS: usize> PlayerParty<ID, A, P, AS> {
     }
 }
 
-impl<ID, A: PartyIndex, P: PokemonView, const AS: usize> PlayerParty<ID, A, P, AS> {
+impl<ID, A: ActivePokemon, P: PokemonView, const AS: usize> PlayerParty<ID, A, P, AS> {
     pub fn new(id: ID, name: Option<String>, pokemon: Party<P>) -> Self {
         let mut active = {
             // temporary fix for const generics not implementing Default
@@ -133,7 +135,10 @@ impl<ID, A: PartyIndex, P: PokemonView, const AS: usize> PlayerParty<ID, A, P, A
     }
 
     pub fn remaining(&self) -> impl Iterator<Item = (usize, &P)> + '_ {
-        self.pokemon.iter().enumerate().filter(move |(index, p)| !self.active_contains(*index) && !p.fainted())
+        self.pokemon
+            .iter()
+            .enumerate()
+            .filter(move |(index, p)| !self.active_contains(*index) && !p.fainted())
     }
 
     pub fn all_fainted(&self) -> bool {
@@ -149,7 +154,9 @@ impl<ID, A: PartyIndex, P: PokemonView, const AS: usize> PlayerParty<ID, A, P, A
     }
 
     pub fn active_fainted(&self) -> Option<usize> {
-        self.active_iter().find(|(.., p)| p.fainted()).map(|(i, ..)| i)
+        self.active_iter()
+            .find(|(.., p)| p.fainted())
+            .map(|(i, ..)| i)
     }
 
     pub fn needs_replace(&self) -> bool {
@@ -172,7 +179,7 @@ const _: () = {
     #[allow(unused_extern_crates, clippy::useless_attribute)]
     extern crate serde as _serde;
     #[automatically_derived]
-    impl<'de, ID, A: DeserializeOwned + Serialize + PartyIndex, P, const AS: usize>
+    impl<'de, ID, A: DeserializeOwned + Serialize + ActivePokemon, P, const AS: usize>
         _serde::Deserialize<'de> for PlayerParty<ID, A, P, AS>
     where
         ID: _serde::Deserialize<'de>,
@@ -256,7 +263,7 @@ const _: () = {
             struct __Visitor<
                 'de,
                 ID,
-                A: DeserializeOwned + Serialize + PartyIndex,
+                A: DeserializeOwned + Serialize + ActivePokemon,
                 P,
                 const AS: usize,
             >
@@ -267,7 +274,7 @@ const _: () = {
                 marker: _serde::__private::PhantomData<PlayerParty<ID, A, P, AS>>,
                 lifetime: _serde::__private::PhantomData<&'de ()>,
             }
-            impl<'de, ID, A: DeserializeOwned + Serialize + PartyIndex, P, const AS: usize>
+            impl<'de, ID, A: DeserializeOwned + Serialize + ActivePokemon, P, const AS: usize>
                 _serde::de::Visitor<'de> for __Visitor<'de, ID, A, P, AS>
             where
                 ID: _serde::Deserialize<'de>,
@@ -323,7 +330,7 @@ const _: () = {
                         struct __DeserializeWith<
                             'de,
                             ID,
-                            A: DeserializeOwned + Serialize + PartyIndex,
+                            A: DeserializeOwned + Serialize + ActivePokemon,
                             P,
                             const AS: usize,
                         >
@@ -338,7 +345,7 @@ const _: () = {
                         impl<
                                 'de,
                                 ID,
-                                A: DeserializeOwned + Serialize + PartyIndex,
+                                A: DeserializeOwned + Serialize + ActivePokemon,
                                 P,
                                 const AS: usize,
                             > _serde::Deserialize<'de> for __DeserializeWith<'de, ID, A, P, AS>
@@ -474,7 +481,7 @@ const _: () = {
                                     struct __DeserializeWith<
                                         'de,
                                         ID,
-                                        A: DeserializeOwned + Serialize + PartyIndex,
+                                        A: DeserializeOwned + Serialize + ActivePokemon,
                                         P,
                                         const AS: usize,
                                     >
@@ -491,7 +498,7 @@ const _: () = {
                                     impl<
                                             'de,
                                             ID,
-                                            A: DeserializeOwned + Serialize + PartyIndex,
+                                            A: DeserializeOwned + Serialize + ActivePokemon,
                                             P,
                                             const AS: usize,
                                         >
@@ -628,7 +635,7 @@ const _: () = {
     #[allow(unused_extern_crates, clippy::useless_attribute)]
     extern crate serde as _serde;
     #[automatically_derived]
-    impl<ID, A: DeserializeOwned + Serialize + PartyIndex, P, const AS: usize> _serde::Serialize
+    impl<ID, A: DeserializeOwned + Serialize + ActivePokemon, P, const AS: usize> _serde::Serialize
         for PlayerParty<ID, A, P, AS>
     where
         ID: _serde::Serialize,
@@ -672,7 +679,7 @@ const _: () = {
                 struct __SerializeWith<
                     '__a,
                     ID: '__a,
-                    A: DeserializeOwned + Serialize + PartyIndex + '__a,
+                    A: DeserializeOwned + Serialize + ActivePokemon + '__a,
                     P: '__a,
                     const AS: usize,
                 >
@@ -686,7 +693,7 @@ const _: () = {
                 impl<
                         '__a,
                         ID: '__a,
-                        A: DeserializeOwned + Serialize + PartyIndex + '__a,
+                        A: DeserializeOwned + Serialize + ActivePokemon + '__a,
                         P: '__a,
                         const AS: usize,
                     > _serde::Serialize for __SerializeWith<'__a, ID, A, P, AS>

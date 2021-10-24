@@ -19,7 +19,6 @@ impl<ID> PokemonIdentifier<ID> {
     pub fn index(&self) -> usize {
         self.1
     }
-
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]

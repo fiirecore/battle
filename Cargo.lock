@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "firecore-battle"
-version = "0.0.6-alpha.1"
+version = "0.0.6"
 dependencies = [
  "crossbeam-channel",
  "firecore-pokedex",
@@ -106,9 +106,9 @@ dependencies = [
 
 [[package]]
 name = "firecore-pokedex"
-version = "0.0.6-alpha.1"
+version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5420db6131c1c6cfa5991e6378060ba5eeb40c30a83d0b2cb96031af1067f685"
+checksum = "04b320737be6651fc70e77031fbd4c8717e3820f44a431e625ba77c1849987be"
 dependencies = [
  "arrayvec",
  "hashbrown",
@@ -204,9 +204,9 @@ checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3ca011bd0129ff4ae15cd04c4eef202cadf6c51c21e47aba319b4e0501db741"
+checksum = "ed0cfbc8191465bed66e1718596ee0b0b35d5ee1f41c5df2189d0fe8bde535ba"
 
 [[package]]
 name = "proc-macro2"

@@ -1,5 +1,6 @@
 use crate::message::{ClientMessage, ServerMessage};
 
+/// Represents a client endpoint for the battle host.
 pub trait BattleEndpoint<ID, const AS: usize> {
     fn send(&mut self, message: ServerMessage<ID, AS>);
 
@@ -11,11 +12,11 @@ pub enum ReceiveError {
     Disconnected,
 }
 
-#[cfg(feature = "default_endpoint")]
-pub use endpoints::*;
+#[cfg(feature = "mpsc_endpoint")]
+pub use mpsc::*;
 
-#[cfg(feature = "default_endpoint")]
-mod endpoints {
+#[cfg(feature = "mpsc_endpoint")]
+mod mpsc {
 
     use crossbeam_channel::{Receiver, Sender, TryRecvError, unbounded};
 

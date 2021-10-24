@@ -3,15 +3,22 @@ use std::ops::Range;
 use firecore_pokedex::{
     moves::{owned::SavedMove, Move, MoveCategory, MoveTarget},
     pokemon::{
-        owned::SavedPokemon, party::Party, stat::StatSet, Breeding, LearnableMove, Pokemon,
-        Training,
+        data::{Breeding, LearnableMove, Training},
+        owned::SavedPokemon,
+        party::Party,
+        stat::StatSet,
+        Pokemon,
     },
     types::PokemonType,
     BasicDex,
 };
 use rand::rngs::ThreadRng;
 
-use firecore_battle::prelude::*;
+use firecore_battle::{
+    engine::default::moves::{MoveExecution, MoveUse},
+    moves::damage::DamageKind,
+    prelude::*,
+};
 
 const POKEMON: Range<u16> = 0..3;
 
@@ -25,15 +32,29 @@ fn main() {
     let mut movedex = BasicDex::default();
     let itemdex = BasicDex::default();
 
-    let move_id = "default".parse().unwrap();
+    let move_id = ["default".parse().unwrap(), "script".parse().unwrap()];
 
     movedex.insert(Move {
-        id: move_id,
+        id: move_id[0],
         name: "Test Move".to_owned(),
         category: MoveCategory::Physical,
         pokemon_type: PokemonType::Normal,
         accuracy: Some(50),
         power: Some(50),
+        pp: 50,
+        priority: 0,
+        target: MoveTarget::Opponent,
+        contact: false,
+        crit_rate: 0,
+    });
+
+    movedex.insert(Move {
+        id: move_id[1],
+        name: "Script Move".to_owned(),
+        category: MoveCategory::Physical,
+        pokemon_type: PokemonType::Normal,
+        accuracy: Some(50),
+        power: None,
         pp: 50,
         priority: 0,
         target: MoveTarget::Opponent,
@@ -47,7 +68,7 @@ fn main() {
             name: format!("Test {}", id),
             primary_type: PokemonType::Normal,
             secondary_type: None,
-            moves: vec![LearnableMove(0, move_id)],
+            moves: vec![LearnableMove(0, move_id[0]), LearnableMove(0, move_id[1])],
             base: StatSet::uniform(70),
             species: "Test".to_owned(),
             height: 100,
@@ -66,7 +87,9 @@ fn main() {
         .into_iter()
         .map(|id| SavedPokemon::generate(&mut random, id, 30, None, None))
         .map(|mut o| {
-            o.moves.push(SavedMove::from(move_id));
+            for m in move_id {
+                o.moves.push(SavedMove::from(m));
+            }
             o
         })
         .collect();
@@ -79,7 +102,10 @@ fn main() {
 
     const AS: usize = 2;
 
-    let mut players: Vec<_> = (1..100).into_iter().map(|_| BattleAi::<ThreadRng, u8, AS>::new(random.clone(), owned_party.clone())).collect();
+    let mut players: Vec<_> = (1..100)
+        .into_iter()
+        .map(|_| BattleAi::<ThreadRng, u8, AS>::new(random.clone(), owned_party.clone()))
+        .collect();
 
     let mut battle = Battle::new(
         BattleData::default(),
@@ -87,26 +113,47 @@ fn main() {
         &pokedex,
         &movedex,
         &itemdex,
-        players.iter().enumerate().map(
-            |(id, player)| PlayerWithEndpoint(LocalPlayer {
-                id: id as _,
-                name: Some(format!("Player {}", id)),
-                party: party.clone(),
-                settings: Default::default(),
-            }, Box::new(player.endpoint()),
-        )),
+        players.iter().enumerate().map(|(id, player)| PlayerData {
+            id: id as _,
+            name: Some(format!("Player {}", id)),
+            party: party.clone(),
+            settings: PlayerSettings { gains_exp: false },
+            endpoint: Box::new(player.endpoint()),
+        }),
     );
 
     let mut engine = DefaultMoveEngine::new::<u8, ThreadRng>();
 
     engine.moves.insert(
-        move_id,
-        MoveExecution::Actions(vec![
-            firecore_battle::host::engine::default::MoveUse::Damage(
-                firecore_battle::moves::damage::DamageKind::Power(50),
-            ),
-        ]),
+        move_id[0],
+        MoveExecution::Actions(vec![MoveUse::Damage(DamageKind::Power(50))]),
     );
+
+    engine.moves.insert(move_id[1], MoveExecution::Script);
+
+    let script = "
+    let results = [];
+
+    for target in targets {
+        switch user.throw_move(random, move) {
+            false => results.push(Miss(user)),
+            true => {
+                let result = user.damage(random, target, 40, move.category, move.type, move.crit_rate);
+                if result.damage > target.hp {
+                    result.damage = target.hp - 1;
+                }
+                results.push(Damage(target, result));
+            }
+        }
+    }
+
+    results
+    ";
+
+    engine
+        .scripting
+        .scripts
+        .insert(move_id[1], script.to_owned());
 
     while !battle.finished() {
         battle.update(&mut random, &mut engine, &itemdex);

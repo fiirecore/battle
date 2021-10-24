@@ -2,11 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use pokedex::{
     ailment::LiveAilment,
-    pokemon::{owned::OwnedPokemon, Gender, Level, Pokemon, PokemonId},
+    pokemon::{data::Gender, owned::OwnedPokemon, Level, Pokemon, PokemonId},
     Dex, Initializable, Uninitializable,
 };
 
 pub type RemotePokemon = UnknownPokemon<PokemonId>;
+pub type InitRemotePokemon<'d> = UnknownPokemon<&'d Pokemon>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UnknownPokemon<P> {
@@ -29,19 +30,15 @@ impl<'d> UnknownPokemon<&'d Pokemon> {
             ailment: pokemon.ailment,
         }
     }
-
 }
 
 impl<'d> UnknownPokemon<&'d Pokemon> {
-
     pub fn name<'b: 'd>(&'b self) -> &'b str {
         self.nickname.as_ref().unwrap_or(&self.pokemon.name)
     }
-
 }
 
 impl<'d> Uninitializable for UnknownPokemon<&'d Pokemon> {
-
     type Output = RemotePokemon;
 
     fn uninit(self) -> Self::Output {

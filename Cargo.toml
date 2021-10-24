@@ -1,25 +1,31 @@
 [package]
 name = "firecore-battle"
-version = "0.0.6-alpha.1" # "0.5.0-beta.2021-08-22"
-authors = ["Rhys H <donotdoughnut99@gmail.com>"]
-edition = "2018"
 description = "Pokemon battle simulation"
+authors = ["Rhys H <donotdoughnut99@gmail.com>"]
+version = "0.0.6"
 license = "MIT"
+edition = "2018"
 repository = "https://github.com/fiirecore/battle"
 readme = "README.md"
 categories = ["game-development", "game-engines"]
 keywords = ["pokemon", "battle", "turn-based"]
 
 [features]
-default = ["host", "default_engine", "default_scripting", "ai"]
-default_engine = ["host"]
-default_scripting = ["rhai", "default_engine"]
-host = []
-ai = ["default_endpoint"]
-default_endpoint = ["crossbeam-channel"]
+default = ["host", "ai", "default_engine_scripting"]
+
+engine = []
+
+host = ["engine"]
+
+default_engine = ["engine"]
+default_engine_scripting = ["default_engine", "rhai"]
+
+ai = ["mpsc_endpoint"]
+
+mpsc_endpoint = ["crossbeam-channel"]
 
 [dependencies]
-firecore-pokedex = "0.0.6-alpha"
+firecore-pokedex = "0.0.6"
 rand = { version = "0.8", default-features = false }
 log = "0.4"
 hashbrown = "0.11"

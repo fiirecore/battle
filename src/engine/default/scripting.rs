@@ -1,9 +1,13 @@
 use core::hash::Hash;
 use hashbrown::HashMap;
 use rand::Rng;
-use rhai::{Array, Dynamic, Engine, Scope, AST, INT};
 
-use firecore_pokedex::{
+use rhai::{
+    packages::{BasicArrayPackage, Package},
+    Array, Dynamic, Engine, Scope, INT,
+};
+
+use pokedex::{
     moves::{Move, MoveCategory, MoveId},
     types::PokemonType,
 };
@@ -21,16 +25,14 @@ use random::*;
 use result::*;
 
 use crate::{
-    host::{
-        collections::BattleMap, engine::MoveResult, player::BattlePlayer, pokemon::BattlePokemon,
-    },
+    engine::{BattlePokemon, MoveResult, Players},
     moves::damage::DamageResult,
     pokemon::{Indexed, PokemonIdentifier},
 };
 
 use super::DefaultMoveError;
 
-pub type Scripts = HashMap<MoveId, AST>;
+pub type Scripts = HashMap<MoveId, String>;
 
 pub struct DefaultScriptingEngine {
     pub scripts: Scripts,
@@ -42,6 +44,7 @@ impl DefaultScriptingEngine {
         let mut engine = Engine::new_raw();
 
         engine
+            .register_global_module(BasicArrayPackage::new().as_shared_module())
             .register_type_with_name::<ScriptRandom<R>>("Random")
             .register_type_with_name::<DamageResult<INT>>("Damage")
             .register_set("damage", ScriptDamage::set_damage)
@@ -51,6 +54,7 @@ impl DefaultScriptingEngine {
             .register_fn("throw_move", ScriptPokemon::<ID>::throw_move::<R>)
             .register_fn("damage", ScriptPokemon::<ID>::get_damage::<R>)
             .register_get("hp", ScriptPokemon::<ID>::hp)
+            .register_iterator::<Vec<ScriptPokemon<ID>>>()
             .register_type::<ScriptMove>()
             .register_get("category", ScriptMove::get_category)
             .register_get("type", ScriptMove::get_type)
@@ -59,9 +63,9 @@ impl DefaultScriptingEngine {
             .register_type_with_name::<PokemonType>("Type")
             .register_type::<MoveResult>()
             .register_type_with_name::<ScriptMoveResult<ID>>("Result")
-            .register_fn("miss", ScriptMoveResult::<ID>::miss)
-            .register_fn("damage", ScriptMoveResult::<ID>::damage)
-            .register_fn("drain", ScriptMoveResult::<ID>::heal);
+            .register_fn("Miss", ScriptMoveResult::<ID>::miss)
+            .register_fn("Damage", ScriptMoveResult::<ID>::damage)
+            .register_fn("Drain", ScriptMoveResult::<ID>::heal);
 
         Self {
             scripts: Default::default(),
@@ -73,14 +77,14 @@ impl DefaultScriptingEngine {
         'd,
         R: Rng + Clone + 'static,
         ID: Eq + Hash + Clone + 'static,
-        const AS: usize,
+        P: Players<'d, ID, R>,
     >(
         &self,
         random: &mut R,
         m: &Move,
         user: Indexed<ID, &BattlePokemon<'d>>,
         targets: Vec<PokemonIdentifier<ID>>,
-        players: &BattleMap<ID, BattlePlayer<'d, ID, AS>>,
+        players: &P,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, DefaultMoveError> {
         match self.scripts.get(&m.id) {
             Some(script) => {
@@ -92,16 +96,16 @@ impl DefaultScriptingEngine {
 
                 let targets = targets
                     .into_iter()
-                    .flat_map(|id| (players.get(id.team()).map(|r| (id, r))))
-                    .flat_map(ScriptPokemon::from_player)
-                    .map(Dynamic::from)
-                    .collect::<Array>();
+                    .flat_map(|id| (players.get(&id).map(|r| Indexed(id, r))))
+                    .map(ScriptPokemon::new)
+                    // .map(Dynamic::from)
+                    .collect::<Vec<ScriptPokemon<ID>>>();
 
                 scope.push("targets", targets);
 
                 Ok(self
                     .engine
-                    .eval_ast_with_scope::<Array>(&mut scope, script)
+                    .eval_with_scope::<Array>(&mut scope, script)
                     .map_err(DefaultMoveError::Script)?
                     .into_iter()
                     .flat_map(Dynamic::try_cast::<ScriptMoveResult<ID>>)

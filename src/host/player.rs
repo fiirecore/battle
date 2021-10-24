@@ -1,37 +1,76 @@
 use core::cell::Ref;
 use rand::Rng;
 
-use pokedex::{item::Item, moves::Move, pokemon::Pokemon, Dex};
-
-use crate::{
-    player::{PlayerWithEndpoint, Player, ValidatedPlayer},
-    BattleData,
+use pokedex::{
+    item::Item,
+    moves::Move,
+    pokemon::{party::Party, Pokemon, owned::SavedPokemon},
+    Dex,
 };
 
-use super::pokemon::{ActivePokemon, BattlePokemon};
+use crate::{
+    data::BattleData,
+    endpoint::{BattleEndpoint, ReceiveError},
+    message::{ClientMessage, ServerMessage},
+    party::{ActivePokemon, PlayerParty},
+    player::{ClientPlayerData, Player, PlayerSettings},
+};
+
+use super::pokemon::{ActiveBattlePokemon, HostPokemon};
 
 pub type BattlePlayer<'d, ID, const AS: usize> =
-    Player<ID, ActivePokemon<ID>, BattlePokemon<'d>, AS>;
+    Player<ID, ActiveBattlePokemon<ID>, HostPokemon<'d>, Box<dyn BattleEndpoint<ID, AS>>, AS>;
 
-impl<ID, const AS: usize> PlayerWithEndpoint<ID, AS> {
+pub struct PlayerData<ID, const AS: usize> {
+    pub id: ID,
+    pub name: Option<String>,
+    pub party: Party<SavedPokemon>,
+    pub settings: PlayerSettings,
+    pub endpoint: Box<dyn BattleEndpoint<ID, AS>>,
+}
+
+impl<'d, ID, const AS: usize> BattlePlayer<'d, ID, AS> {
+    pub fn send(&mut self, message: ServerMessage<ID, AS>) {
+        self.endpoint.send(message)
+    }
+
+    pub fn receive(&mut self) -> Result<ClientMessage<ID>, Option<ReceiveError>> {
+        self.endpoint.receive()
+    }
+}
+
+impl<ID, const AS: usize> PlayerData<ID, AS> {
     pub(crate) fn init<'d>(
         self,
         random: &mut impl Rng,
-        pokedex: &'d impl Dex<Pokemon>,
-        movedex: &'d impl Dex<Move>,
-        itemdex: &'d impl Dex<Item>,
+        pokedex: &'d dyn Dex<Pokemon>,
+        movedex: &'d dyn Dex<Move>,
+        itemdex: &'d dyn Dex<Item>,
     ) -> BattlePlayer<'d, ID, AS> {
-        let pokemon = self.0
+        let pokemon: Party<HostPokemon<'d>> = self
             .party
             .into_iter()
             .flat_map(|p| p.init(random, pokedex, movedex, itemdex))
             .map(Into::into)
             .collect();
-        BattlePlayer::new(self.0.id, self.0.name, pokemon, self.0.settings, self.1)
+
+        let mut party = PlayerParty::new(self.id, self.name, pokemon);
+
+        for index in party.active.iter().flatten().map(ActivePokemon::index) {
+            if let Some(pokemon) = party.pokemon.get_mut(index) {
+                pokemon.known = true;
+            }
+        }
+
+        BattlePlayer {
+            party,
+            settings: self.settings,
+            endpoint: self.endpoint,
+        }
     }
 }
 
-impl<ID: Clone, const AS: usize> ValidatedPlayer<ID, AS> {
+impl<ID: Clone, const AS: usize> ClientPlayerData<ID, AS> {
     pub fn new<'d: 'a, 'a, I: Iterator<Item = Ref<'a, BattlePlayer<'d, ID, AS>>> + 'a>(
         data: BattleData,
         player: &BattlePlayer<ID, AS>,
@@ -43,7 +82,7 @@ impl<ID: Clone, const AS: usize> ValidatedPlayer<ID, AS> {
         Self {
             id: player.party.id().clone(),
             name: player.party.name.clone(),
-            active: ActivePokemon::into_remote(&player.party.active),
+            active: ActiveBattlePokemon::as_usize(&player.party.active),
             data,
             remotes: others.map(|player| player.party.as_remote()).collect(),
         }

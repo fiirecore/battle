@@ -1,7 +1,4 @@
-use core::{
-    cell::Ref,
-    ops::{Deref, DerefMut},
-};
+use core::ops::{Deref, DerefMut};
 
 use rand::Rng;
 use rhai::INT;
@@ -9,7 +6,7 @@ use rhai::INT;
 use pokedex::{moves::MoveCategory, pokemon::owned::OwnedPokemon, types::PokemonType};
 
 use crate::{
-    host::{player::BattlePlayer, pokemon::BattlePokemon},
+    engine::BattlePokemon,
     pokemon::{Indexed, PokemonIdentifier},
 };
 
@@ -19,13 +16,13 @@ use super::{moves::ScriptMove, ScriptDamage, ScriptRandom};
 pub struct ScriptPokemon<ID>(Indexed<ID, *const BattlePokemon<'static>>);
 
 impl<ID> ScriptPokemon<ID> {
-    pub fn from_player<'d, const AS: usize>(
-        (id, p): (PokemonIdentifier<ID>, Ref<BattlePlayer<'d, ID, AS>>),
-    ) -> Option<Self> {
-        p.party
-            .active(id.index())
-            .map(|p| Self::new(Indexed(id, p)))
-    }
+    // pub fn from_player<'d, const AS: usize>(
+    //     (id, p): (PokemonIdentifier<ID>, Ref<BattlePlayer<'d, ID, AS>>),
+    // ) -> Option<Self> {
+    //     p.party
+    //         .active(id.index())
+    //         .map(|p| Self::new(Indexed(id, p)))
+    // }
 
     pub fn new<'d>(pokemon: Indexed<ID, &BattlePokemon<'d>>) -> Self {
         let p = pokemon.1 as *const BattlePokemon<'d>;

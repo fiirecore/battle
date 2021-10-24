@@ -5,8 +5,8 @@ use pokedex::{moves::MoveId, pokemon::owned::SavedPokemon};
 
 use crate::{
     moves::{BattleMove, ClientMove},
-    player::ValidatedPlayer,
-    pokemon::{remote::RemotePokemon, ActivePosition, Indexed, PartyPosition, PokemonIdentifier},
+    player::ClientPlayerData,
+    pokemon::{remote::RemotePokemon, ActivePosition, Indexed, PartyPosition},
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
@@ -19,15 +19,15 @@ pub enum ClientMessage<ID> {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ServerMessage<ID, const AS: usize> {
-    Begin(ValidatedPlayer<ID, AS>),
+    Begin(ClientPlayerData<ID, AS>),
 
     Start(StartableAction<ID>),
 
     Ping(TimedAction),
     Fail(FailedAction),
 
-    AddRemote(PokemonIdentifier<ID>, RemotePokemon),
-    Replace(PokemonIdentifier<ID>, usize),
+    AddRemote(Indexed<ID, RemotePokemon>),
+    Replace(Indexed<ID, usize>),
 
     Catch(SavedPokemon),
 

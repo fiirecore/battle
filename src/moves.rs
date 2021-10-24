@@ -37,6 +37,8 @@ pub enum ClientMoveAction {
     SetHP(damage::ClientDamage<f32>),
     AddStat(BattleStatType, Stage),
     Ailment(LiveAilment),
+
+    Flinch,
     Miss,
 
     SetExp(Experience, Level),
