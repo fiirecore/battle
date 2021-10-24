@@ -5,9 +5,13 @@ use core::{
 };
 
 use pokedex::moves::{Move, MoveTarget};
-use rand::{Rng, prelude::IteratorRandom};
+use rand::{prelude::IteratorRandom, Rng};
 
-use crate::{engine::{Players, BattlePokemon}, pokemon::PokemonIdentifier};
+use crate::{
+    engine::{BattlePokemon, Players},
+    party::ActivePokemon,
+    pokemon::PokemonIdentifier,
+};
 
 use super::player::BattlePlayer;
 
@@ -114,16 +118,159 @@ impl<K: Eq + Hash, V> FromIterator<(K, V)> for BattleMap<K, V> {
     }
 }
 
+impl<'d, ID: Eq + Hash + Clone, const AS: usize> BattleMap<ID, BattlePlayer<'d, ID, AS>> {
+    fn ally(
+        &self,
+        random: &mut impl Rng,
+        user: &PokemonIdentifier<ID>,
+        id: PokemonIdentifier<ID>,
+    ) -> Vec<PokemonIdentifier<ID>> {
+        self.get(id.team())
+            .map(|p| {
+                p.party
+                    .active
+                    .iter()
+                    .map(|a| a.as_ref().map(ActivePokemon::index))
+                    .flatten()
+                    .filter(|i| *i != user.index())
+                    .choose(random)
+                    .map(|i| PokemonIdentifier(id.0, i))
+            })
+            .flatten()
+            .map(|i| vec![i])
+            .unwrap_or_default()
+    }
+
+    fn opponent(
+        &self,
+        random: &mut impl Rng,
+        user: &PokemonIdentifier<ID>,
+    ) -> Vec<PokemonIdentifier<ID>> {
+        self.values()
+            .filter(|p| p.id() != user.team() && !p.party.all_fainted())
+            .choose(random)
+            .map(|p| {
+                p.party
+                    .active
+                    .iter()
+                    .enumerate()
+                    .filter(|(.., p)| p.is_some())
+                    .map(|(i, ..)| i)
+                    .choose(random)
+                    .map(|i| PokemonIdentifier(p.id().clone(), i))
+            })
+            .flatten()
+            .map(|i| vec![i])
+            .unwrap_or_default()
+    }
+
+    fn allies(&self, user: &PokemonIdentifier<ID>) -> Vec<PokemonIdentifier<ID>> {
+        self.get(user.team())
+            .map(|p| {
+                p.party
+                    .active
+                    .iter()
+                    .flatten()
+                    .map(ActivePokemon::index)
+                    .filter(|i| *i != user.index())
+                    .map(|u| PokemonIdentifier(user.0.clone(), u))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    fn all_opponents(&self, user: &PokemonIdentifier<ID>) -> Vec<PokemonIdentifier<ID>> {
+        self.values()
+            .filter(|p| p.id() != user.team())
+            .flat_map(|p| {
+                p.party
+                    .active
+                    .iter()
+                    .flatten()
+                    .map(ActivePokemon::index)
+                    .map(|i| PokemonIdentifier(p.id().clone(), i))
+                    // VVV bad code VVV
+                    .collect::<Vec<_>>()
+                    .into_iter()
+            })
+            .collect()
+    }
+
+    fn all_other_pokemon(&self, user: &PokemonIdentifier<ID>) -> Vec<PokemonIdentifier<ID>> {
+        let mut v = self.allies(user);
+        v.extend_from_slice(&self.all_opponents(user));
+        v
+    }
+
+    fn user_and_allies(&self, user: &PokemonIdentifier<ID>) -> Vec<PokemonIdentifier<ID>> {
+        self.get(user.team())
+            .into_iter()
+            .map(move |p| {
+                p.party
+                    .active
+                    .iter()
+                    .flatten()
+                    .map(ActivePokemon::index)
+                    .map(|i| PokemonIdentifier(p.id().clone(), i))
+                    // VVV bad code VVV
+                    .collect::<Vec<_>>()
+                    .into_iter()
+            })
+            .flatten()
+            .collect()
+    }
+
+    fn random_user_or_allies(
+        &self,
+        random: &mut impl Rng,
+        user: &PokemonIdentifier<ID>,
+    ) -> Vec<PokemonIdentifier<ID>> {
+        self.user_or_allies(random.gen_bool(0.5), user)
+    }
+
+    fn user_or_allies(
+        &self,
+        is_user: bool,
+        user: &PokemonIdentifier<ID>,
+    ) -> Vec<PokemonIdentifier<ID>> {
+        match is_user {
+            true => vec![user.clone()],
+            false => self
+                .get(user.team())
+                .into_iter()
+                .flat_map(|p| {
+                    p.party
+                        .active
+                        .iter()
+                        .flatten()
+                        .map(ActivePokemon::index)
+                        .filter(|i| *i != user.index())
+                        .map(|i| PokemonIdentifier(user.0.clone(), i))
+                        // VVV bad code VVV
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                })
+                .collect(),
+        }
+    }
+}
+
 impl<'d, ID: Eq + Hash + Clone, R: Rng, const AS: usize> Players<'d, ID, R>
     for BattleMap<ID, BattlePlayer<'d, ID, AS>>
 {
-    fn create_targets(&self, user: &PokemonIdentifier<ID>, m: &Move, targeting: Option<PokemonIdentifier<ID>>, random: &mut R) -> Vec<PokemonIdentifier<ID>> {
+    fn create_targets(
+        &self,
+        user: &PokemonIdentifier<ID>,
+        m: &Move,
+        targeting: Option<PokemonIdentifier<ID>>,
+        random: &mut R,
+    ) -> Vec<PokemonIdentifier<ID>> {
         match m.target {
             MoveTarget::Any => match targeting {
                 Some(id) => vec![id],
                 None => match self
                     .values()
-                    .filter(|p| p.id() != user.team() && !p.party.all_fainted())
+                    .filter(|p| /* p.id() != user.team() && */ !p.party.all_fainted())
                     .choose(random)
                     .map(|p| {
                         p.party
@@ -144,44 +291,45 @@ impl<'d, ID: Eq + Hash + Clone, R: Rng, const AS: usize> Players<'d, ID, R>
             MoveTarget::Ally => match targeting {
                 Some(id) => match id.team() == user.team() && id.index() != user.index() {
                     true => vec![id],
-                    false => todo!(),
+                    false => self.ally(random, user, id),
                 },
-                None => todo!(),
+                None => self.ally(random, user, user.clone()),
             },
-            MoveTarget::Allies => todo!(),
-            MoveTarget::UserOrAlly => todo!(),
-            MoveTarget::UserAndAllies => todo!(),
-            MoveTarget::User => todo!(),
+            MoveTarget::Allies => self.allies(user),
+            MoveTarget::UserOrAlly => match targeting {
+                Some(id) => match id.team() == user.team() {
+                    true => self.user_or_allies(id.index() == user.index(), user),
+                    false => self.random_user_or_allies(random, user),
+                },
+                None => self.random_user_or_allies(random, user),
+            },
+            MoveTarget::UserAndAllies => self.user_and_allies(user),
+            MoveTarget::User => vec![user.clone()],
             MoveTarget::Opponent => match targeting {
                 Some(id) => match id.team() != user.team() {
                     true => vec![id],
-                    false => todo!(),
+                    false => self.opponent(random, user),
                 },
-                None => match self
-                    .values()
-                    .filter(|p| p.id() != user.team() && !p.party.all_fainted())
-                    .choose(random)
-                    .map(|p| {
-                        p.party
-                            .active
-                            .iter()
-                            .enumerate()
-                            .filter(|(.., p)| p.is_some())
-                            .map(|(i, ..)| i)
-                            .choose(random)
-                            .map(|i| PokemonIdentifier(p.id().clone(), i))
-                    })
-                    .flatten()
-                {
-                    Some(id) => vec![id],
-                    None => return Vec::new(), //return Err(DefaultMoveError::NoTarget),
-                },
+                None => self.opponent(random, user),
             },
-            MoveTarget::AllOpponents => todo!(),
-            MoveTarget::RandomOpponent => todo!(),
-            MoveTarget::AllOtherPokemon => todo!(),
-            MoveTarget::AllPokemon => todo!(),
-            MoveTarget::None => todo!(),
+            MoveTarget::AllOpponents => self.all_opponents(user),
+            MoveTarget::RandomOpponent => self.opponent(random, user),
+            MoveTarget::AllOtherPokemon => self.all_other_pokemon(user),
+            MoveTarget::AllPokemon => self
+                .values()
+                .flat_map(|p| {
+                    p.party
+                        .active
+                        .iter()
+                        .flatten()
+                        .map(ActivePokemon::index)
+                        .map(|i| PokemonIdentifier(p.id().clone(), i))
+                        // VVV bad code VVV
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                })
+                .collect(),
+            MoveTarget::None => vec![],
         }
     }
 
@@ -189,13 +337,12 @@ impl<'d, ID: Eq + Hash + Clone, R: Rng, const AS: usize> Players<'d, ID, R>
         if let Some(p) = self.get(id.team()) {
             if let Some(p) = p.party.active(id.index()) {
                 // i think this is safe
-                let p2 = unsafe { & *((&p.p) as *const BattlePokemon<'d>) };
+                let p2 = unsafe { &*((&p.p) as *const BattlePokemon<'d>) };
                 return Some(p2);
             }
         }
         None
     }
-
 }
 
 // let targets: Vec<TargetLocation<ID>> = match target {
