@@ -1,12 +1,17 @@
 use core::ops::{Deref, DerefMut};
 use hashbrown::HashSet;
 
-use pokedex::{moves::MoveId, pokemon::owned::{OwnedPokemon, OwnedPokemonData}, Uninitializable};
+use pokedex::{moves::MoveId, pokemon::owned::OwnedPokemon, Uninitializable};
 
-use crate::{engine::BattlePokemon, moves::BattleMove, party::{Active, ActivePokemon}, pokemon::{
+use crate::{
+    engine::BattlePokemon,
+    moves::BattleMove,
+    party::{Active, ActivePokemon},
+    pokemon::{
         remote::{RemotePokemon, UnknownPokemon},
         PokemonView,
-    }};
+    },
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ActiveBattlePokemon<ID> {
@@ -16,7 +21,9 @@ pub struct ActiveBattlePokemon<ID> {
 
 impl<ID> ActiveBattlePokemon<ID> {
     pub fn as_usize(this: &[Option<Self>]) -> Active<usize> {
-        this.iter().map(|o| o.as_ref().map(ActivePokemon::index)).collect()
+        this.iter()
+            .map(|o| o.as_ref().map(ActivePokemon::index))
+            .collect()
     }
 
     pub fn queued(&self) -> bool {
@@ -77,7 +84,7 @@ impl<'d> From<OwnedPokemon<'d>> for HostPokemon<'d> {
 
 impl<'d> PokemonView for HostPokemon<'d> {
     fn fainted(&self) -> bool {
-        OwnedPokemonData::fainted(self)
+        OwnedPokemon::fainted(self)
     }
 }
 

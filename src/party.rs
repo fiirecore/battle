@@ -9,7 +9,7 @@ pub type RemoteParty<ID> =
 
 pub type Active<A> = Vec<Option<A>>;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct PlayerParty<ID, A, P> {
     pub id: ID,
     pub name: Option<String>,

@@ -106,7 +106,7 @@ dependencies = [
 [[package]]
 name = "firecore-pokedex"
 version = "0.0.7"
-source = "git+https://github.com/fiirecore/pokedex#460beb93eb758c6e87b3db194779b2c9391becaf"
+source = "git+https://github.com/fiirecore/pokedex#d8af04ad1af662f2b0de5682efb1e2a19808a445"
 dependencies = [
  "arrayvec",
  "hashbrown",

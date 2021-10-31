@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use pokedex::pokemon::{
-    owned::{OwnablePokemon, OwnedPokemonData},
-    Health,
-};
+use pokedex::pokemon::{owned::OwnablePokemon, Health};
 
 pub mod remote;
 pub mod stat;
@@ -43,14 +40,8 @@ impl<P> PokemonView for Option<remote::UnknownPokemon<P>> {
     }
 }
 
-impl<P> PokemonView for OwnedPokemonData<P> {
-    fn fainted(&self) -> bool {
-        OwnedPokemonData::fainted(self)
-    }
-}
-
 impl<P, M, I> PokemonView for OwnablePokemon<P, M, I, Health> {
     fn fainted(&self) -> bool {
-        OwnedPokemonData::fainted(self)
+        OwnablePokemon::fainted(self)
     }
 }
