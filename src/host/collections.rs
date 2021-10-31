@@ -118,7 +118,7 @@ impl<K: Eq + Hash, V> FromIterator<(K, V)> for BattleMap<K, V> {
     }
 }
 
-impl<'d, ID: Eq + Hash + Clone, const AS: usize> BattleMap<ID, BattlePlayer<'d, ID, AS>> {
+impl<'d, ID: Eq + Hash + Clone> BattleMap<ID, BattlePlayer<'d, ID>> {
     fn ally(
         &self,
         random: &mut impl Rng,
@@ -255,9 +255,7 @@ impl<'d, ID: Eq + Hash + Clone, const AS: usize> BattleMap<ID, BattlePlayer<'d, 
     }
 }
 
-impl<'d, ID: Eq + Hash + Clone, R: Rng, const AS: usize> Players<'d, ID, R>
-    for BattleMap<ID, BattlePlayer<'d, ID, AS>>
-{
+impl<'d, ID: Eq + Hash + Clone, R: Rng> Players<'d, ID, R> for BattleMap<ID, BattlePlayer<'d, ID>> {
     fn create_targets(
         &self,
         user: &PokemonIdentifier<ID>,
@@ -284,7 +282,7 @@ impl<'d, ID: Eq + Hash + Clone, R: Rng, const AS: usize> Players<'d, ID, R>
                     })
                     .flatten()
                 {
-                    Some(id) => vec![id.clone()],
+                    Some(id) => vec![id],
                     None => Vec::new(), //return Err(DefaultMoveError::NoTarget),
                 },
             },
@@ -357,7 +355,7 @@ impl<'d, ID: Eq + Hash + Clone, R: Rng, const AS: usize> Players<'d, ID, R>
 //         TargetLocation::team(*index).collect()
 //     }
 //     MoveTargetInstance::Allies => {
-//         TargetLocation::allies::<AS>(instance.0.index()).collect()
+//         TargetLocation::allies::<>(instance.0.index()).collect()
 //     }
 //     MoveTargetInstance::UserOrAlly(index) => {
 //         match index == &instance.0.index() {
@@ -370,14 +368,14 @@ impl<'d, ID: Eq + Hash + Clone, R: Rng, const AS: usize> Players<'d, ID, R>
 //         TargetLocation::opponent(id.clone(), *index).collect()
 //     }
 //     MoveTargetInstance::AllOpponents(id) => {
-//         TargetLocation::opponents::<AS>(id).collect()
+//         TargetLocation::opponents::<>(id).collect()
 //     }
 //     MoveTargetInstance::RandomOpponent(id) => {
 //         TargetLocation::opponent(id.clone(), random.gen_range(0..AS))
 //             .collect()
 //     }
 //     MoveTargetInstance::AllOtherPokemon(id) => {
-//         TargetLocation::all_other_pokemon::<AS>(
+//         TargetLocation::all_other_pokemon::<>(
 //             id,
 //             instance.0.index(),
 //         )
@@ -398,11 +396,11 @@ impl<'d, ID: Eq + Hash + Clone, R: Rng, const AS: usize> Players<'d, ID, R>
 //         vec![]
 //     }
 //     MoveTargetInstance::UserAndAllies => {
-//         TargetLocation::user_and_allies::<AS>(instance.0.index())
+//         TargetLocation::user_and_allies::<>(instance.0.index())
 //             .collect()
 //     }
 //     MoveTargetInstance::AllPokemon(id) => {
-//         TargetLocation::all_pokemon::<AS>(id, instance.0.index())
+//         TargetLocation::all_pokemon::<>(id, instance.0.index())
 //             .collect()
 //     }
 // };

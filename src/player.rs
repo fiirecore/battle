@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_big_array::BigArray;
 
 use pokedex::pokemon::party::Party;
 
@@ -20,22 +19,23 @@ impl Default for PlayerSettings {
     }
 }
 
-pub struct Player<ID, A: ActivePokemon, P, E, const AS: usize> {
-    pub party: PlayerParty<ID, A, P, AS>,
+pub struct Player<ID, A: ActivePokemon, P, E> {
+    pub party: PlayerParty<ID, A, P>,
     pub settings: PlayerSettings,
     pub endpoint: E,
 }
 
-impl<ID, A: ActivePokemon, P: PokemonView, E, const AS: usize> Player<ID, A, P, E, AS> {
+impl<ID, A: ActivePokemon, P: PokemonView, E> Player<ID, A, P, E> {
     pub fn new(
         id: ID,
         name: Option<String>,
+        active: usize,
         pokemon: Party<P>,
         settings: PlayerSettings,
         endpoint: E,
     ) -> Self {
         Self {
-            party: PlayerParty::new(id, name, pokemon),
+            party: PlayerParty::new(id, name, active, pokemon),
             endpoint,
             settings,
         }
@@ -51,11 +51,10 @@ impl<ID, A: ActivePokemon, P: PokemonView, E, const AS: usize> Player<ID, A, P, 
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ClientPlayerData<ID, const AS: usize> {
+pub struct ClientPlayerData<ID> {
     pub id: ID,
     pub name: Option<String>,
-    #[serde(with = "BigArray")]
-    pub active: Active<usize, AS>,
+    pub active: Active<usize>,
     pub data: BattleData,
-    pub remotes: Vec<RemoteParty<ID, AS>>,
+    pub remotes: Vec<RemoteParty<ID>>,
 }

@@ -40,7 +40,7 @@ pub struct DefaultScriptingEngine {
 }
 
 impl DefaultScriptingEngine {
-    pub fn new<'d, ID: Clone + 'static, R: Rng + Clone + 'static>() -> Self {
+    pub fn new<ID: Clone + 'static, R: Rng + Clone + 'static>() -> Self {
         let mut engine = Engine::new_raw();
 
         engine
@@ -55,7 +55,7 @@ impl DefaultScriptingEngine {
             .register_fn("damage", ScriptPokemon::<ID>::get_damage::<R>)
             .register_get("hp", ScriptPokemon::<ID>::hp)
             .register_iterator::<Vec<ScriptPokemon<ID>>>()
-            .register_type::<ScriptMove>()
+            .register_type_with_name::<ScriptMove>("Move")
             .register_get("category", ScriptMove::get_category)
             .register_get("type", ScriptMove::get_type)
             .register_get("crit_rate", ScriptMove::get_crit_rate)
@@ -112,7 +112,7 @@ impl DefaultScriptingEngine {
                     .map(|r| r.0)
                     .collect::<Vec<Indexed<ID, MoveResult>>>())
             }
-            None => return Err(DefaultMoveError::Missing),
+            None => Err(DefaultMoveError::Missing),
         }
     }
 }

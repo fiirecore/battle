@@ -58,14 +58,14 @@ impl MoveEngine for DefaultMoveEngine {
     ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error> {
         match self.moves.get(&m.id) {
             Some(usage) => {
-                let targets = players.create_targets(&user.0, m, targeting.clone(), random);
+                let targets = players.create_targets(&user.0, m, targeting, random);
 
                 match &usage {
                     MoveExecution::Actions(actions) => {
                         let mut results = Vec::new();
                         for target_id in targets {
                             match players.get(&target_id) {
-                                Some(target) => match user.1.throw_move(random, m) {
+                                Some(target) => match BattlePokemon::throw_move(random, m.accuracy) {
                                     true => {
                                         results.reserve(usage.len());
                                         move_usage(
@@ -87,7 +87,7 @@ impl MoveEngine for DefaultMoveEngine {
                                 ),
                             }
                         }
-                        return Ok(results);
+                        Ok(results)
                     }
                     MoveExecution::Script => {
                         #[cfg(feature = "default_engine_scripting")]
@@ -95,7 +95,7 @@ impl MoveEngine for DefaultMoveEngine {
                         #[cfg(not(feature = "default_engine_scripting"))]
                         return Err(DefaultMoveError::NoScriptEngine);
                     }
-                    MoveExecution::None => return Err(DefaultMoveError::Missing),
+                    MoveExecution::None => Err(DefaultMoveError::Missing),
                 }
             }
             None => Err(DefaultMoveError::Missing),

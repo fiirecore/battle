@@ -64,7 +64,7 @@ fn main() {
 
     for id in POKEMON {
         pokedex.insert(Pokemon {
-            id: id,
+            id,
             name: format!("Test {}", id),
             primary_type: PokemonType::Normal,
             secondary_type: None,
@@ -104,12 +104,13 @@ fn main() {
 
     let mut players: Vec<_> = (1..100)
         .into_iter()
-        .map(|_| BattleAi::<ThreadRng, u8, AS>::new(random.clone(), owned_party.clone()))
+        .map(|_| BattleAi::<ThreadRng, u8>::new(random.clone(), AS, owned_party.clone()))
         .collect();
 
     let mut battle = Battle::new(
         BattleData::default(),
         &mut random,
+        AS,
         &pokedex,
         &movedex,
         &itemdex,
@@ -118,7 +119,7 @@ fn main() {
             name: Some(format!("Player {}", id)),
             party: party.clone(),
             settings: PlayerSettings { gains_exp: false },
-            endpoint: Box::new(player.endpoint()),
+            endpoint: Box::new(player.endpoint().clone()),
         }),
     );
 
@@ -156,7 +157,7 @@ fn main() {
         .insert(move_id[1], script.to_owned());
 
     while !battle.finished() {
-        battle.update(&mut random, &mut engine, &itemdex);
+        battle.update(&mut random, &mut engine, &movedex, &itemdex);
         for player in players.iter_mut() {
             if !player.finished() {
                 player.update();

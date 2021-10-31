@@ -81,13 +81,11 @@ pub fn move_usage<'d, ID: Clone, R: Rng>(
                 ));
             }
             MoveUse::Ailment(status, length, chance) => {
-                if target.ailment.is_none() {
-                    if random.gen_bool(*chance as f64 / 100.0) {
-                        results.push(Indexed(
-                            target_id.clone(),
-                            MoveResult::Ailment(length.init(*status, random)),
-                        ));
-                    }
+                if target.ailment.is_none() && random.gen_bool(*chance as f64 / 100.0) {
+                    results.push(Indexed(
+                        target_id.clone(),
+                        MoveResult::Ailment(length.init(*status, random)),
+                    ));
                 }
             }
             MoveUse::Drain(kind, percent) => {

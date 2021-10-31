@@ -3,7 +3,7 @@ use core::ops::{Deref, DerefMut};
 use rand::Rng;
 use rhai::INT;
 
-use pokedex::{moves::MoveCategory, pokemon::owned::OwnedPokemon, types::PokemonType};
+use pokedex::{moves::MoveCategory, types::PokemonType};
 
 use crate::{
     engine::BattlePokemon,
@@ -34,11 +34,10 @@ impl<ID> ScriptPokemon<ID> {
 
     pub fn throw_move<R: Rng + Clone + 'static>(
         &mut self,
-        random: ScriptRandom<R>,
+        mut random: ScriptRandom<R>,
         m: ScriptMove,
     ) -> bool {
-        let mut random = random;
-        BattlePokemon::throw_move(self, random.deref_mut(), m.m())
+        BattlePokemon::throw_move(random.deref_mut(), m.accuracy)
     }
 
     pub fn get_damage<R: Rng + Clone + 'static>(
@@ -62,7 +61,7 @@ impl<ID> ScriptPokemon<ID> {
         ))
     }
     pub fn hp(&mut self) -> INT {
-        OwnedPokemon::hp(self) as INT
+        self.hp as _
     }
 }
 

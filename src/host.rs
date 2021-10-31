@@ -15,7 +15,7 @@ use crate::{
     data::*, 
     endpoint::ReceiveError, 
     engine::{MoveEngine, MoveResult}, 
-    message::{ClientMessage, ServerMessage, TimedAction, StartableAction, FailedAction}, 
+    message::{ClientMessage, ServerMessage, TimedAction, StartableAction, FailedAction, EndMessage}, 
     moves::{BattleMove, ClientMove, ClientMoveAction, damage::{ClientDamage, DamageResult}}, 
     player::{ClientPlayerData}, 
     pokemon::{Indexed, PokemonIdentifier}
@@ -45,25 +45,24 @@ pub mod prelude {
 pub struct Battle<
     'd,
     ID: Display + Clone + Ord + Hash + 'static,
-    const AS: usize,
 > {
-    state: BattleState,
+    state: BattleState<ID>,
     data: BattleData,
-    players: BattleMap<ID, BattlePlayer<'d, ID, AS>>, // can change to dex implementation, and impl Identifiable for BattlePlayer
+    players: BattleMap<ID, BattlePlayer<'d, ID>>, // can change to dex implementation, and impl Identifiable for BattlePlayer
     timer: Timer,
 }
 
 #[derive(Debug)]
-enum BattleState {
+enum BattleState<ID> {
     Start,
     StartSelecting,
     WaitSelecting,
     QueueMoves,
     WaitReplace,
-    End,
+    End(Option<ID>),
 }
 
-impl Default for BattleState {
+impl<ID> Default for BattleState<ID> {
     fn default() -> Self {
         Self::Start
     }
@@ -78,22 +77,22 @@ pub enum MovePriority<ID: Ord> {
 impl<
         'd,
         ID: Display + Clone + Ord + Hash + 'static,
-        const AS: usize,
-    > Battle<'d, ID, AS>
+    > Battle<'d, ID>
 {
     pub fn new<R: Rng>(
         data: BattleData,
         random: &mut R,
-        pokedex: &'d dyn Dex<Pokemon>,
-        movedex: &'d dyn Dex<Move>,
-        itemdex: &'d dyn Dex<Item>,
-        players: impl Iterator<Item = PlayerData<ID, AS>>,
+        active: usize,
+        pokedex: &'d dyn Dex<'d, Pokemon, &'d Pokemon>,
+        movedex: &'d dyn Dex<'d, Move, &'d Move>,
+        itemdex: &'d dyn Dex<'d, Item, &'d Item>,
+        players: impl Iterator<Item = PlayerData<ID>>,
     ) -> Self {
 
         Self {
             players: players
             .map(|p| {
-                let p = p.init(random, pokedex, movedex, itemdex);
+                let p = p.init(random, active, pokedex, movedex, itemdex);
                 (p.id().clone(), p)
             })
             .collect(),
@@ -106,7 +105,7 @@ impl<
     pub fn begin(&mut self) {
 
         for mut player in self.players.values_mut() {
-            let v = ClientPlayerData::new(self.data.clone(), &player, self.players.values());
+            let v = ClientPlayerData::new(self.data, &player, self.players.values());
             player.send(ServerMessage::Begin(v));
         }
 
@@ -114,33 +113,37 @@ impl<
     }
 
     pub fn end(&mut self, winner: Option<ID>) {
-        self.state = BattleState::End;
         for (id, mut player) in self.players.iter_mut() {
             match Some(id) == winner.as_ref() {
-                true => player.send(ServerMessage::End),
-                false => player.send(ServerMessage::End),
+                true => player.send(ServerMessage::PlayerEnd(EndMessage::Win)),
+                false => player.send(ServerMessage::PlayerEnd(EndMessage::Lose)),
             }
+            player.send(ServerMessage::GameEnd(winner.clone()))
         }
+        self.state = BattleState::End(winner);
     }
 
     pub fn update<R: Rng + Clone + 'static, ENG: MoveEngine>(
         &mut self,
         random: &mut R,
         engine: &mut ENG,
-        itemdex: &'d impl Dex<Item>,
+        movedex: &'d dyn Dex<'d, Move, &'d Move>,
+        itemdex: &'d dyn Dex<'d, Item, &'d Item>,
     ) {
         for player in self.players.values_mut() {
-            self.receive(player);
+            self.receive(player, movedex);
         }
 
-        self.update_state(random, engine, itemdex);
+        self.update_state(random, engine, movedex, itemdex);
 
     }
 
     fn update_state<R: Rng + Clone + 'static, ENG: MoveEngine>(&mut self,
         random: &mut R,
         engine: &mut ENG,
-        itemdex: &'d impl Dex<Item>,) {
+        movedex: &'d dyn Dex<'d, Move, &'d Move>,
+        itemdex: &'d dyn Dex<'d, Item, &'d Item>
+    ) {
         match self.state {
             BattleState::Start => self.begin(),
             BattleState::StartSelecting => {
@@ -161,7 +164,7 @@ impl<
             BattleState::QueueMoves => {
                 let queue = move_queue(&mut self.players, random);
 
-                let player_queue = self.client_queue(random, engine, itemdex, queue);
+                let player_queue = self.client_queue(random, engine, movedex, itemdex, queue);
 
                 // end queue calculations
 
@@ -171,7 +174,7 @@ impl<
 
                 for (id, player) in self.players.iter() {
                     if player.party.all_fainted() {
-                        self.remove_player(id);
+                        self.remove_player(id, EndMessage::Lose);
                     }
                 }
 
@@ -182,7 +185,7 @@ impl<
                 }
 
                 self.state = BattleState::WaitReplace;
-                self.update_state(random, engine, itemdex);
+                self.update_state(random, engine, movedex, itemdex);
             }
             BattleState::WaitReplace => {
                 match self.players.values().all(|p| !p.party.needs_replace()) {
@@ -194,32 +197,32 @@ impl<
                     }
                 }
             }
-            BattleState::End => (),
+            BattleState::End(..) => (),
         }
     }
 
-    pub fn remove_player(&self, id: &ID) {
+    pub fn remove_player(&self, id: &ID, reason: EndMessage) {
         if let Some(mut player) = self.players.deactivate(id) {
-            player.send(ServerMessage::End);
+            player.send(ServerMessage::PlayerEnd(reason));
         }
     }
 
     pub fn finished(&self) -> bool {
-        matches!(self.state, BattleState::End)
+        matches!(self.state, BattleState::End(..))
     }
 
     pub fn data(&self) -> &BattleData {
         &self.data
     }
 
-    pub fn winner(&self) -> Option<ID> {
+    pub fn winner(&self) -> Option<&ID> {
         match &self.state {
-            BattleState::End => self.players.values().next().map(|p| p.id().clone()),
+            BattleState::End(winner) => winner.as_ref(),
             _ => None,
         }
     }
 
-    fn receive(&self, mut player: RefMut<BattlePlayer<ID, AS>>) {
+    fn receive(&self, mut player: RefMut<BattlePlayer<'d, ID>>, movedex: &'d dyn Dex<'d, Move, &'d Move>) {
         loop {
             match player.receive() {
                 Ok(message) => match message {
@@ -297,19 +300,21 @@ impl<
                         }
                     }
                     ClientMessage::Forfeit => {
-                        self.remove_player(player.id());
+                        self.remove_player(player.id(), EndMessage::Lose);
                     }
-                    ClientMessage::LearnMove(pokemon, move_id, index) => {
+                    ClientMessage::LearnMove(pokemon, id, index) => {
                         if let Some(pokemon) = player.party.pokemon.get_mut(pokemon) {
-                            if pokemon.learnable_moves.remove(&move_id) {
-                                pokemon.moves.add(Some(index as _), &move_id);
+                            if pokemon.learnable_moves.remove(&id) {
+                                if let Some(m) = movedex.try_get(&id) {
+                                    pokemon.moves.add(index, m);
+                                }
                             }
                         }
                     }
                 },
                 Err(err) => match err {
                     Some(err) => match err {
-                        ReceiveError::Disconnected => self.remove_player(player.id()),
+                        ReceiveError::Disconnected => self.remove_player(player.id(), EndMessage::Lose),
                     }
                     None => break,
                 }
@@ -321,7 +326,8 @@ impl<
         &mut self,
         random: &mut R,
         engine: &mut ENG,
-        itemdex: &'d impl Dex<Item>,
+        movedex: &'d dyn Dex<'d, Move, &'d Move>,
+        itemdex: &'d dyn Dex<'d, Item, &'d Item>,
         queue: Vec<Indexed<ID, BattleMove<ID>>>,
     ) -> Vec<Indexed<ID, ClientMove<ID>>> {
         let mut player_queue = Vec::with_capacity(queue.len());
@@ -456,7 +462,7 @@ impl<
                                                             .unwrap();
 
                                                         user.learnable_moves.extend(
-                                                            user.p.add_exp(experience),
+                                                            user.p.add_exp(movedex, experience),
                                                         );
 
                                                         actions.push(Indexed(
@@ -505,7 +511,7 @@ impl<
                         if match &item.usage.kind {
                             ItemUsageKind::Script | ItemUsageKind::Actions(..) => {
                                 match user.party.active_mut(target.index()) {
-                                    Some(pokemon) => pokemon.try_use_item(&item),
+                                    Some(pokemon) => pokemon.try_use_item(item),
                                     None => false,
                                 }
                             }
@@ -562,8 +568,8 @@ impl<
     }
 }
 
-pub fn move_queue<ID: Clone + Ord + Hash, R: Rng, const AS: usize>(
-    players: &mut BattleMap<ID, BattlePlayer<ID, AS>>,
+pub fn move_queue<ID: Clone + Ord + Hash, R: Rng>(
+    players: &mut BattleMap<ID, BattlePlayer<ID>>,
     random: &mut R,
 ) -> Vec<Indexed<ID, BattleMove<ID>>> {
     let mut queue = BTreeMap::new();
@@ -575,12 +581,12 @@ pub fn move_queue<ID: Clone + Ord + Hash, R: Rng, const AS: usize>(
     queue.into_values().collect()
 }
 
-fn queue_player<ID: Clone + Ord, R: Rng, const AS: usize>(
+fn queue_player<ID: Clone + Ord, R: Rng>(
     queue: &mut BTreeMap<MovePriority<ID>, Indexed<ID, BattleMove<ID>>>,
-    party: &mut BattleParty<ID, AS>,
+    party: &mut BattleParty<ID>,
     random: &mut R,
 ) {
-    for index in 0..AS {
+    for index in 0..party.active.len() {
         if let Some(pokemon) = party.active.get_mut(index).map(Option::as_mut).flatten() {
             if let Some(action) = pokemon.queued_move.take() {
                 if let Some(instance) = party.active(index) {

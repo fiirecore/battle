@@ -1,8 +1,8 @@
 use crate::message::{ClientMessage, ServerMessage};
 
 /// Represents a client endpoint for the battle host.
-pub trait BattleEndpoint<ID, const AS: usize> {
-    fn send(&mut self, message: ServerMessage<ID, AS>);
+pub trait BattleEndpoint<ID> {
+    fn send(&mut self, message: ServerMessage<ID>);
 
     fn receive(&mut self) -> Result<ClientMessage<ID>, Option<ReceiveError>>;
 }
@@ -24,7 +24,7 @@ mod mpsc {
 
     use super::{BattleEndpoint, ReceiveError};
 
-    pub fn create<ID, const AS: usize>() -> (MpscClient<ID, AS>, MpscEndpoint<ID, AS>) {
+    pub fn create<ID>() -> (MpscClient<ID>, MpscEndpoint<ID>) {
         let (serv_sender, receiver) = unbounded();
         let (sender, serv_receiver) = unbounded();
 
@@ -38,18 +38,18 @@ mod mpsc {
     }
 
     #[derive(Clone)]
-    pub struct MpscClient<ID, const AS: usize> {
+    pub struct MpscClient<ID> {
         pub sender: Sender<ClientMessage<ID>>,
-        pub receiver: Receiver<ServerMessage<ID, AS>>,
+        pub receiver: Receiver<ServerMessage<ID>>,
     }
 
     #[derive(Clone)]
-    pub struct MpscEndpoint<ID, const AS: usize> {
+    pub struct MpscEndpoint<ID> {
         pub receiver: Receiver<ClientMessage<ID>>,
-        pub sender: Sender<ServerMessage<ID, AS>>,
+        pub sender: Sender<ServerMessage<ID>>,
     }
 
-    impl<ID, const AS: usize> MpscClient<ID, AS> {
+    impl<ID> MpscClient<ID> {
         pub fn send(&self, message: ClientMessage<ID>) {
             if let Err(err) = self.sender.try_send(message) {
                 log::error!("AI cannot send client message with error {}", err);
@@ -57,8 +57,8 @@ mod mpsc {
         }
     }
     
-    impl<ID, const AS: usize> BattleEndpoint<ID, AS> for MpscEndpoint<ID, AS> {
-        fn send(&mut self, message: ServerMessage<ID, AS>) {
+    impl<ID> BattleEndpoint<ID> for MpscEndpoint<ID> {
+        fn send(&mut self, message: ServerMessage<ID>) {
             if let Err(err) = self.sender.try_send(message) {
                 log::error!("Cannot send server message to AI with error {}", err);
             }

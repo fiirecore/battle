@@ -15,22 +15,22 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct BattleAi<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> {
+pub struct BattleAi<'d, R: Rng, ID: Default + Eq + Hash + Clone> {
     random: R,
-    local: PlayerParty<ID, usize, OwnedPokemon<'d>, AS>,
-    remotes: hashbrown::HashMap<ID, RemoteParty<ID, AS>>,
-    client: MpscClient<ID, AS>,
-    endpoint: MpscEndpoint<ID, AS>,
+    local: PlayerParty<ID, usize, OwnedPokemon<'d>>,
+    remotes: hashbrown::HashMap<ID, RemoteParty<ID>>,
+    client: MpscClient<ID>,
+    endpoint: MpscEndpoint<ID>,
     finished: bool,
 }
 
-impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, R, ID, AS> {
-    pub fn new(random: R, party: Party<OwnedPokemon<'d>>) -> Self {
+impl<'d, R: Rng, ID: Default + Eq + Hash + Clone> BattleAi<'d, R, ID> {
+    pub fn new(random: R, active: usize, party: Party<OwnedPokemon<'d>>) -> Self {
         let (client, endpoint) = crate::endpoint::create();
 
         Self {
             random,
-            local: PlayerParty::new(Default::default(), None, party),
+            local: PlayerParty::new(Default::default(), None, active, party),
             remotes: Default::default(),
             client,
             endpoint,
@@ -46,8 +46,8 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, 
         self.finished
     }
 
-    pub fn endpoint(&self) -> MpscEndpoint<ID, AS> {
-        self.endpoint.clone()
+    pub fn endpoint(&self) -> &MpscEndpoint<ID> {
+        &self.endpoint
     }
 
     pub fn update(&mut self) {
@@ -173,7 +173,7 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, 
                             self.client.send(ClientMessage::Forfeit);
                         },
                     },
-                    ServerMessage::End => {
+                    ServerMessage::PlayerEnd(..) | ServerMessage::GameEnd(..) => {
                         self.finished = true;
                     }
                 },
@@ -206,12 +206,12 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone, const AS: usize> BattleAi<'d, 
         }
     }
 
-    fn queue_move(active: usize, pokemon: &OwnedPokemon<'d>, random: &mut R, client: &MpscClient<ID, AS>) {
+    fn queue_move(active: usize, pokemon: &OwnedPokemon<'d>, random: &mut R, client: &MpscClient<ID>) {
         let index = pokemon
                 .moves
                 .iter()
                 .enumerate()
-                .filter(|(_, instance)| instance.uses() != 0)
+                .filter(|(_, instance)| !instance.is_empty())
                 .map(|(index, ..)| index)
                 .choose(random)
                 .unwrap_or(0);

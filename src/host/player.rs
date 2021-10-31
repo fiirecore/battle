@@ -4,7 +4,7 @@ use rand::Rng;
 use pokedex::{
     item::Item,
     moves::Move,
-    pokemon::{party::Party, Pokemon, owned::SavedPokemon},
+    pokemon::{owned::SavedPokemon, party::Party, Pokemon},
     Dex,
 };
 
@@ -18,19 +18,19 @@ use crate::{
 
 use super::pokemon::{ActiveBattlePokemon, HostPokemon};
 
-pub type BattlePlayer<'d, ID, const AS: usize> =
-    Player<ID, ActiveBattlePokemon<ID>, HostPokemon<'d>, Box<dyn BattleEndpoint<ID, AS>>, AS>;
+pub type BattlePlayer<'d, ID> =
+    Player<ID, ActiveBattlePokemon<ID>, HostPokemon<'d>, Box<dyn BattleEndpoint<ID>>>;
 
-pub struct PlayerData<ID, const AS: usize> {
+pub struct PlayerData<ID> {
     pub id: ID,
     pub name: Option<String>,
     pub party: Party<SavedPokemon>,
     pub settings: PlayerSettings,
-    pub endpoint: Box<dyn BattleEndpoint<ID, AS>>,
+    pub endpoint: Box<dyn BattleEndpoint<ID>>,
 }
 
-impl<'d, ID, const AS: usize> BattlePlayer<'d, ID, AS> {
-    pub fn send(&mut self, message: ServerMessage<ID, AS>) {
+impl<'d, ID> BattlePlayer<'d, ID> {
+    pub fn send(&mut self, message: ServerMessage<ID>) {
         self.endpoint.send(message)
     }
 
@@ -39,14 +39,15 @@ impl<'d, ID, const AS: usize> BattlePlayer<'d, ID, AS> {
     }
 }
 
-impl<ID, const AS: usize> PlayerData<ID, AS> {
+impl<ID> PlayerData<ID> {
     pub(crate) fn init<'d>(
         self,
         random: &mut impl Rng,
-        pokedex: &'d dyn Dex<Pokemon>,
-        movedex: &'d dyn Dex<Move>,
-        itemdex: &'d dyn Dex<Item>,
-    ) -> BattlePlayer<'d, ID, AS> {
+        active: usize,
+        pokedex: &'d dyn Dex<'d, Pokemon, &'d Pokemon>,
+        movedex: &'d dyn Dex<'d, Move, &'d Move>,
+        itemdex: &'d dyn Dex<'d, Item, &'d Item>,
+    ) -> BattlePlayer<'d, ID> {
         let pokemon: Party<HostPokemon<'d>> = self
             .party
             .into_iter()
@@ -54,7 +55,7 @@ impl<ID, const AS: usize> PlayerData<ID, AS> {
             .map(Into::into)
             .collect();
 
-        let mut party = PlayerParty::new(self.id, self.name, pokemon);
+        let mut party = PlayerParty::new(self.id, self.name, active, pokemon);
 
         for index in party.active.iter().flatten().map(ActivePokemon::index) {
             if let Some(pokemon) = party.pokemon.get_mut(index) {
@@ -70,10 +71,10 @@ impl<ID, const AS: usize> PlayerData<ID, AS> {
     }
 }
 
-impl<ID: Clone, const AS: usize> ClientPlayerData<ID, AS> {
-    pub fn new<'d: 'a, 'a, I: Iterator<Item = Ref<'a, BattlePlayer<'d, ID, AS>>> + 'a>(
+impl<ID: Clone> ClientPlayerData<ID> {
+    pub fn new<'d: 'a, 'a, I: Iterator<Item = Ref<'a, BattlePlayer<'d, ID>>> + 'a>(
         data: BattleData,
-        player: &BattlePlayer<ID, AS>,
+        player: &BattlePlayer<ID>,
         others: I,
     ) -> Self
     where

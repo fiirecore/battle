@@ -1,29 +1,35 @@
 use rhai::INT;
 
 use pokedex::{
-    moves::{Move, MoveCategory},
+    moves::{Accuracy, Move, MoveCategory},
     types::PokemonType,
 };
 
 #[derive(Clone, Copy)]
-pub struct ScriptMove(*const Move);
+pub struct ScriptMove {
+    pub category: MoveCategory,
+    pub type_: PokemonType,
+    pub accuracy: Option<Accuracy>,
+    pub crit_rate: INT,
+}
 
 impl ScriptMove {
     pub fn new(m: &Move) -> Self {
-        Self(m as _)
+        Self {
+            category: m.category,
+            type_: m.pokemon_type,
+            accuracy: m.accuracy,
+            crit_rate: m.crit_rate as _,
+        }
     }
 
     pub fn get_category(&mut self) -> MoveCategory {
-        self.m().category
+        self.category
     }
     pub fn get_type(&mut self) -> PokemonType {
-        self.m().pokemon_type
+        self.type_
     }
     pub fn get_crit_rate(&mut self) -> INT {
-        self.m().crit_rate as INT
-    }
-
-    pub fn m(&self) -> &Move {
-        unsafe { &*self.0 }
+        self.crit_rate
     }
 }

@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
-use firecore_pokedex::{
-    moves::{CriticalRate, Move, MoveCategory, Power},
+use pokedex::{
+    moves::{CriticalRate, MoveCategory, Power, Accuracy},
     pokemon::{
         owned::OwnedPokemon,
         stat::{BaseStat, StatType},
@@ -37,8 +37,8 @@ impl<'d> BattlePokemon<'d> {
     // }
 
     // To - do: factor in accuracy
-    pub fn throw_move<R: rand::Rng>(&self, random: &mut R, m: &Move) -> bool {
-        m.accuracy
+    pub fn throw_move<R: rand::Rng>(random: &mut R, accuracy: Option<Accuracy>) -> bool {
+        accuracy
             .map(|accuracy| random.gen_range(0..100) < accuracy)
             .unwrap_or(true)
     }

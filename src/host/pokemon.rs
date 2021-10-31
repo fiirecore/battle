@@ -1,7 +1,7 @@
 use core::ops::{Deref, DerefMut};
 use hashbrown::HashSet;
 
-use pokedex::{moves::MoveId, pokemon::owned::OwnedPokemon, Uninitializable};
+use pokedex::{moves::MoveId, pokemon::owned::{OwnedPokemon, OwnedPokemonData}, Uninitializable};
 
 use crate::{engine::BattlePokemon, moves::BattleMove, party::{Active, ActivePokemon}, pokemon::{
         remote::{RemotePokemon, UnknownPokemon},
@@ -15,14 +15,8 @@ pub struct ActiveBattlePokemon<ID> {
 }
 
 impl<ID> ActiveBattlePokemon<ID> {
-    pub fn as_usize<const AS: usize>(this: &Active<Self, AS>) -> Active<usize, AS> {
-        let mut active = [None; AS];
-
-        for (i, a) in this.iter().enumerate() {
-            active[i] = a.as_ref().map(ActivePokemon::index);
-        }
-
-        return active;
+    pub fn as_usize(this: &[Option<Self>]) -> Active<usize> {
+        this.iter().map(|o| o.as_ref().map(ActivePokemon::index)).collect()
     }
 
     pub fn queued(&self) -> bool {
@@ -83,7 +77,7 @@ impl<'d> From<OwnedPokemon<'d>> for HostPokemon<'d> {
 
 impl<'d> PokemonView for HostPokemon<'d> {
     fn fainted(&self) -> bool {
-        OwnedPokemon::fainted(self)
+        OwnedPokemonData::fainted(self)
     }
 }
 

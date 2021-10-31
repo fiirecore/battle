@@ -7,10 +7,10 @@ use crate::{
 
 use super::pokemon::{ActiveBattlePokemon, HostPokemon};
 
-pub type BattleParty<'d, ID, const AS: usize> =
-    PlayerParty<ID, ActiveBattlePokemon<ID>, HostPokemon<'d>, AS>;
+pub type BattleParty<'d, ID> =
+    PlayerParty<ID, ActiveBattlePokemon<ID>, HostPokemon<'d>>;
 
-impl<'d, ID, const AS: usize> BattleParty<'d, ID, AS> {
+impl<'d, ID> BattleParty<'d, ID> {
     pub fn know(&mut self, index: usize) -> Option<RemotePokemon> {
         self.pokemon.get_mut(index).map(HostPokemon::know).flatten()
     }
@@ -23,7 +23,7 @@ impl<'d, ID, const AS: usize> BattleParty<'d, ID, AS> {
             || self.active.iter().all(Option::is_none)
     }
 
-    pub fn as_remote(&self) -> RemoteParty<ID, AS>
+    pub fn as_remote(&self) -> RemoteParty<ID>
     where
         ID: Clone,
     {

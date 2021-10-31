@@ -1,8 +1,12 @@
+use core::ops::Deref;
+
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
     ailment::LiveAilment,
-    pokemon::{data::Gender, owned::OwnedPokemon, Level, Pokemon, PokemonId},
+    item::Item,
+    moves::Move,
+    pokemon::{data::Gender, owned::OwnedPokemonNew, Level, Pokemon, PokemonId},
     Dex, Initializable, Uninitializable,
 };
 
@@ -19,10 +23,18 @@ pub struct UnknownPokemon<P> {
     pub ailment: Option<LiveAilment>,
 }
 
-impl<'d> UnknownPokemon<&'d Pokemon> {
-    pub fn new(pokemon: &OwnedPokemon<'d>) -> Self {
+impl<P> UnknownPokemon<P> {
+    pub fn fainted(&self) -> bool {
+        self.hp <= 0.0
+    }
+}
+
+impl<P: Deref<Target = Pokemon>> UnknownPokemon<P> {
+    pub fn new<M: Deref<Target = Move>, I: Deref<Target = Item>>(
+        pokemon: &OwnedPokemonNew<P, M, I>,
+    ) -> Self where P: Clone {
         Self {
-            pokemon: pokemon.pokemon,
+            pokemon: pokemon.pokemon.clone(),
             nickname: pokemon.nickname.clone(),
             level: pokemon.level,
             gender: pokemon.gender,
@@ -30,15 +42,13 @@ impl<'d> UnknownPokemon<&'d Pokemon> {
             ailment: pokemon.ailment,
         }
     }
-}
 
-impl<'d> UnknownPokemon<&'d Pokemon> {
-    pub fn name<'b: 'd>(&'b self) -> &'b str {
+    pub fn name(&self) -> &str {
         self.nickname.as_ref().unwrap_or(&self.pokemon.name)
     }
 }
 
-impl<'d> Uninitializable for UnknownPokemon<&'d Pokemon> {
+impl<P: Deref<Target = Pokemon>> Uninitializable for UnknownPokemon<P> {
     type Output = RemotePokemon;
 
     fn uninit(self) -> Self::Output {
@@ -53,10 +63,10 @@ impl<'d> Uninitializable for UnknownPokemon<&'d Pokemon> {
     }
 }
 
-impl<'d> Initializable<'d, Pokemon> for RemotePokemon {
-    type Output = UnknownPokemon<&'d Pokemon>;
+impl<'d, P: Deref<Target = Pokemon>> Initializable<'d, Pokemon, P> for RemotePokemon {
+    type Output = UnknownPokemon<P>;
 
-    fn init(self, dex: &'d dyn Dex<Pokemon>) -> Option<Self::Output> {
+    fn init(self, dex: &'d dyn Dex<'d, Pokemon, P>) -> Option<Self::Output> {
         Some(Self::Output {
             pokemon: dex.try_get(&self.pokemon)?,
             nickname: self.nickname,
@@ -65,11 +75,5 @@ impl<'d> Initializable<'d, Pokemon> for RemotePokemon {
             hp: self.hp,
             ailment: self.ailment,
         })
-    }
-}
-
-impl<P> UnknownPokemon<P> {
-    pub fn fainted(&self) -> bool {
-        self.hp <= 0.0
     }
 }

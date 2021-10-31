@@ -2,7 +2,7 @@
 name = "firecore-battle"
 description = "Pokemon battle simulation"
 authors = ["Rhys H <donotdoughnut99@gmail.com>"]
-version = "0.0.7"
+version = "0.0.8"
 license = "MIT"
 edition = "2018"
 repository = "https://github.com/fiirecore/battle"
@@ -25,13 +25,18 @@ ai = ["mpsc_endpoint"]
 mpsc_endpoint = ["crossbeam-channel"]
 
 [dependencies]
-firecore-pokedex = "0.0.6"
+
+# firecore-pokedex = "0.0.7"
+firecore-pokedex = { git = "https://github.com/fiirecore/pokedex" }
+# firecore-pokedex = { path = "../pokedex" }
+
 rand = { version = "0.8", default-features = false }
 log = "0.4"
 hashbrown = "0.11"
 serde = { version = "1", features = ["derive"] }
-serde-big-array = { version = "0.3", features = ["const-generics"] }
+
 rhai = { version = "1", optional = true }
+
 crossbeam-channel = { version = "0.5", optional = true }
 
 [dev-dependencies]

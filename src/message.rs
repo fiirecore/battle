@@ -14,12 +14,12 @@ pub enum ClientMessage<ID> {
     Move(ActivePosition, BattleMove<ID>),
     ReplaceFaint(ActivePosition, PartyPosition),
     Forfeit,
-    LearnMove(PartyPosition, MoveId, u8), // pokemon index, move, move index (0 - 3)
+    LearnMove(PartyPosition, MoveId, Option<usize>), // pokemon index, move, move index
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum ServerMessage<ID, const AS: usize> {
-    Begin(ClientPlayerData<ID, AS>),
+pub enum ServerMessage<ID> {
+    Begin(ClientPlayerData<ID>),
 
     Start(StartableAction<ID>),
 
@@ -31,7 +31,11 @@ pub enum ServerMessage<ID, const AS: usize> {
 
     Catch(SavedPokemon),
 
-    End,
+    PlayerEnd(EndMessage),
+    GameEnd(
+        /// Winner
+        Option<ID>
+    ),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -53,9 +57,9 @@ pub enum FailedAction {
     Replace(ActivePosition),
 }
 
-// #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-// pub enum EndState {
-//     Win,  // add money gained
-//     Lose, // add money lost
-//     Other,
-// }
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum EndMessage {
+    Win,  // add money gained
+    Lose, // add money lost
+    Other,
+}
