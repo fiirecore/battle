@@ -39,18 +39,18 @@ pub enum MoveUse {
 }
 
 impl MoveExecution {
-    pub fn len(&self) -> usize {
+    pub fn size(&self) -> usize {
         match self {
-            Self::Actions(actions) => actions.iter().map(MoveUse::len).sum(),
+            Self::Actions(actions) => actions.iter().map(MoveUse::size).sum(),
             Self::Script | Self::None => 1,
         }
     }
 }
 
 impl MoveUse {
-    pub fn len(&self) -> usize {
+    pub fn size(&self) -> usize {
         match self {
-            Self::Chance(uses, ..) => uses.iter().map(Self::len).sum(),
+            Self::Chance(uses, ..) => uses.iter().map(Self::size).sum(),
             Self::Drain(..) => 2,
             _ => 1,
         }

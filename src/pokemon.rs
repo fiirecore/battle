@@ -40,7 +40,7 @@ impl<P> PokemonView for Option<remote::UnknownPokemon<P>> {
     }
 }
 
-impl<P, M, I> PokemonView for OwnablePokemon<P, M, I, Health> {
+impl<P, M, I, G> PokemonView for OwnablePokemon<P, M, I, G, Health> {
     fn fainted(&self) -> bool {
         OwnablePokemon::fainted(self)
     }

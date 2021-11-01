@@ -67,7 +67,7 @@ impl MoveEngine for DefaultMoveEngine {
                             match players.get(&target_id) {
                                 Some(target) => match BattlePokemon::throw_move(random, m.accuracy) {
                                     true => {
-                                        results.reserve(usage.len());
+                                        results.reserve(usage.size());
                                         move_usage(
                                             &user,
                                             random,

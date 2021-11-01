@@ -18,7 +18,7 @@ pub struct UnknownPokemon<P> {
     pub pokemon: P,
     pub nickname: Option<String>,
     pub level: Level,
-    pub gender: Option<Gender>,
+    pub gender: Gender,
     pub hp: f32,
     pub ailment: Option<LiveAilment>,
 }

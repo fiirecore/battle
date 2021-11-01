@@ -29,12 +29,12 @@ impl From<DamageResult<Health>> for ScriptDamage {
     }
 }
 
-impl Into<DamageResult<Health>> for ScriptDamage {
-    fn into(self) -> DamageResult<Health> {
-        DamageResult {
-            damage: self.0.damage as _,
-            effective: self.0.effective,
-            crit: self.0.crit,
+impl From<ScriptDamage> for DamageResult<Health> {
+    fn from(s: ScriptDamage) -> Self {
+        Self {
+            damage: s.0.damage as _,
+            effective: s.0.effective,
+            crit: s.0.crit,
         }
     }
 }
