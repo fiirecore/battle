@@ -104,7 +104,7 @@ fn main() {
 
     let mut players: Vec<_> = (1..100)
         .into_iter()
-        .map(|_| BattleAi::<ThreadRng, u8>::new(random.clone(), AS, owned_party.clone()))
+        .map(|_| BattleAi::new(0u8, random.clone(), AS, owned_party.clone()))
         .collect();
 
     let mut battle = Battle::new(

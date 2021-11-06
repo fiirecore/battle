@@ -2,9 +2,14 @@ use core::{
     cell::{Cell, Ref, RefCell, RefMut},
     hash::Hash,
     iter::FromIterator,
+    ops::Deref,
 };
 
-use pokedex::moves::{Move, MoveTarget};
+use pokedex::{
+    item::Item,
+    moves::{Move, MoveTarget},
+    pokemon::Pokemon,
+};
 use rand::{prelude::IteratorRandom, Rng};
 
 use crate::{
@@ -118,7 +123,10 @@ impl<K: Eq + Hash, V> FromIterator<(K, V)> for BattleMap<K, V> {
     }
 }
 
-impl<'d, ID: Eq + Hash + Clone> BattleMap<ID, BattlePlayer<'d, ID>> {
+impl<ID: Eq + Hash + Clone,
+P: Deref<Target = Pokemon>,
+M: Deref<Target = Move>,
+I: Deref<Target = Item>,> BattleMap<ID, BattlePlayer<ID, P, M, I>> {
     fn ally(
         &self,
         random: &mut impl Rng,
@@ -255,7 +263,14 @@ impl<'d, ID: Eq + Hash + Clone> BattleMap<ID, BattlePlayer<'d, ID>> {
     }
 }
 
-impl<'d, ID: Eq + Hash + Clone, R: Rng> Players<'d, ID, R> for BattleMap<ID, BattlePlayer<'d, ID>> {
+impl<
+        ID: Eq + Hash + Clone,
+        R: Rng,
+        P: Deref<Target = Pokemon>,
+        M: Deref<Target = Move>,
+        I: Deref<Target = Item>,
+    > Players<ID, R, P, M, I> for BattleMap<ID, BattlePlayer<ID, P, M, I>>
+{
     fn create_targets(
         &self,
         user: &PokemonIdentifier<ID>,
@@ -268,7 +283,10 @@ impl<'d, ID: Eq + Hash + Clone, R: Rng> Players<'d, ID, R> for BattleMap<ID, Bat
                 Some(id) => vec![id],
                 None => match self
                     .values()
-                    .filter(|p| /* p.id() != user.team() && */ !p.party.all_fainted())
+                    .filter(|p| {
+                        !(p.id() != user.team() && m.power.is_some()) && 
+                        !p.party.all_fainted()
+                    })
                     .choose(random)
                     .map(|p| {
                         p.party
@@ -331,11 +349,11 @@ impl<'d, ID: Eq + Hash + Clone, R: Rng> Players<'d, ID, R> for BattleMap<ID, Bat
         }
     }
 
-    fn get(&self, id: &PokemonIdentifier<ID>) -> Option<&BattlePokemon<'d>> {
+    fn get(&self, id: &PokemonIdentifier<ID>) -> Option<&BattlePokemon<P, M, I>> {
         if let Some(p) = self.get(id.team()) {
             if let Some(p) = p.party.active(id.index()) {
                 // i think this is safe
-                let p2 = unsafe { &*((&p.p) as *const BattlePokemon<'d>) };
+                let p2 = unsafe { &*((&p.p) as *const BattlePokemon<P, M, I>) };
                 return Some(p2);
             }
         }

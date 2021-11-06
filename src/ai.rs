@@ -1,10 +1,12 @@
 //! Basic Battle AI
 
-use core::hash::Hash;
+use core::{hash::Hash, ops::Deref};
 
 use rand::{prelude::IteratorRandom, Rng};
 
 use pokedex::pokemon::{owned::OwnedPokemon, party::Party, Health};
+
+use pokedex::{pokemon::Pokemon, moves::Move, item::Item};
 
 use crate::{
     endpoint::{MpscClient, MpscEndpoint},
@@ -15,22 +17,31 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct BattleAi<'d, R: Rng, ID: Default + Eq + Hash + Clone> {
+pub struct BattleAi<
+    R: Rng,
+    ID: Eq + Hash + Clone,
+    P: Deref<Target = Pokemon>,
+    M: Deref<Target = Move>,
+    I: Deref<Target = Item>,
+> {
     random: R,
-    local: PlayerParty<ID, usize, OwnedPokemon<'d>>,
+    local: PlayerParty<ID, usize, OwnedPokemon<P, M, I>>,
     remotes: hashbrown::HashMap<ID, RemoteParty<ID>>,
     client: MpscClient<ID>,
     endpoint: MpscEndpoint<ID>,
     finished: bool,
 }
 
-impl<'d, R: Rng, ID: Default + Eq + Hash + Clone> BattleAi<'d, R, ID> {
-    pub fn new(random: R, active: usize, party: Party<OwnedPokemon<'d>>) -> Self {
+impl<R: Rng, ID: Eq + Hash + Clone, 
+P: Deref<Target = Pokemon>,
+M: Deref<Target = Move>,
+I: Deref<Target = Item>,> BattleAi<R, ID, P, M, I> {
+    pub fn new(temp_id: ID, random: R, active: usize, party: Party<OwnedPokemon<P, M, I>>) -> Self {
         let (client, endpoint) = crate::endpoint::create();
 
         Self {
             random,
-            local: PlayerParty::new(Default::default(), None, active, party),
+            local: PlayerParty::new(temp_id, None, active, party),
             remotes: Default::default(),
             client,
             endpoint,
@@ -38,7 +49,7 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone> BattleAi<'d, R, ID> {
         }
     }
 
-    pub fn party(&self) -> &Party<OwnedPokemon<'d>> {
+    pub fn party(&self) -> &Party<OwnedPokemon<P, M, I>> {
         &self.local.pokemon
     }
 
@@ -155,15 +166,17 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone> BattleAi<'d, R, ID> {
                             );
                             self.client.send(ClientMessage::Forfeit);
                         }
-                        FailedAction::Move(active) => if let Some(pokemon) = self.local.active(active) {
-                            Self::queue_move(active, pokemon, &mut self.random, &self.client);
-                        } else {
-                            log::error!(
-                                "AI {} cannot use move for pokemon at active index {}",
-                                self.local.name(),
-                                active
-                            );
-                        },
+                        FailedAction::Move(active) => {
+                            if let Some(pokemon) = self.local.active(active) {
+                                Self::queue_move(active, pokemon, &mut self.random, &self.client);
+                            } else {
+                                log::error!(
+                                    "AI {} cannot use move for pokemon at active index {}",
+                                    self.local.name(),
+                                    active
+                                );
+                            }
+                        }
                         FailedAction::Switch(active) => {
                             log::error!(
                                 "AI {} cannot switch pokemon at active index {}",
@@ -171,7 +184,7 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone> BattleAi<'d, R, ID> {
                                 active
                             );
                             self.client.send(ClientMessage::Forfeit);
-                        },
+                        }
                     },
                     ServerMessage::PlayerEnd(..) | ServerMessage::GameEnd(..) => {
                         self.finished = true;
@@ -206,17 +219,21 @@ impl<'d, R: Rng, ID: Default + Eq + Hash + Clone> BattleAi<'d, R, ID> {
         }
     }
 
-    fn queue_move(active: usize, pokemon: &OwnedPokemon<'d>, random: &mut R, client: &MpscClient<ID>) {
+    fn queue_move(
+        active: usize,
+        pokemon: &OwnedPokemon<P, M, I>,
+        random: &mut R,
+        client: &MpscClient<ID>,
+    ) {
         let index = pokemon
-                .moves
-                .iter()
-                .enumerate()
-                .filter(|(_, instance)| !instance.is_empty())
-                .map(|(index, ..)| index)
-                .choose(random)
-                .unwrap_or(0);
+            .moves
+            .iter()
+            .enumerate()
+            .filter(|(_, instance)| !instance.is_empty())
+            .map(|(index, ..)| index)
+            .choose(random)
+            .unwrap_or(0);
 
-            client
-                .send(ClientMessage::Move(active, BattleMove::Move(index, None)));
+        client.send(ClientMessage::Move(active, BattleMove::Move(index, None)));
     }
 }

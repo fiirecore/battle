@@ -27,7 +27,7 @@ mpsc_endpoint = ["crossbeam-channel"]
 [dependencies]
 
 # firecore-pokedex = "0.0.7"
-firecore-pokedex = { git = "https://github.com/fiirecore/pokedex", rev = "a99a3439" }
+firecore-pokedex = { git = "https://github.com/fiirecore/pokedex", rev = "4e7b80d" }
 # firecore-pokedex = { path = "../pokedex" }
 
 rand = { version = "0.8", default-features = false }

@@ -1,12 +1,14 @@
-use std::ops::{Deref, DerefMut};
+use core::ops::{Deref, DerefMut};
 
 use pokedex::{
-    moves::{CriticalRate, MoveCategory, Power, Accuracy},
+    moves::{Accuracy, CriticalRate, MoveCategory, Power, Move},
     pokemon::{
         owned::OwnedPokemon,
         stat::{BaseStat, StatType},
         Experience, Health,
+        Pokemon,
     },
+    item::Item,
     types::{Effective, PokemonType},
 };
 use rand::Rng;
@@ -20,13 +22,35 @@ use crate::{
     pokemon::stat::{BattleStatType, StatStages},
 };
 
-pub struct BattlePokemon<'d> {
-    pub p: OwnedPokemon<'d>,
+/// To - do: factor in accuracy
+pub fn throw_move<R: rand::Rng>(random: &mut R, accuracy: Option<Accuracy>) -> bool {
+    accuracy
+        .map(|accuracy| random.gen_range(0..100) < accuracy)
+        .unwrap_or(true)
+}
+
+pub fn crit(random: &mut impl Rng, crit_rate: CriticalRate) -> bool {
+    random.gen_bool(match crit_rate {
+        0 => 0.0625, // 1 / 16
+        1 => 0.125,  // 1 / 8
+        2 => 0.25,   // 1 / 4
+        3 => 1.0 / 3.0,
+        _ => 0.5, // rates 4 and above, 1 / 2
+    })
+}
+
+pub fn damage_range(random: &mut impl Rng) -> Percent {
+    random.gen_range(85..=100u8)
+}
+
+#[derive(Debug, Clone)]
+pub struct BattlePokemon<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> {
+    pub p: OwnedPokemon<P, M, I>,
     // pub persistent: Option<PersistentMove>,
     pub stages: StatStages,
 }
 
-impl<'d> BattlePokemon<'d> {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> BattlePokemon<P, M, I> {
     // pub fn try_flinch(&mut self) -> bool {
     //     if self.flinch {
     //         self.flinch = false;
@@ -36,12 +60,7 @@ impl<'d> BattlePokemon<'d> {
     //     }
     // }
 
-    // To - do: factor in accuracy
-    pub fn throw_move<R: rand::Rng>(random: &mut R, accuracy: Option<Accuracy>) -> bool {
-        accuracy
-            .map(|accuracy| random.gen_range(0..100) < accuracy)
-            .unwrap_or(true)
-    }
+    
 
     pub fn battle_exp_from(&self, type_: &BattleType) -> Experience {
         let experience = self.exp_from();
@@ -63,20 +82,6 @@ impl<'d> BattlePokemon<'d> {
         )
     }
 
-    pub fn crit(random: &mut impl Rng, crit_rate: CriticalRate) -> bool {
-        random.gen_bool(match crit_rate {
-            0 => 0.0625, // 1 / 16
-            1 => 0.125,  // 1 / 8
-            2 => 0.25,   // 1 / 4
-            3 => 1.0 / 3.0,
-            _ => 0.5, // rates 4 and above, 1 / 2
-        })
-    }
-
-    pub fn damage_range(random: &mut impl Rng) -> Percent {
-        random.gen_range(85..=100u8)
-    }
-
     pub fn damage_kind(
         &self,
         random: &mut impl Rng,
@@ -87,7 +92,7 @@ impl<'d> BattlePokemon<'d> {
         crit_rate: CriticalRate,
     ) -> DamageResult<Health> {
         let effective = target.pokemon.effective(move_type, category);
-        let crit = Self::crit(random, crit_rate);
+        let crit = crit(random, crit_rate);
 
         if let DamageKind::Power(power) = kind {
             self.move_power_damage_random(random, target, power, category, move_type, crit)
@@ -129,7 +134,7 @@ impl<'d> BattlePokemon<'d> {
             category,
             move_type,
             crit,
-            Self::damage_range(random),
+            damage_range(random),
         )
     }
 
@@ -149,32 +154,30 @@ impl<'d> BattlePokemon<'d> {
         if effective == Effective::Ineffective {
             return DamageResult::default();
         }
-        let damage =
-            (((((2.0 * self.level as f64 / 5.0 + 2.0).floor() * attack as f64 * power as f64
-                / defense as f64)
-                .floor()
-                / 50.0)
-                .floor()
-                * effective.multiplier() as f64)
-                + 2.0)
-                * (damage_range as f64 / 100.0)
-                * if self.pokemon.primary_type == move_type {
-                    1.5
-                } else {
-                    1.0
-                }
-                * if crit { 1.5 } else { 1.0 };
-        let damage = damage.min(u16::MAX as f64) as u16;
+        let damage = (((((2.0 * self.level as f64 / 5.0 + 2.0)
+            * power as f64
+            * (attack as f64 / defense as f64))
+            / 50.0)
+            .floor()
+            * effective.multiplier() as f64)
+            + 2.0)
+            * (damage_range as f64 / 100.0)
+            * if self.pokemon.primary_type == move_type {
+                1.5
+            } else {
+                1.0
+            }
+            * if crit { 1.5 } else { 1.0 };
         DamageResult {
-            damage,
+            damage: damage as _,
             effective,
             crit,
         }
     }
 }
 
-impl<'d> From<OwnedPokemon<'d>> for BattlePokemon<'d> {
-    fn from(p: OwnedPokemon<'d>) -> Self {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> From<OwnedPokemon<P, M, I>> for BattlePokemon<P, M, I> {
+    fn from(p: OwnedPokemon<P, M, I>) -> Self {
         Self {
             p,
             stages: Default::default(),
@@ -182,15 +185,15 @@ impl<'d> From<OwnedPokemon<'d>> for BattlePokemon<'d> {
     }
 }
 
-impl<'d> Deref for BattlePokemon<'d> {
-    type Target = OwnedPokemon<'d>;
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> Deref for BattlePokemon<P, M, I> {
+    type Target = OwnedPokemon<P, M, I>;
 
     fn deref(&self) -> &Self::Target {
         &self.p
     }
 }
 
-impl<'d> DerefMut for BattlePokemon<'d> {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> DerefMut for BattlePokemon<P, M, I> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.p
     }

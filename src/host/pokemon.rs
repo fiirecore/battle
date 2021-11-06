@@ -1,7 +1,12 @@
 use core::ops::{Deref, DerefMut};
 use hashbrown::HashSet;
 
-use pokedex::{moves::MoveId, pokemon::owned::OwnedPokemon, Uninitializable};
+use pokedex::{
+    item::Item,
+    moves::{Move, MoveId},
+    pokemon::{owned::OwnedPokemon, Pokemon},
+    Uninitializable,
+};
 
 use crate::{
     engine::BattlePokemon,
@@ -31,13 +36,14 @@ impl<ID> ActiveBattlePokemon<ID> {
     }
 }
 
-pub struct HostPokemon<'d> {
-    pub p: BattlePokemon<'d>,
+pub struct HostPokemon<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>>
+{
+    pub p: BattlePokemon<P, M, I>,
     pub learnable_moves: HashSet<MoveId>,
     pub known: bool,
 }
 
-impl<'d> HostPokemon<'d> {
+impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move>, I: Deref<Target = Item>> HostPokemon<P, M, I> {
     pub fn know(&mut self) -> Option<RemotePokemon> {
         (!self.known).then(|| {
             self.known = true;
@@ -62,7 +68,7 @@ impl<ID> From<usize> for ActiveBattlePokemon<ID> {
 }
 
 impl<ID> core::fmt::Display for ActiveBattlePokemon<ID> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "#{}, Queued move: {}",
@@ -72,8 +78,8 @@ impl<ID> core::fmt::Display for ActiveBattlePokemon<ID> {
     }
 }
 
-impl<'d> From<OwnedPokemon<'d>> for HostPokemon<'d> {
-    fn from(p: OwnedPokemon<'d>) -> Self {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> From<OwnedPokemon<P, M, I>> for HostPokemon<P, M, I> {
+    fn from(p: OwnedPokemon<P, M, I>) -> Self {
         Self {
             p: BattlePokemon::from(p),
             learnable_moves: Default::default(),
@@ -82,28 +88,28 @@ impl<'d> From<OwnedPokemon<'d>> for HostPokemon<'d> {
     }
 }
 
-impl<'d> PokemonView for HostPokemon<'d> {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> PokemonView for HostPokemon<P, M, I> {
     fn fainted(&self) -> bool {
         OwnedPokemon::fainted(self)
     }
 }
 
-impl<'d> Deref for HostPokemon<'d> {
-    type Target = BattlePokemon<'d>;
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> Deref for HostPokemon<P, M, I> {
+    type Target = BattlePokemon<P, M, I>;
 
     fn deref(&self) -> &Self::Target {
         &self.p
     }
 }
 
-impl<'d> DerefMut for HostPokemon<'d> {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> DerefMut for HostPokemon<P, M, I> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.p
     }
 }
 
-impl<'d> core::fmt::Display for BattlePokemon<'d> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> core::fmt::Display for BattlePokemon<P, M, I> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "\"{}\": {}, {}/{} HP",

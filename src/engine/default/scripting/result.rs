@@ -5,9 +5,9 @@ use crate::{engine::MoveResult, pokemon::Indexed};
 use super::{damage::ScriptDamage, pokemon::ScriptPokemon};
 
 #[derive(Clone, Copy)]
-pub struct ScriptMoveResult<ID>(pub Indexed<ID, MoveResult>);
+pub struct ScriptMoveResult<ID: Clone>(pub Indexed<ID, MoveResult>);
 
-impl<ID> ScriptMoveResult<ID> {
+impl<ID: Clone> ScriptMoveResult<ID> {
     pub fn new(pokemon: ScriptPokemon<ID>, result: MoveResult) -> Self {
         Self(Indexed(pokemon.into(), result))
     }

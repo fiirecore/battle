@@ -1,10 +1,14 @@
+use core::ops::Deref;
+
 use rand::Rng;
 
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
     ailment::{Ailment, AilmentLength},
+    item::Item,
     moves::Move,
+    pokemon::Pokemon,
 };
 
 use crate::{
@@ -57,13 +61,20 @@ impl MoveUse {
     }
 }
 
-pub fn move_usage<'d, ID: Clone, R: Rng>(
-    user: &Indexed<ID, &BattlePokemon<'d>>,
+pub fn move_usage<
+    'd,
+    ID: Clone,
+    R: Rng,
+    P: Deref<Target = Pokemon>,
+    M: Deref<Target = Move>,
+    I: Deref<Target = Item>,
+>(
+    user: &Indexed<ID, &BattlePokemon<P, M, I>>,
     random: &mut R,
     results: &mut Vec<Indexed<ID, MoveResult>>,
     actions: &[MoveUse],
     m: &Move,
-    Indexed(target_id, target): Indexed<ID, &BattlePokemon<'d>>,
+    Indexed(target_id, target): Indexed<ID, &BattlePokemon<P, M, I>>,
 ) {
     for action in actions {
         match action {

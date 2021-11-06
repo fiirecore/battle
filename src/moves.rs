@@ -51,7 +51,7 @@ pub type Critical = bool;
 pub type Percent = u8;
 
 impl<ID: core::fmt::Display> core::fmt::Display for BattleMove<ID> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             BattleMove::Move(index, ..) => write!(f, "Move #{}", index),
             BattleMove::UseItem(Indexed(.., id)) => write!(f, "Item {}", id),

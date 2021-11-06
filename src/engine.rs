@@ -4,7 +4,7 @@ use core::hash::Hash;
 use rand::Rng;
 use std::error::Error;
 
-use pokedex::{ailment::LiveAilment, moves::Move, pokemon::Health};
+use pokedex::{ailment::LiveAilment, pokemon::Health};
 
 use crate::{
     moves::damage::DamageResult,
@@ -31,21 +31,33 @@ pub trait MoveEngine {
     type Error: Error;
 
     fn execute<
-        'd,
-        ID: Clone + Hash + Eq + 'static,
+        ID: Clone + Hash + Eq + 'static + core::fmt::Debug,
         R: Rng + Clone + 'static,
-        P: Players<'d, ID, R>,
+        P: Deref<Target = Pokemon>,
+        M: Deref<Target = Move>,
+        I: Deref<Target = Item>,
+        PLR: Players<ID, R, P, M, I>,
     >(
         &self,
         random: &mut R,
         used_move: &Move,
-        user: Indexed<ID, &BattlePokemon<'d>>,
+        user: Indexed<ID, &BattlePokemon<P, M, I>>,
         targeting: Option<PokemonIdentifier<ID>>,
-        players: &P,
+        players: &PLR,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error>;
 }
 
-pub trait Players<'d, ID: PartialEq, R: Rng> {
+use core::ops::Deref;
+use pokedex::{item::Item, moves::Move, pokemon::Pokemon};
+
+pub trait Players<
+    ID: PartialEq,
+    R: Rng,
+    P: Deref<Target = Pokemon>,
+    M: Deref<Target = Move>,
+    I: Deref<Target = Item>,
+>
+{
     fn create_targets(
         &self,
         user: &PokemonIdentifier<ID>,
@@ -54,7 +66,7 @@ pub trait Players<'d, ID: PartialEq, R: Rng> {
         random: &mut R,
     ) -> Vec<PokemonIdentifier<ID>>;
 
-    fn get(&self, id: &PokemonIdentifier<ID>) -> Option<&BattlePokemon<'d>>;
+    fn get(&self, id: &PokemonIdentifier<ID>) -> Option<&BattlePokemon<P, M, I>>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

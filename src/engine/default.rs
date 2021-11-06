@@ -1,10 +1,12 @@
-use core::hash::Hash;
+use core::{hash::Hash, ops::Deref};
 use hashbrown::HashMap;
 use rand::Rng;
 use std::error::Error;
 
 use pokedex::{
     moves::{Move, MoveId},
+    pokemon::Pokemon,
+    item::Item,
 };
 
 use crate::{
@@ -44,17 +46,19 @@ impl MoveEngine for DefaultMoveEngine {
     type Error = DefaultMoveError;
 
     fn execute<
-        'd,
-        ID: Clone + Hash + Eq + 'static,
+        ID: Clone + Hash + Eq + 'static + core::fmt::Debug,
         R: Rng + Clone + 'static,
-        P: Players<'d, ID, R>,
+        P: Deref<Target = Pokemon>,
+        M: Deref<Target = Move>,
+        I: Deref<Target = Item>,
+        PLR: Players<ID, R, P, M, I>,
     >(
         &self,
         random: &mut R,
         m: &Move,
-        user: Indexed<ID, &BattlePokemon<'d>>,
+        user: Indexed<ID, &BattlePokemon<P, M, I>>,
         targeting: Option<PokemonIdentifier<ID>>,
-        players: &P,
+        players: &PLR,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error> {
         match self.moves.get(&m.id) {
             Some(usage) => {
@@ -65,7 +69,7 @@ impl MoveEngine for DefaultMoveEngine {
                         let mut results = Vec::new();
                         for target_id in targets {
                             match players.get(&target_id) {
-                                Some(target) => match BattlePokemon::throw_move(random, m.accuracy) {
+                                Some(target) => match crate::engine::pokemon::throw_move(random, m.accuracy) {
                                     true => {
                                         results.reserve(usage.size());
                                         move_usage(

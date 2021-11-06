@@ -106,7 +106,7 @@ dependencies = [
 [[package]]
 name = "firecore-pokedex"
 version = "0.0.7"
-source = "git+https://github.com/fiirecore/pokedex?rev=a99a3439#a99a343960c2699612881fa74a298ea0398429fc"
+source = "git+https://github.com/fiirecore/pokedex?rev=4e7b80d#4e7b80dd5ae9da25ba8d02997aa60866f0fe9e96"
 dependencies = [
  "arrayvec",
  "hashbrown",
@@ -266,9 +266,9 @@ dependencies = [
 
 [[package]]
 name = "rhai"
-version = "1.1.0"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0a6abd5b3f1fe29984451102a69c79e65212f6c70015a68245a43a8ecc2a88b"
+checksum = "0b9394df571d413a865159d9e73df2e16e270c112bddc15538944c076469760a"
 dependencies = [
  "ahash",
  "instant",

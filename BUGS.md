@@ -1,3 +1,3 @@
 # Known Bugs
 
-* A battle can hang randomly. Seen in battle_royale example.
+* Scripts do not work with IDs of i64 or i32

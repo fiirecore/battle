@@ -1,4 +1,4 @@
-use core::hash::Hash;
+use core::{hash::Hash, ops::Deref};
 use hashbrown::HashMap;
 use rand::Rng;
 
@@ -8,7 +8,9 @@ use rhai::{
 };
 
 use pokedex::{
+    item::Item,
     moves::{Move, MoveCategory, MoveId},
+    pokemon::Pokemon,
     types::PokemonType,
 };
 
@@ -50,6 +52,7 @@ impl DefaultScriptingEngine {
             .register_set("damage", ScriptDamage::set_damage)
             .register_get("damage", ScriptDamage::get_damage)
             .register_get("effective", ScriptDamage::effective)
+            .register_iterator::<Vec<ScriptPokemon<ID>>>()
             .register_type_with_name::<ScriptPokemon<ID>>("Pokemon")
             .register_fn("throw_move", ScriptPokemon::<ID>::throw_move::<R>)
             .register_fn("damage", ScriptPokemon::<ID>::get_damage::<R>)
@@ -74,17 +77,19 @@ impl DefaultScriptingEngine {
     }
 
     pub fn execute<
-        'd,
+        P: Deref<Target = Pokemon>,
+        M: Deref<Target = Move>,
+        I: Deref<Target = Item>,
         R: Rng + Clone + 'static,
-        ID: Eq + Hash + Clone + 'static,
-        P: Players<'d, ID, R>,
+        ID: Eq + Hash + Clone + 'static + core::fmt::Debug,
+        PLR: Players<ID, R, P, M, I>,
     >(
         &self,
         random: &mut R,
         m: &Move,
-        user: Indexed<ID, &BattlePokemon<'d>>,
+        user: Indexed<ID, &BattlePokemon<P, M, I>>,
         targets: Vec<PokemonIdentifier<ID>>,
-        players: &P,
+        players: &PLR,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, DefaultMoveError> {
         match self.scripts.get(&m.id) {
             Some(script) => {
@@ -98,7 +103,6 @@ impl DefaultScriptingEngine {
                     .into_iter()
                     .flat_map(|id| (players.get(&id).map(|r| Indexed(id, r))))
                     .map(ScriptPokemon::new)
-                    // .map(Dynamic::from)
                     .collect::<Vec<ScriptPokemon<ID>>>();
 
                 scope.push("targets", targets);

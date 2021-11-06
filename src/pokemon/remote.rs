@@ -6,7 +6,7 @@ use pokedex::{
     ailment::LiveAilment,
     item::Item,
     moves::Move,
-    pokemon::{data::Gender, owned::OwnedPokemonNew, Level, Pokemon, PokemonId},
+    pokemon::{data::Gender, owned::OwnedPokemon, Level, Pokemon, PokemonId},
     Dex, Initializable, Uninitializable,
 };
 
@@ -31,7 +31,7 @@ impl<P> UnknownPokemon<P> {
 
 impl<P: Deref<Target = Pokemon>> UnknownPokemon<P> {
     pub fn new<M: Deref<Target = Move>, I: Deref<Target = Item>>(
-        pokemon: &OwnedPokemonNew<P, M, I>,
+        pokemon: &OwnedPokemon<P, M, I>,
     ) -> Self where P: Clone {
         Self {
             pokemon: pokemon.pokemon.clone(),
