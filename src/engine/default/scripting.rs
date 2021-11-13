@@ -1,6 +1,6 @@
 use core::{hash::Hash, ops::Deref};
-use hashbrown::HashMap;
 use rand::Rng;
+use std::collections::HashMap;
 
 use rhai::{
     packages::{BasicArrayPackage, Package},

@@ -1,19 +1,14 @@
 use core::{hash::Hash, ops::Deref};
-use hashbrown::HashMap;
 use rand::Rng;
-use std::error::Error;
+use std::{collections::HashMap, error::Error};
 
 use pokedex::{
+    item::Item,
     moves::{Move, MoveId},
     pokemon::Pokemon,
-    item::Item,
 };
 
-use crate::{
-    pokemon::{
-        Indexed, PokemonIdentifier,
-    },
-};
+use crate::pokemon::{Indexed, PokemonIdentifier};
 
 use super::{BattlePokemon, MoveEngine, MoveResult, Players};
 
@@ -69,22 +64,24 @@ impl MoveEngine for DefaultMoveEngine {
                         let mut results = Vec::new();
                         for target_id in targets {
                             match players.get(&target_id) {
-                                Some(target) => match crate::engine::pokemon::throw_move(random, m.accuracy) {
-                                    true => {
-                                        results.reserve(usage.size());
-                                        move_usage(
-                                            &user,
-                                            random,
-                                            &mut results,
-                                            actions,
-                                            m,
-                                            Indexed(target_id, target),
-                                        );
+                                Some(target) => {
+                                    match crate::engine::pokemon::throw_move(random, m.accuracy) {
+                                        true => {
+                                            results.reserve(usage.size());
+                                            move_usage(
+                                                &user,
+                                                random,
+                                                &mut results,
+                                                actions,
+                                                m,
+                                                Indexed(target_id, target),
+                                            );
+                                        }
+                                        false => {
+                                            results.push(Indexed(user.0.clone(), MoveResult::Miss))
+                                        }
                                     }
-                                    false => {
-                                        results.push(Indexed(user.0.clone(), MoveResult::Miss))
-                                    }
-                                },
+                                }
                                 None => log::warn!(
                                     "Cannot get active pokemon",
                                     // target_id,

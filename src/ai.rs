@@ -16,6 +16,8 @@ use crate::{
     pokemon::Indexed,
 };
 
+use std::collections::HashMap;
+
 #[derive(Clone)]
 pub struct BattleAi<
     R: Rng,
@@ -26,7 +28,7 @@ pub struct BattleAi<
 > {
     random: R,
     local: PlayerParty<ID, usize, OwnedPokemon<P, M, I>>,
-    remotes: hashbrown::HashMap<ID, RemoteParty<ID>>,
+    remotes: HashMap<ID, RemoteParty<ID>>,
     client: MpscClient<ID>,
     endpoint: MpscEndpoint<ID>,
     finished: bool,

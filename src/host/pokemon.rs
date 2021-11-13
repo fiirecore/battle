@@ -1,5 +1,5 @@
 use core::ops::{Deref, DerefMut};
-use hashbrown::HashSet;
+use std::collections::HashSet;
 
 use pokedex::{
     item::Item,

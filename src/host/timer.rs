@@ -1,6 +1,4 @@
-use std::time::Instant;
-
-use hashbrown::HashMap;
+use std::{time::Instant, collections::HashMap};
 
 use crate::message::TimedAction;
 

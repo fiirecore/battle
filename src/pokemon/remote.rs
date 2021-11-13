@@ -11,7 +11,6 @@ use pokedex::{
 };
 
 pub type RemotePokemon = UnknownPokemon<PokemonId>;
-pub type InitRemotePokemon<'d> = UnknownPokemon<&'d Pokemon>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UnknownPokemon<P> {

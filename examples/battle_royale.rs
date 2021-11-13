@@ -12,7 +12,6 @@ use firecore_pokedex::{
     types::PokemonType,
     BasicDex,
 };
-use rand::rngs::ThreadRng;
 
 use firecore_battle::{
     engine::default::moves::{MoveExecution, MoveUse},
@@ -81,7 +80,10 @@ fn main() {
         });
     }
 
-    let mut random = rand::thread_rng();
+
+    type RngType = rand::rngs::mock::StepRng;
+
+    let mut random = RngType::new(120, 24352);
 
     let party: Party<_> = POKEMON
         .into_iter()
@@ -123,7 +125,7 @@ fn main() {
         }),
     );
 
-    let mut engine = DefaultMoveEngine::new::<u8, ThreadRng>();
+    let mut engine = DefaultMoveEngine::new::<u8, RngType>();
 
     engine.moves.insert(
         move_id[0],
