@@ -131,9 +131,13 @@ impl<
         &mut self,
         random: &mut R,
         engine: &mut ENG,
+        delta: f32,
         movedex: &'d dyn Dex<'d, Move, M>,
         itemdex: &'d dyn Dex<'d, Item, I>,
     ) {
+
+        self.timer.update(delta);
+
         for player in self.players.values_mut() {
             self.receive(player, movedex);
         }

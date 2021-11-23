@@ -159,7 +159,7 @@ fn main() {
         .insert(move_id[1], script.to_owned());
 
     while !battle.finished() {
-        battle.update(&mut random, &mut engine, &movedex, &itemdex);
+        battle.update(&mut random, &mut engine, 0.0, &movedex, &itemdex);
         for player in players.iter_mut() {
             if !player.finished() {
                 player.update();

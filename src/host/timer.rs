@@ -1,21 +1,27 @@
-use std::{time::Instant, collections::HashMap};
+use std::collections::HashMap;
 
 use crate::message::TimedAction;
 
-pub struct Timer(HashMap<TimedAction, Instant>);
+pub struct Timer(HashMap<TimedAction, f32>);
 
 impl Timer {
 
+    pub fn update(&mut self, delta: f32) {
+        for time in self.0.values_mut() {
+            *time += delta;
+        }
+    }
+
     pub fn wait(&mut self, kind: TimedAction) -> bool {
-        match self.0.get_mut(&kind) {
-            Some(time) => if time.elapsed().as_secs_f32() > kind.duration() {
+        match self.0.get(&kind) {
+            Some(time) => if *time > kind.duration() {
                 self.0.remove(&kind);
                 true
             } else {
                 false
             },
             None => {
-                self.0.insert(kind, Instant::now());
+                self.0.insert(kind, 0.0);
                 false
             },
         }
