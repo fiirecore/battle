@@ -18,7 +18,7 @@ pub use mpsc::*;
 #[cfg(feature = "mpsc_endpoint")]
 mod mpsc {
 
-    use crossbeam_channel::{Receiver, Sender, TryRecvError, unbounded};
+    use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
 
     use crate::message::{ClientMessage, ServerMessage};
 
@@ -56,14 +56,14 @@ mod mpsc {
             }
         }
     }
-    
+
     impl<ID> BattleEndpoint<ID> for MpscEndpoint<ID> {
         fn send(&mut self, message: ServerMessage<ID>) {
             if let Err(err) = self.sender.try_send(message) {
                 log::error!("Cannot send server message to AI with error {}", err);
             }
         }
-    
+
         fn receive(&mut self) -> Result<ClientMessage<ID>, Option<ReceiveError>> {
             match self.receiver.try_recv() {
                 Ok(m) => Ok(m),
@@ -74,5 +74,4 @@ mod mpsc {
             }
         }
     }
-
 }

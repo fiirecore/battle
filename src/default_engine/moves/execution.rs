@@ -12,14 +12,13 @@ use pokedex::{
 };
 
 use crate::{
-    moves::{damage::DamageKind, Percent},
+    engine::BattlePokemon,
+    moves::{damage::DamageKind, engine::MoveResult, Percent},
     pokemon::{
         stat::{BattleStatType, Stage},
         Indexed,
     },
 };
-
-use super::{BattlePokemon, MoveResult};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum MoveExecution {

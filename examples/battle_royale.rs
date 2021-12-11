@@ -14,7 +14,7 @@ use firecore_pokedex::{
 };
 
 use firecore_battle::{
-    engine::default::moves::{MoveExecution, MoveUse},
+    default_engine::moves::{MoveExecution, MoveUse},
     moves::damage::DamageKind,
     prelude::*,
 };
@@ -72,18 +72,19 @@ fn main() {
             species: "Test".to_owned(),
             height: 100,
             weight: 100,
+            evolution: None,
             training: Training {
                 base_exp: 80,
-                growth_rate: Default::default(),
+                growth: Default::default(),
             },
             breeding: Breeding { gender: None },
         });
     }
 
+    type RngType = rand::rngs::SmallRng;
+    use rand::prelude::SeedableRng;
 
-    type RngType = rand::rngs::mock::StepRng;
-
-    let mut random = RngType::new(120, 24352);
+    let mut random = RngType::seed_from_u64(23524352);
 
     let party: Party<_> = POKEMON
         .into_iter()
@@ -100,6 +101,12 @@ fn main() {
         .iter()
         .cloned()
         .flat_map(|o| o.init(&mut random, &pokedex, &movedex, &itemdex))
+        .map(|mut o| {
+            for m in o.moves.iter_mut() {
+                m.1 = u8::MAX;
+            }
+            o
+        })
         .collect();
 
     const AS: usize = 2;
@@ -125,7 +132,7 @@ fn main() {
         }),
     );
 
-    let mut engine = DefaultMoveEngine::new::<u8, RngType>();
+    let mut engine = DefaultEngine::new::<u8, RngType>();
 
     engine.moves.insert(
         move_id[0],
@@ -153,10 +160,7 @@ fn main() {
     results
     ";
 
-    engine
-        .scripting
-        .scripts
-        .insert(move_id[1], script.to_owned());
+    engine.scripting.moves.insert(move_id[1], script.to_owned());
 
     while !battle.finished() {
         battle.update(&mut random, &mut engine, 0.0, &movedex, &itemdex);

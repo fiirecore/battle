@@ -4,8 +4,7 @@ use pokedex::pokemon::party::Party;
 
 use crate::pokemon::{remote::RemotePokemon, PokemonView};
 
-pub type RemoteParty<ID> =
-    crate::party::PlayerParty<ID, usize, Option<RemotePokemon>>;
+pub type RemoteParty<ID> = crate::party::PlayerParty<ID, usize, Option<RemotePokemon>>;
 
 pub type Active<A> = Vec<Option<A>>;
 
@@ -104,7 +103,6 @@ impl<ID, A: ActivePokemon, P> PlayerParty<ID, A, P> {
 
 impl<ID, A: ActivePokemon, P: PokemonView> PlayerParty<ID, A, P> {
     pub fn new(id: ID, name: Option<String>, active: usize, pokemon: Party<P>) -> Self {
-
         let mut active = Vec::with_capacity(active);
         for (index, pokemon) in pokemon.iter().enumerate() {
             if !pokemon.fainted() {

@@ -6,7 +6,7 @@ use rand::{prelude::IteratorRandom, Rng};
 
 use pokedex::pokemon::{owned::OwnedPokemon, party::Party, Health};
 
-use pokedex::{pokemon::Pokemon, moves::Move, item::Item};
+use pokedex::{item::Item, moves::Move, pokemon::Pokemon};
 
 use crate::{
     endpoint::{MpscClient, MpscEndpoint},
@@ -34,10 +34,14 @@ pub struct BattleAi<
     finished: bool,
 }
 
-impl<R: Rng, ID: Eq + Hash + Clone, 
-P: Deref<Target = Pokemon>,
-M: Deref<Target = Move>,
-I: Deref<Target = Item>,> BattleAi<R, ID, P, M, I> {
+impl<
+        R: Rng,
+        ID: Eq + Hash + Clone,
+        P: Deref<Target = Pokemon>,
+        M: Deref<Target = Move>,
+        I: Deref<Target = Item>,
+    > BattleAi<R, ID, P, M, I>
+{
     pub fn new(temp_id: ID, random: R, active: usize, party: Party<OwnedPokemon<P, M, I>>) -> Self {
         let (client, endpoint) = crate::endpoint::create();
 

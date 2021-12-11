@@ -1,14 +1,13 @@
 use core::ops::{Deref, DerefMut};
 
 use pokedex::{
-    moves::{Accuracy, CriticalRate, MoveCategory, Power, Move},
+    item::Item,
+    moves::{Accuracy, CriticalRate, Move, MoveCategory, Power},
     pokemon::{
         owned::OwnedPokemon,
         stat::{BaseStat, StatType},
-        Experience, Health,
-        Pokemon,
+        Experience, Health, Pokemon,
     },
-    item::Item,
     types::{Effective, PokemonType},
 };
 use rand::Rng;
@@ -44,13 +43,19 @@ pub fn damage_range(random: &mut impl Rng) -> Percent {
 }
 
 #[derive(Debug, Clone)]
-pub struct BattlePokemon<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> {
+pub struct BattlePokemon<
+    P: Deref<Target = Pokemon>,
+    M: Deref<Target = Move>,
+    I: Deref<Target = Item>,
+> {
     pub p: OwnedPokemon<P, M, I>,
     // pub persistent: Option<PersistentMove>,
     pub stages: StatStages,
 }
 
-impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> BattlePokemon<P, M, I> {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>>
+    BattlePokemon<P, M, I>
+{
     // pub fn try_flinch(&mut self) -> bool {
     //     if self.flinch {
     //         self.flinch = false;
@@ -59,8 +64,6 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
     //         false
     //     }
     // }
-
-    
 
     pub fn battle_exp_from(&self, type_: &BattleType) -> Experience {
         let experience = self.exp_from();
@@ -176,7 +179,9 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
     }
 }
 
-impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> From<OwnedPokemon<P, M, I>> for BattlePokemon<P, M, I> {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>>
+    From<OwnedPokemon<P, M, I>> for BattlePokemon<P, M, I>
+{
     fn from(p: OwnedPokemon<P, M, I>) -> Self {
         Self {
             p,
@@ -185,7 +190,9 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
     }
 }
 
-impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> Deref for BattlePokemon<P, M, I> {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> Deref
+    for BattlePokemon<P, M, I>
+{
     type Target = OwnedPokemon<P, M, I>;
 
     fn deref(&self) -> &Self::Target {
@@ -193,7 +200,9 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
     }
 }
 
-impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> DerefMut for BattlePokemon<P, M, I> {
+impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> DerefMut
+    for BattlePokemon<P, M, I>
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.p
     }

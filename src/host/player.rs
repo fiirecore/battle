@@ -29,7 +29,9 @@ pub struct PlayerData<ID> {
     pub endpoint: Box<dyn BattleEndpoint<ID>>,
 }
 
-impl<ID, P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> BattlePlayer<ID, P, M, I> {
+impl<ID, P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>>
+    BattlePlayer<ID, P, M, I>
+{
     pub fn send(&mut self, message: ServerMessage<ID>) {
         self.endpoint.send(message)
     }
@@ -80,7 +82,7 @@ impl<ID: Clone> ClientPlayerData<ID> {
     pub fn new<
         'a,
         P: Deref<Target = Pokemon> + 'a + Clone,
-        M: Deref<Target = Move> + 'a ,
+        M: Deref<Target = Move> + 'a,
         I: Deref<Target = Item> + 'a,
         ITER: Iterator<Item = Ref<'a, BattlePlayer<ID, P, M, I>>>,
     >(

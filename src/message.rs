@@ -34,7 +34,7 @@ pub enum ServerMessage<ID> {
     PlayerEnd(EndMessage),
     GameEnd(
         /// Winner
-        Option<ID>
+        Option<ID>,
     ),
 }
 

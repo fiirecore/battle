@@ -31,7 +31,10 @@ impl<P> UnknownPokemon<P> {
 impl<P: Deref<Target = Pokemon>> UnknownPokemon<P> {
     pub fn new<M: Deref<Target = Move>, I: Deref<Target = Item>>(
         pokemon: &OwnedPokemon<P, M, I>,
-    ) -> Self where P: Clone {
+    ) -> Self
+    where
+        P: Clone,
+    {
         Self {
             pokemon: pokemon.pokemon.clone(),
             nickname: pokemon.nickname.clone(),

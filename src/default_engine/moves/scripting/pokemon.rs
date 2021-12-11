@@ -8,7 +8,7 @@ use pokedex::{moves::MoveCategory, types::PokemonType};
 use pokedex::{item::Item, moves::Move, pokemon::owned::OwnablePokemon, pokemon::Pokemon};
 
 use crate::{
-    engine::BattlePokemon,
+    engine::pokemon::{crit, throw_move, BattlePokemon},
     pokemon::{Indexed, PokemonIdentifier},
 };
 
@@ -93,7 +93,7 @@ impl<ID: Clone> ScriptPokemon<ID> {
         mut random: ScriptRandom<R>,
         m: ScriptMove,
     ) -> bool {
-        crate::engine::pokemon::throw_move(random.deref_mut(), m.accuracy)
+        throw_move(random.deref_mut(), m.accuracy)
     }
 
     pub fn get_damage<R: Rng + Clone + 'static>(
@@ -106,7 +106,7 @@ impl<ID: Clone> ScriptPokemon<ID> {
         crit_rate: INT,
     ) -> ScriptDamage {
         let mut random = random;
-        let crit = crate::engine::pokemon::crit(random.deref_mut(), crit_rate as _);
+        let crit = crit(random.deref_mut(), crit_rate as _);
         ScriptDamage::from(self.move_power_damage_random(
             random.deref_mut(),
             &target,

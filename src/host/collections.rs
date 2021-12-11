@@ -123,10 +123,13 @@ impl<K: Eq + Hash, V> FromIterator<(K, V)> for BattleMap<K, V> {
     }
 }
 
-impl<ID: Eq + Hash + Clone,
-P: Deref<Target = Pokemon>,
-M: Deref<Target = Move>,
-I: Deref<Target = Item>,> BattleMap<ID, BattlePlayer<ID, P, M, I>> {
+impl<
+        ID: Eq + Hash + Clone,
+        P: Deref<Target = Pokemon>,
+        M: Deref<Target = Move>,
+        I: Deref<Target = Item>,
+    > BattleMap<ID, BattlePlayer<ID, P, M, I>>
+{
     fn ally(
         &self,
         random: &mut impl Rng,
@@ -265,13 +268,12 @@ I: Deref<Target = Item>,> BattleMap<ID, BattlePlayer<ID, P, M, I>> {
 
 impl<
         ID: Eq + Hash + Clone,
-        R: Rng,
         P: Deref<Target = Pokemon>,
         M: Deref<Target = Move>,
         I: Deref<Target = Item>,
-    > Players<ID, R, P, M, I> for BattleMap<ID, BattlePlayer<ID, P, M, I>>
+    > Players<ID, P, M, I> for BattleMap<ID, BattlePlayer<ID, P, M, I>>
 {
-    fn create_targets(
+    fn create_targets<R: Rng>(
         &self,
         user: &PokemonIdentifier<ID>,
         m: &Move,
@@ -284,8 +286,7 @@ impl<
                 None => match self
                     .values()
                     .filter(|p| {
-                        !(p.id() != user.team() && m.power.is_some()) && 
-                        !p.party.all_fainted()
+                        !(p.id() != user.team() && m.power.is_some()) && !p.party.all_fainted()
                     })
                     .choose(random)
                     .map(|p| {
@@ -350,7 +351,7 @@ impl<
     }
 
     fn get(&self, id: &PokemonIdentifier<ID>) -> Option<&BattlePokemon<P, M, I>> {
-        if let Some(p) = self.get(id.team()) {
+        if let Some(p) = BattleMap::get(&self, id.team()) {
             if let Some(p) = p.party.active(id.index()) {
                 // i think this is safe
                 let p2 = unsafe { &*((&p.p) as *const BattlePokemon<P, M, I>) };
@@ -358,6 +359,24 @@ impl<
             }
         }
         None
+    }
+
+    fn get_mut(&mut self, id: &PokemonIdentifier<ID>) -> Option<&mut BattlePokemon<P, M, I>> {
+        if let Some(mut p) = BattleMap::get_mut(&self, id.team()) {
+            if let Some(p) = p.party.active_mut(id.index()) {
+                // i think this is safe
+                let p2 = unsafe { &mut *((&mut p.p) as *mut BattlePokemon<P, M, I>) };
+                return Some(p2);
+            }
+        }
+        None
+    }
+
+    fn take(&mut self, id: &PokemonIdentifier<ID>) -> Option<BattlePokemon<P, M, I>> {
+        match BattleMap::get_mut(&self, id.team()) {
+            Some(mut player) => player.party.take(id.index()).map(|p| p.p),
+            None => None,
+        }
     }
 }
 

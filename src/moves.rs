@@ -14,6 +14,9 @@ use crate::pokemon::{
 
 pub mod damage;
 
+#[cfg(feature = "move_engine")]
+pub mod engine;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BattleMove<ID> {
     /// Move (by its index), and its optional target.

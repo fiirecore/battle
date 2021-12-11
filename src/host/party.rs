@@ -30,7 +30,8 @@ impl<ID, P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move>, I: Deref<T
 
     pub fn as_remote(&self) -> RemoteParty<ID>
     where
-        ID: Clone, P: Clone,
+        ID: Clone,
+        P: Clone,
     {
         RemoteParty {
             id: self.id.clone(),
