@@ -1,4 +1,4 @@
-use rhai::INT;
+use quad_compat_rhai::INT;
 
 use pokedex::{pokemon::Health, types::Effective};
 

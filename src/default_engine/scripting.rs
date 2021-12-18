@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rand::Rng;
-use rhai::{
+use quad_compat_rhai::{
     packages::{BasicArrayPackage, Package},
     Engine, INT,
 };

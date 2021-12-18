@@ -1,8 +1,6 @@
 # To - do
 
-* Better I/O-Free Protocol
+* Proper passive and selected item usage
 
-## Version 0.0.8
+* AI hits self?
 
-- [X] Remove const generics (so one battle type can host different battles)
-- [X] Finish adding battle end messages

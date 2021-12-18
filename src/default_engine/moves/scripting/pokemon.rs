@@ -1,7 +1,7 @@
 use core::ops::{Deref, DerefMut};
 
 use rand::Rng;
-use rhai::INT;
+use quad_compat_rhai::INT;
 
 use pokedex::{moves::MoveCategory, types::PokemonType};
 

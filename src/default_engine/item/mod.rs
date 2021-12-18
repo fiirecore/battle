@@ -50,13 +50,14 @@ impl ItemEngine for DefaultEngine {
                 BattleItemExecution::Normal(..) => {
                     // to - do: fix this function
                     debug!("fix OwnedPokemon::try_use_item");
-                    match players.get_mut(&target) {
-                        Some(pokemon) => {
-                            pokemon.try_use_item(item);
-                            Ok(vec![])
-                        }
-                        None => Err(ItemError::NoTarget),
-                    }
+                    // match players.get_mut(&target) {
+                    //     Some(pokemon) => {
+                    //         pokemon.try_use_item(item);
+                    //         Ok(vec![])
+                    //     }
+                    //     None => Err(ItemError::NoTarget),
+                    // }
+                    Err(ItemError::Unimplemented)
                 }
                 BattleItemExecution::Script => {
                     #[cfg(feature = "default_engine_scripting")]
@@ -71,7 +72,7 @@ impl ItemEngine for DefaultEngine {
                         Some(pokemon) => vec![ItemResult::Catch(pokemon.p.uninit())],
                         None => Vec::new(),
                     }),
-                    _ => Err(ItemError::TrainerBattlePokeball),
+                    _ => Err(ItemError::Pokeball),
                 },
             },
             None => Err(ItemError::Missing(item.id)),
@@ -84,7 +85,8 @@ pub enum ItemError {
     Script(ScriptError),
     Missing(ItemId),
     NoTarget,
-    TrainerBattlePokeball,
+    Pokeball,
+    Unimplemented,
 }
 
 impl Error for ItemError {}

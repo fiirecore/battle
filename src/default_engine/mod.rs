@@ -45,7 +45,7 @@ impl DefaultEngine {
 #[derive(Debug)]
 pub enum ScriptError {
     #[cfg(feature = "default_engine_scripting")]
-    Error(Box<rhai::EvalAltResult>),
+    Error(Box<quad_compat_rhai::EvalAltResult>),
     #[cfg(not(feature = "default_engine_scripting"))]
     NoScriptEngine,
 }
@@ -58,8 +58,8 @@ impl Default for ScriptError {
 }
 
 #[cfg(feature = "default_engine_scripting")]
-impl From<Box<rhai::EvalAltResult>> for ScriptError {
-    fn from(r: Box<rhai::EvalAltResult>) -> Self {
+impl From<Box<quad_compat_rhai::EvalAltResult>> for ScriptError {
+    fn from(r: Box<quad_compat_rhai::EvalAltResult>) -> Self {
         Self::Error(r)
     }
 }

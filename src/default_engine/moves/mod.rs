@@ -97,7 +97,7 @@ pub enum MoveError {
 
 impl MoveError {
     #[cfg(feature = "default_engine_scripting")]
-    fn script(error: Box<rhai::EvalAltResult>) -> Self {
+    fn script(error: Box<quad_compat_rhai::EvalAltResult>) -> Self {
         Self::Script(ScriptError::from(error))
     }
 }
