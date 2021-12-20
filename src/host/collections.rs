@@ -286,7 +286,7 @@ impl<
                 None => match self
                     .values()
                     .filter(|p| {
-                        !(p.id() != user.team() && m.power.is_some()) && !p.party.all_fainted()
+                        !(p.id() == user.team() && m.power.is_some()) && !p.party.all_fainted()
                     })
                     .choose(random)
                     .map(|p| {
