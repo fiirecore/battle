@@ -10,7 +10,7 @@ use firecore_pokedex::{
         Pokemon,
     },
     types::PokemonType,
-    BasicDex,
+    BasicDex, item::Item,
 };
 
 use firecore_battle::{
@@ -97,23 +97,11 @@ fn main() {
         })
         .collect();
 
-    let owned_party: Party<_> = party
-        .iter()
-        .cloned()
-        .flat_map(|o| o.init(&mut random, &pokedex, &movedex, &itemdex))
-        .map(|mut o| {
-            for m in o.moves.iter_mut() {
-                m.1 = u8::MAX;
-            }
-            o
-        })
-        .collect();
-
     const AS: usize = 2;
 
     let mut players: Vec<_> = (1..100)
         .into_iter()
-        .map(|_| BattleAi::new(0u8, random.clone(), AS, owned_party.clone()))
+        .map(|_| BattleAi::<RngType, u8, &Pokemon, &Move, &Item>::new(random.clone()))
         .collect();
 
     let mut battle = Battle::new(
@@ -166,7 +154,7 @@ fn main() {
         battle.update(&mut random, &mut engine, 0.0, &movedex, &itemdex);
         for player in players.iter_mut() {
             if !player.finished() {
-                player.update();
+                player.update(&pokedex, &movedex, &itemdex);
             }
         }
     }

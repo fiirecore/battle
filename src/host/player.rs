@@ -5,7 +5,7 @@ use pokedex::{
     item::Item,
     moves::Move,
     pokemon::{owned::SavedPokemon, party::Party, Pokemon},
-    Dex,
+    Dex, Uninitializable,
 };
 
 use crate::{
@@ -82,8 +82,8 @@ impl<ID: Clone> ClientPlayerData<ID> {
     pub fn new<
         'a,
         P: Deref<Target = Pokemon> + 'a + Clone,
-        M: Deref<Target = Move> + 'a,
-        I: Deref<Target = Item> + 'a,
+        M: Deref<Target = Move> + 'a + Clone,
+        I: Deref<Target = Item> + 'a + Clone,
         ITER: Iterator<Item = Ref<'a, BattlePlayer<ID, P, M, I>>>,
     >(
         data: BattleData,
@@ -94,9 +94,12 @@ impl<ID: Clone> ClientPlayerData<ID> {
         ID: 'a,
     {
         Self {
-            id: player.party.id().clone(),
-            name: player.party.name.clone(),
-            active: ActiveBattlePokemon::as_usize(&player.party.active),
+            local: PlayerParty {
+                id: player.party.id().clone(),
+                name: player.party.name.clone(),
+                active: ActiveBattlePokemon::as_usize(&player.party.active),
+                pokemon: player.party.pokemon.iter().map(|p| &p.p.p).cloned().map(|pokemon| pokemon.uninit()).collect(),
+            },
             data,
             remotes: others.map(|player| player.party.as_remote()).collect(),
         }

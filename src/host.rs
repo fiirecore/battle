@@ -53,8 +53,8 @@ pub(crate) mod prelude {
 pub struct Battle<
     ID: core::fmt::Debug + Display + Clone + Ord + Hash + 'static,
     P: Deref<Target = Pokemon> + Clone,
-    M: Deref<Target = Move>,
-    I: Deref<Target = Item>,
+    M: Deref<Target = Move> + Clone,
+    I: Deref<Target = Item> + Clone,
 > {
     state: BattleState<ID>,
     data: BattleData,
@@ -87,8 +87,8 @@ pub enum MovePriority<ID: Ord> {
 impl<
         ID: core::fmt::Debug + Display + Clone + Ord + Hash + 'static,
         P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move>,
-        I: Deref<Target = Item>,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
     > Battle<ID, P, M, I>
 {
     pub fn new<'d, R: Rng>(

@@ -1,11 +1,11 @@
+use firecore_pokedex::pokemon::owned::SavedPokemon;
 use serde::{Deserialize, Serialize};
 
 use pokedex::pokemon::party::Party;
 
 use crate::{
-    data::BattleData,
-    party::{Active, ActivePokemon, PlayerParty, RemoteParty},
-    pokemon::PokemonView,
+    party::{ActivePokemon, PlayerParty, RemoteParty},
+    pokemon::PokemonView, prelude::BattleData,
 };
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -52,9 +52,7 @@ impl<ID, A: ActivePokemon, P: PokemonView, E> Player<ID, A, P, E> {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ClientPlayerData<ID> {
-    pub id: ID,
-    pub name: Option<String>,
-    pub active: Active<usize>,
     pub data: BattleData,
+    pub local: PlayerParty<ID, usize, SavedPokemon>,
     pub remotes: Vec<RemoteParty<ID>>,
 }
