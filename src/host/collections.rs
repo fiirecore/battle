@@ -20,7 +20,7 @@ use crate::{
 
 use super::player::BattlePlayer;
 
-pub struct BattleMap<K: Eq + Hash, V>(std::collections::HashMap<K, (Properties, RefCell<V>)>);
+pub struct BattleMap<K: Eq + Hash, V>(hashbrown::HashMap<K, (Properties, RefCell<V>)>);
 
 pub struct Properties {
     pub active: Cell<bool>,

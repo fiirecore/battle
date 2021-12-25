@@ -16,7 +16,7 @@ use crate::{
     pokemon::Indexed,
 };
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 #[derive(Clone)]
 pub struct BattleAi<

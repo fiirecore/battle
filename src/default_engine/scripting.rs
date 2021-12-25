@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 use rand::Rng;
 use quad_compat_rhai::{

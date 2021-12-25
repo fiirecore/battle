@@ -16,14 +16,14 @@ default = ["host", "ai", "default_engine_scripting"]
 move_engine = ["rand"]
 item_engine = ["move_engine"]
 
-host = ["move_engine", "item_engine", "log"]
+host = ["move_engine", "item_engine", "log", "hashbrown"]
 
 # host_timer = []
 
-default_engine = ["move_engine", "item_engine", "log"]
+default_engine = ["move_engine", "item_engine", "log", "hashbrown"]
 default_engine_scripting = ["default_engine", "quad-compat-rhai"]
 
-ai = ["mpsc_endpoint", "rand", "log"]
+ai = ["mpsc_endpoint", "rand", "log", "hashbrown"]
 
 mpsc_endpoint = ["crossbeam-channel", "log"]
 
@@ -36,6 +36,7 @@ serde = { version = "1", features = ["derive"] }
 
 rand = { version = "0.8", default-features = false, optional = true }
 log = { version = "0.4", optional = true }
+hashbrown = { version = "0.9", optional = true }
 
 quad-compat-rhai = { version = "1.4.0", git = "https://github.com/DoNotDoughnut/rhai", rev = "83648f3", optional = true }
 
@@ -44,3 +45,6 @@ crossbeam-channel = { version = "0.5", optional = true }
 [dev-dependencies]
 simple_logger = "1"
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
+
+[workspace]
+members = ["builder"]
