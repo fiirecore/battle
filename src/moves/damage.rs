@@ -34,6 +34,7 @@ impl<N> ClientDamage<N> {
             ClientDamage::Number(n) => n,
         }
     }
+
 }
 
 impl<N: Default> Default for DamageResult<N> {
@@ -41,6 +42,16 @@ impl<N: Default> Default for DamageResult<N> {
         Self {
             damage: Default::default(),
             effective: Effective::Ineffective,
+            crit: false,
+        }
+    }
+}
+
+impl<N> From<N> for DamageResult<N> {
+    fn from(damage: N) -> Self {
+        Self {
+            damage,
+            effective: Effective::Effective,
             crit: false,
         }
     }

@@ -148,31 +148,54 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
         category: MoveCategory,
         move_type: PokemonType,
         crit: bool,
-        damage_range: u8,
+        range: u8,
     ) -> DamageResult<Health> {
         let effective = target.pokemon.effective(move_type, category);
         let (attack, defense) = category.stats();
         let attack = self.stat(attack);
         let defense = target.stat(defense);
-        if effective == Effective::Ineffective {
+        if matches!(effective, Effective::Ineffective) {
             return DamageResult::default();
         }
-        let damage = (((((2.0 * self.level as f64 / 5.0 + 2.0)
-            * power as f64
-            * (attack as f64 / defense as f64))
-            / 50.0)
-            .floor()
-            * effective.multiplier() as f64)
-            + 2.0)
-            * (damage_range as f64 / 100.0)
-            * if self.pokemon.primary_type == move_type {
-                1.5
-            } else {
-                1.0
+
+        /// Same type attack bonus
+        fn stab(t1: PokemonType, t2: PokemonType) -> f64 {
+            crit_dmg(t1 == t2)
+        }
+
+        fn crit_dmg(crit: bool) -> f64 {
+            match crit {
+                true => 1.5,
+                false => 1.0,
             }
-            * if crit { 1.5 } else { 1.0 };
+        }
+
+        let mut e_mult = move_type.effective(target.pokemon.primary_type, category).multiplier();
+        if let Some(secondary) = target.pokemon.secondary_type {
+            e_mult *= move_type.effective(secondary, category).multiplier();
+        }
+        let e_mult = e_mult as f64;
+
+        let mut damage = 2.0 * self.level as f64;
+        damage /= 5.0;
+        damage += 2.0;
+        damage = damage.floor();
+        damage *= power as f64;
+        damage *= attack as f64 / defense as f64;
+        damage = damage.floor();
+        damage /= 50.0;
+        damage = damage.floor();
+        damage += 2.0;
+
+        damage *= range as f64 / 100.0;
+        damage *= stab(self.pokemon.primary_type, move_type);
+        damage *= crit_dmg(crit);
+        damage *= e_mult;
+
+        println!("PWR: {}, LVL: {}, ATK: {}, DEF: {}, DMG: {}", power, self.level, attack, defense, damage);
+
         DamageResult {
-            damage: damage as _,
+            damage: damage.round() as _,
             effective,
             crit,
         }
@@ -205,5 +228,120 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.p
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use firecore_pokedex::{
+        pokemon::{
+            data::{Breeding, Gender, GrowthRate, Training},
+            nature::Nature,
+            owned::OwnedPokemon,
+            stat::StatSet,
+            Pokemon,
+        },
+        types::PokemonType, item::Item, moves::{set::OwnedMoveSet, Move, MoveCategory},
+    };
+
+    use super::BattlePokemon;
+
+    #[test]
+    fn damage() {
+        let feraligatr = Pokemon {
+            id: 160,
+            name: "Feraligatr".to_owned(),
+            primary_type: PokemonType::Water,
+            secondary_type: None,
+            moves: vec![],
+            base: StatSet {
+                hp: 85,
+                atk: 105,
+                def: 100,
+                sp_atk: 79,
+                sp_def: 83,
+                speed: 78,
+            },
+            species: "Big Jaw".to_owned(),
+            evolution: None,
+            height: 23,
+            weight: 888,
+            training: Training {
+                base_exp: 239,
+                growth: GrowthRate::MediumSlow,
+            },
+            breeding: Breeding { gender: Some(6) },
+        };
+
+        let geodude = Pokemon {
+            id: 74,
+            name: "Geodude".to_owned(),
+            primary_type: PokemonType::Rock,
+            secondary_type: Some(PokemonType::Ground),
+            moves: vec![],
+            base: StatSet {
+                hp: 40,
+                atk: 80,
+                def: 100,
+                sp_atk: 30,
+                sp_def: 30,
+                speed: 20,
+            },
+            species: "Rock".to_owned(),
+            evolution: None,
+            height: 0_4,
+            weight: 20,
+            training: Training { base_exp: 60, growth: GrowthRate::MediumSlow },
+            breeding: Breeding { gender: Some(3) },
+        };
+
+        let mut user = OwnedPokemon {
+            pokemon: &feraligatr,
+            level: 50,
+            gender: Gender::Male,
+            nature: Nature::Adamant,
+            hp: 0,
+            ivs: StatSet::uniform(15),
+            evs: StatSet::uniform(50),
+            friendship: Pokemon::default_friendship(),
+            ailment: None,
+            nickname: None,
+            moves: OwnedMoveSet::<&Move>::default(),
+            item: Option::<&Item>::None,
+            experience: 0,
+        };
+
+        user.heal_hp(None);
+
+        let mut target = OwnedPokemon {
+            pokemon: &geodude,
+            level: 10,
+            gender: Gender::Female,
+            nature: Nature::Hardy,
+            hp: 0,
+            ivs: StatSet::uniform(0),
+            evs: StatSet::uniform(0),
+            friendship: Pokemon::default_friendship(),
+            ailment: None,
+            nickname: None,
+            moves: OwnedMoveSet::<&Move>::default(),
+            item: Option::<&Item>::None,
+            experience: 0,
+        };
+
+        target.heal_hp(None);
+
+        let user = BattlePokemon {
+            p: user,
+            stages: Default::default(),
+        };
+
+        let target = target.into();
+
+        let damage = user.move_power_damage(&target, 80, MoveCategory::Physical, PokemonType::Water, false, 100).damage;
+        assert!(damage <= 1200, "Damage overreached threshold! {} > 1200", damage);
+        assert!(damage >= 1100, "Damage could not reach threshold! {} < 1100", damage);
+
     }
 }

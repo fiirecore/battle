@@ -68,6 +68,7 @@ impl<ID: Clone> ScriptPokemon<ID> {
                 pokemon: DerefPtr(pokemon.pokemon.deref() as _),
                 level: pokemon.level,
                 gender: pokemon.gender,
+                nature: pokemon.nature,
                 hp: pokemon.hp,
                 ivs: pokemon.ivs,
                 evs: pokemon.evs,

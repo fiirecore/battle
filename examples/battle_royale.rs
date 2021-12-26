@@ -19,7 +19,7 @@ use firecore_battle::{
     prelude::*,
 };
 
-const POKEMON: Range<u16> = 0..3;
+const POKEMON: Range<u16> = 0..6;
 
 fn main() {
     simple_logger::SimpleLogger::new()
@@ -31,7 +31,7 @@ fn main() {
     let mut movedex = BasicDex::default();
     let itemdex = BasicDex::default();
 
-    let move_id = ["default".parse().unwrap(), "script".parse().unwrap()];
+    let move_id = ["default".parse().unwrap(), "script".parse().unwrap(), "damage".parse().unwrap()];
 
     movedex.insert(Move {
         id: move_id[0],
@@ -61,12 +61,26 @@ fn main() {
         crit_rate: 0,
     });
 
+    movedex.insert(Move {
+        id: move_id[2],
+        name: "Damage".to_owned(),
+        category: MoveCategory::Physical,
+        pokemon_type: PokemonType::Fighting,
+        accuracy: Some(80),
+        power: Some(90),
+        pp: 50,
+        priority: 0,
+        target: MoveTarget::Opponent,
+        contact: false,
+        crit_rate: 2,
+    });
+
     for id in POKEMON {
         pokedex.insert(Pokemon {
             id,
             name: format!("Test {}", id),
             primary_type: PokemonType::Normal,
-            secondary_type: None,
+            secondary_type: Some(PokemonType::Ice),
             moves: vec![LearnableMove(0, move_id[0]), LearnableMove(0, move_id[1])],
             base: StatSet::uniform(70),
             species: "Test".to_owned(),
@@ -88,7 +102,8 @@ fn main() {
 
     let party: Party<_> = POKEMON
         .into_iter()
-        .map(|id| SavedPokemon::generate(&mut random, id, 30, None, None))
+        .enumerate()
+        .map(|(index, id)| SavedPokemon::generate(&mut random, id, 10 + (index as u8) * 20, None, None))
         .map(|mut o| {
             for m in move_id {
                 o.moves.push(SavedMove::from(m));
@@ -127,6 +142,11 @@ fn main() {
         MoveExecution::Actions(vec![MoveUse::Damage(DamageKind::Power(50))]),
     );
 
+    engine.moves.insert(
+        move_id[2],
+        MoveExecution::Actions(vec![MoveUse::Damage(DamageKind::Power(90))]),
+    );
+
     engine.moves.insert(move_id[1], MoveExecution::Script);
 
     let script = "
@@ -136,10 +156,7 @@ fn main() {
         switch user.throw_move(random, move) {
             false => results.push(Miss(user)),
             true => {
-                let result = user.damage(random, target, 40, move.category, move.type, move.crit_rate);
-                if result.damage > target.hp {
-                    result.damage = target.hp - 1;
-                }
+                let result = damage(target.hp);
                 results.push(Damage(target, result));
             }
         }

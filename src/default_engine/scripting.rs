@@ -3,12 +3,12 @@ use hashbrown::HashMap;
 use rand::Rng;
 use quad_compat_rhai::{
     packages::{BasicArrayPackage, Package},
-    Engine, INT,
+    Engine,
 };
 
 use pokedex::{item::ItemId, moves::MoveId};
 
-use crate::{moves::damage::DamageResult, moves::engine::MoveResult};
+use crate::moves::engine::MoveResult;
 
 use super::moves::scripting::*;
 
@@ -27,10 +27,13 @@ impl ScriptingEngine {
     pub fn new<ID: Clone + 'static, R: Rng + Clone + 'static>() -> Self {
         let mut engine = Engine::new_raw();
 
+        
+
         engine
             .register_global_module(BasicArrayPackage::new().as_shared_module())
             .register_type_with_name::<ScriptRandom<R>>("Random")
-            .register_type_with_name::<DamageResult<INT>>("Damage")
+            .register_type_with_name::<ScriptDamage>("Damage")
+            .register_fn("damage", ScriptDamage::with_damage)
             .register_set("damage", ScriptDamage::set_damage)
             .register_get("damage", ScriptDamage::get_damage)
             .register_get("effective", ScriptDamage::effective)

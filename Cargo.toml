@@ -3,7 +3,7 @@ name = "firecore-battle"
 description = "Pokemon battle simulation"
 authors = ["Rhys H <donotdoughnut99@gmail.com>"]
 version = "0.0.8"
-license = "MIT"
+license = "CC0"
 edition = "2021"
 repository = "https://github.com/fiirecore/battle"
 readme = "README.md"
@@ -29,7 +29,7 @@ mpsc_endpoint = ["crossbeam-channel", "log"]
 
 [dependencies]
 
-firecore-pokedex = { version = "0.0.8", git = "https://github.com/fiirecore/pokedex", rev = "fdf002b" }
+firecore-pokedex = { version = "0.0.8", git = "https://github.com/fiirecore/pokedex", rev = "54518e6" }
 # firecore-pokedex = { path = "../pokedex" }
 
 serde = { version = "1", features = ["derive"] }

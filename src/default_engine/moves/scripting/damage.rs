@@ -8,6 +8,11 @@ use crate::moves::damage::DamageResult;
 pub struct ScriptDamage(DamageResult<INT>);
 
 impl ScriptDamage {
+
+    pub fn with_damage(damage: INT) -> Self {
+        Self(DamageResult::from(damage))
+    }
+
     pub fn set_damage(&mut self, damage: INT) {
         self.0.damage = damage;
     }
@@ -16,6 +21,12 @@ impl ScriptDamage {
     }
     pub fn effective(&mut self) -> Effective {
         self.0.effective
+    }
+}
+
+impl From<DamageResult<INT>> for ScriptDamage {
+    fn from(result: DamageResult<INT>) -> Self {
+        Self(result)
     }
 }
 
