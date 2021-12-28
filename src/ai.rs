@@ -84,7 +84,10 @@ impl<
                             match pokemon.init(&mut self.random, pokedex, movedex, itemdex) {
                                 Some(pokemon) => party.push(pokemon),
                                 None => {
-                                    log::error!("AI {:?} unable to initialize party", validate.local.name);
+                                    log::error!(
+                                        "AI {:?} unable to initialize party",
+                                        validate.local.name
+                                    );
                                     self.forfeit();
                                     return;
                                 }
@@ -231,7 +234,7 @@ impl<
                         None => {
                             log::error!("AI unable to get own player!");
                             self.forfeit();
-                        },
+                        }
                     },
                 },
                 Err(err) => {

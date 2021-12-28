@@ -1,10 +1,10 @@
 use hashbrown::HashMap;
 
-use rand::Rng;
 use quad_compat_rhai::{
     packages::{BasicArrayPackage, Package},
     Engine,
 };
+use rand::Rng;
 
 use pokedex::{item::ItemId, moves::MoveId};
 
@@ -26,8 +26,6 @@ pub struct ScriptingEngine {
 impl ScriptingEngine {
     pub fn new<ID: Clone + 'static, R: Rng + Clone + 'static>() -> Self {
         let mut engine = Engine::new_raw();
-
-        
 
         engine
             .register_global_module(BasicArrayPackage::new().as_shared_module())

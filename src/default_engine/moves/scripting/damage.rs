@@ -8,7 +8,6 @@ use crate::moves::damage::DamageResult;
 pub struct ScriptDamage(DamageResult<INT>);
 
 impl ScriptDamage {
-
     pub fn with_damage(damage: INT) -> Self {
         Self(DamageResult::from(damage))
     }

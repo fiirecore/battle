@@ -1,11 +1,14 @@
-use firecore_pokedex::pokemon::owned::SavedPokemon;
 use serde::{Deserialize, Serialize};
 
-use pokedex::pokemon::party::Party;
+use pokedex::{
+    item::bag::{Bag, SavedBag},
+    pokemon::{owned::SavedPokemon, party::Party},
+};
 
 use crate::{
+    data::BattleData,
     party::{ActivePokemon, PlayerParty, RemoteParty},
-    pokemon::PokemonView, prelude::BattleData,
+    pokemon::PokemonView,
 };
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -19,25 +22,28 @@ impl Default for PlayerSettings {
     }
 }
 
-pub struct Player<ID, A: ActivePokemon, P, E> {
+pub struct Player<ID, A: ActivePokemon, P, I, E> {
     pub party: PlayerParty<ID, A, P>,
+    pub bag: Bag<I>,
     pub settings: PlayerSettings,
     pub endpoint: E,
 }
 
-impl<ID, A: ActivePokemon, P: PokemonView, E> Player<ID, A, P, E> {
+impl<ID, A: ActivePokemon, P: PokemonView, I, E> Player<ID, A, P, I, E> {
     pub fn new(
         id: ID,
         name: Option<String>,
         active: usize,
         pokemon: Party<P>,
+        bag: Bag<I>,
         settings: PlayerSettings,
         endpoint: E,
     ) -> Self {
         Self {
             party: PlayerParty::new(id, name, active, pokemon),
-            endpoint,
+            bag,
             settings,
+            endpoint,
         }
     }
 
@@ -55,4 +61,5 @@ pub struct ClientPlayerData<ID> {
     pub data: BattleData,
     pub local: PlayerParty<ID, usize, SavedPokemon>,
     pub remotes: Vec<RemoteParty<ID>>,
+    pub bag: SavedBag,
 }

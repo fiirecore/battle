@@ -1,7 +1,7 @@
 use core::{hash::Hash, ops::Deref};
 
-use rand::Rng;
 use quad_compat_rhai::{Array, Dynamic, Scope};
+use rand::Rng;
 
 use pokedex::{item::Item, moves::Move, pokemon::Pokemon};
 

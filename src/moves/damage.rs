@@ -34,7 +34,6 @@ impl<N> ClientDamage<N> {
             ClientDamage::Number(n) => n,
         }
     }
-
 }
 
 impl<N: Default> Default for DamageResult<N> {

@@ -2,10 +2,10 @@ use core::{cell::Ref, ops::Deref};
 use rand::Rng;
 
 use pokedex::{
-    item::Item,
+    item::{bag::SavedBag, Item},
     moves::Move,
     pokemon::{owned::SavedPokemon, party::Party, Pokemon},
-    Dex, Uninitializable,
+    Dex, Initializable, Uninitializable,
 };
 
 use crate::{
@@ -19,12 +19,13 @@ use crate::{
 use super::pokemon::{ActiveBattlePokemon, HostPokemon};
 
 pub type BattlePlayer<ID, P, M, I> =
-    Player<ID, ActiveBattlePokemon<ID>, HostPokemon<P, M, I>, Box<dyn BattleEndpoint<ID>>>;
+    Player<ID, ActiveBattlePokemon<ID>, HostPokemon<P, M, I>, I, Box<dyn BattleEndpoint<ID>>>;
 
 pub struct PlayerData<ID> {
     pub id: ID,
     pub name: Option<String>,
     pub party: Party<SavedPokemon>,
+    pub bag: SavedBag,
     pub settings: PlayerSettings,
     pub endpoint: Box<dyn BattleEndpoint<ID>>,
 }
@@ -70,8 +71,11 @@ impl<ID> PlayerData<ID> {
             }
         }
 
+        let bag = self.bag.init(itemdex).unwrap_or_default();
+
         BattlePlayer {
             party,
+            bag,
             settings: self.settings,
             endpoint: self.endpoint,
         }
@@ -98,10 +102,18 @@ impl<ID: Clone> ClientPlayerData<ID> {
                 id: player.party.id().clone(),
                 name: player.party.name.clone(),
                 active: ActiveBattlePokemon::as_usize(&player.party.active),
-                pokemon: player.party.pokemon.iter().map(|p| &p.p.p).cloned().map(|pokemon| pokemon.uninit()).collect(),
+                pokemon: player
+                    .party
+                    .pokemon
+                    .iter()
+                    .map(|p| &p.p.p)
+                    .cloned()
+                    .map(|pokemon| pokemon.uninit())
+                    .collect(),
             },
             data,
             remotes: others.map(|player| player.party.as_remote()).collect(),
+            bag: player.bag.clone().uninit(),
         }
     }
 }

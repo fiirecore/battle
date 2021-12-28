@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 use firecore_pokedex::{
+    item::Item,
     moves::{owned::SavedMove, Move, MoveCategory, MoveTarget},
     pokemon::{
         data::{Breeding, LearnableMove, Training},
@@ -10,7 +11,7 @@ use firecore_pokedex::{
         Pokemon,
     },
     types::PokemonType,
-    BasicDex, item::Item,
+    BasicDex,
 };
 
 use firecore_battle::{
@@ -31,7 +32,11 @@ fn main() {
     let mut movedex = BasicDex::default();
     let itemdex = BasicDex::default();
 
-    let move_id = ["default".parse().unwrap(), "script".parse().unwrap(), "damage".parse().unwrap()];
+    let move_id = [
+        "default".parse().unwrap(),
+        "script".parse().unwrap(),
+        "damage".parse().unwrap(),
+    ];
 
     movedex.insert(Move {
         id: move_id[0],
@@ -103,7 +108,9 @@ fn main() {
     let party: Party<_> = POKEMON
         .into_iter()
         .enumerate()
-        .map(|(index, id)| SavedPokemon::generate(&mut random, id, 10 + (index as u8) * 20, None, None))
+        .map(|(index, id)| {
+            SavedPokemon::generate(&mut random, id, 10 + (index as u8) * 20, None, None)
+        })
         .map(|mut o| {
             for m in move_id {
                 o.moves.push(SavedMove::from(m));
@@ -130,6 +137,7 @@ fn main() {
             id: id as _,
             name: Some(format!("Player {}", id)),
             party: party.clone(),
+            bag: Default::default(),
             settings: PlayerSettings { gains_exp: false },
             endpoint: Box::new(player.endpoint().clone()),
         }),

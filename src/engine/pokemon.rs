@@ -170,7 +170,9 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
             }
         }
 
-        let mut e_mult = move_type.effective(target.pokemon.primary_type, category).multiplier();
+        let mut e_mult = move_type
+            .effective(target.pokemon.primary_type, category)
+            .multiplier();
         if let Some(secondary) = target.pokemon.secondary_type {
             e_mult *= move_type.effective(secondary, category).multiplier();
         }
@@ -192,7 +194,10 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
         damage *= crit_dmg(crit);
         damage *= e_mult;
 
-        println!("PWR: {}, LVL: {}, ATK: {}, DEF: {}, DMG: {}", power, self.level, attack, defense, damage);
+        println!(
+            "PWR: {}, LVL: {}, ATK: {}, DEF: {}, DMG: {}",
+            power, self.level, attack, defense, damage
+        );
 
         DamageResult {
             damage: damage.round() as _,
@@ -235,6 +240,8 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
 mod tests {
 
     use firecore_pokedex::{
+        item::Item,
+        moves::{set::OwnedMoveSet, Move, MoveCategory},
         pokemon::{
             data::{Breeding, Gender, GrowthRate, Training},
             nature::Nature,
@@ -242,7 +249,7 @@ mod tests {
             stat::StatSet,
             Pokemon,
         },
-        types::PokemonType, item::Item, moves::{set::OwnedMoveSet, Move, MoveCategory},
+        types::PokemonType,
     };
 
     use super::BattlePokemon;
@@ -292,7 +299,10 @@ mod tests {
             evolution: None,
             height: 0_4,
             weight: 20,
-            training: Training { base_exp: 60, growth: GrowthRate::MediumSlow },
+            training: Training {
+                base_exp: 60,
+                growth: GrowthRate::MediumSlow,
+            },
             breeding: Breeding { gender: Some(3) },
         };
 
@@ -339,9 +349,25 @@ mod tests {
 
         let target = target.into();
 
-        let damage = user.move_power_damage(&target, 80, MoveCategory::Physical, PokemonType::Water, false, 100).damage;
-        assert!(damage <= 1200, "Damage overreached threshold! {} > 1200", damage);
-        assert!(damage >= 1100, "Damage could not reach threshold! {} < 1100", damage);
-
+        let damage = user
+            .move_power_damage(
+                &target,
+                80,
+                MoveCategory::Physical,
+                PokemonType::Water,
+                false,
+                100,
+            )
+            .damage;
+        assert!(
+            damage <= 1200,
+            "Damage overreached threshold! {} > 1200",
+            damage
+        );
+        assert!(
+            damage >= 1100,
+            "Damage could not reach threshold! {} < 1100",
+            damage
+        );
     }
 }
