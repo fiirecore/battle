@@ -194,10 +194,10 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
         damage *= crit_dmg(crit);
         damage *= e_mult;
 
-        println!(
-            "PWR: {}, LVL: {}, ATK: {}, DEF: {}, DMG: {}",
-            power, self.level, attack, defense, damage
-        );
+        // println!(
+        //     "PWR: {}, LVL: {}, ATK: {}, DEF: {}, DMG: {}",
+        //     power, self.level, attack, defense, damage
+        // );
 
         DamageResult {
             damage: damage.round() as _,

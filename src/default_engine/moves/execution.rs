@@ -80,7 +80,7 @@ pub fn move_usage<
             MoveUse::Damage(kind) => {
                 results.push(Indexed(
                     target_id.clone(),
-                    MoveResult::Damage(target.damage_kind(
+                    MoveResult::Damage(user.1.damage_kind(
                         random,
                         target,
                         *kind,
