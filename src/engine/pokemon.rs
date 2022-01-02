@@ -171,9 +171,9 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
         }
 
         let mut e_mult = move_type
-            .effective(target.pokemon.primary_type, category)
+            .effective(target.pokemon.types.primary, category)
             .multiplier();
-        if let Some(secondary) = target.pokemon.secondary_type {
+        if let Some(secondary) = target.pokemon.types.secondary {
             e_mult *= move_type.effective(secondary, category).multiplier();
         }
         let e_mult = e_mult as f64;
@@ -190,7 +190,7 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
         damage += 2.0;
 
         damage *= range as f64 / 100.0;
-        damage *= stab(self.pokemon.primary_type, move_type);
+        damage *= stab(self.pokemon.types.primary, move_type);
         damage *= crit_dmg(crit);
         damage *= e_mult;
 
@@ -244,12 +244,11 @@ mod tests {
         moves::{set::OwnedMoveSet, Move, MoveCategory},
         pokemon::{
             data::{Breeding, Gender, GrowthRate, Training},
-            nature::Nature,
             owned::OwnedPokemon,
             stat::StatSet,
-            Pokemon,
+            Nature, Pokemon,
         },
-        types::PokemonType,
+        types::{PokemonType, Types},
     };
 
     use super::BattlePokemon;
@@ -259,8 +258,10 @@ mod tests {
         let feraligatr = Pokemon {
             id: 160,
             name: "Feraligatr".to_owned(),
-            primary_type: PokemonType::Water,
-            secondary_type: None,
+            types: Types {
+                primary: PokemonType::Water,
+                secondary: None,
+            },
             moves: vec![],
             base: StatSet {
                 hp: 85,
@@ -284,8 +285,10 @@ mod tests {
         let geodude = Pokemon {
             id: 74,
             name: "Geodude".to_owned(),
-            primary_type: PokemonType::Rock,
-            secondary_type: Some(PokemonType::Ground),
+            types: Types {
+                primary: PokemonType::Rock,
+                secondary: Some(PokemonType::Ground),
+            },
             moves: vec![],
             base: StatSet {
                 hp: 40,

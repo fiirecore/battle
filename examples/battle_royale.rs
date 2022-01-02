@@ -10,7 +10,7 @@ use firecore_pokedex::{
         stat::StatSet,
         Pokemon,
     },
-    types::PokemonType,
+    types::{PokemonType, Types},
     BasicDex,
 };
 
@@ -84,8 +84,10 @@ fn main() {
         pokedex.insert(Pokemon {
             id,
             name: format!("Test {}", id),
-            primary_type: PokemonType::Normal,
-            secondary_type: Some(PokemonType::Ice),
+            types: Types {
+                primary: PokemonType::Normal,
+                secondary: Some(PokemonType::Ice),
+            },
             moves: vec![LearnableMove(0, move_id[0]), LearnableMove(0, move_id[1])],
             base: StatSet::uniform(70),
             species: "Test".to_owned(),
@@ -103,13 +105,15 @@ fn main() {
     type RngType = rand::rngs::SmallRng;
     use rand::prelude::SeedableRng;
 
-    let mut random = RngType::seed_from_u64(23524352);
+    let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(325218);
+
+    let mut random = RngType::seed_from_u64(seed);
 
     let party: Party<_> = POKEMON
         .into_iter()
         .enumerate()
         .map(|(index, id)| {
-            SavedPokemon::generate(&mut random, id, 10 + (index as u8) * 20, None, None)
+            SavedPokemon::generate(id, 10 + (index as u8) * 20, None, None)
         })
         .map(|mut o| {
             for m in move_id {
