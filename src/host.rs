@@ -306,17 +306,15 @@ impl<
                                         player.party.active[active] = Some(index.into());
                                         let unknown = player.party.know(index);
                                         for mut other in self.players.values_mut() {
-                                            let id =
-                                                PokemonIdentifier(player.party.id().clone(), index);
                                             if let Some(pokemon) = unknown.as_ref() {
                                                 other.send(ServerMessage::AddRemote(Indexed(
-                                                    id.clone(),
+                                                    PokemonIdentifier(player.party.id().clone(), index),
                                                     pokemon.clone(),
                                                 )));
                                             }
                                             other.send(ServerMessage::Replace(Indexed(
-                                                PokemonIdentifier(id.team().clone(), index),
-                                                id.index(),
+                                                PokemonIdentifier(player.party.id().clone(), active),
+                                                index,
                                             )));
                                         }
                                         false
