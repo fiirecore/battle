@@ -1,6 +1,6 @@
 use hashbrown::HashMap;
 
-use quad_compat_rhai::{
+use rhai::{
     packages::{BasicArrayPackage, Package},
     Engine,
 };

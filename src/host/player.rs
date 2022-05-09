@@ -5,7 +5,7 @@ use pokedex::{
     item::{bag::SavedBag, Item},
     moves::Move,
     pokemon::{owned::SavedPokemon, party::Party, Pokemon},
-    Dex, Initializable, Uninitializable,
+    Dex,
 };
 
 use crate::{
@@ -44,17 +44,16 @@ impl<ID, P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = 
 
 impl<ID> PlayerData<ID> {
     pub(crate) fn init<
-        'd,
-        P: Deref<Target = Pokemon>,
-        M: Deref<Target = Move>,
-        I: Deref<Target = Item>,
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
     >(
         self,
         random: &mut impl Rng,
         active: usize,
-        pokedex: &'d dyn Dex<'d, Pokemon, P>,
-        movedex: &'d dyn Dex<'d, Move, M>,
-        itemdex: &'d dyn Dex<'d, Item, I>,
+        pokedex: &impl Dex<Pokemon, Output = P>,
+        movedex: &impl Dex<Move, Output = M>,
+        itemdex: &impl Dex<Item, Output = I>,
     ) -> BattlePlayer<ID, P, M, I> {
         let pokemon: Party<HostPokemon<P, M, I>> = self
             .party

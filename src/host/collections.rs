@@ -11,6 +11,7 @@ use pokedex::{
     pokemon::Pokemon,
 };
 use rand::{prelude::IteratorRandom, Rng};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     engine::{BattlePokemon, Players},
@@ -20,8 +21,11 @@ use crate::{
 
 use super::player::BattlePlayer;
 
+#[derive(Deserialize, Serialize)]
+#[serde(transparent)]
 pub struct BattleMap<K: Eq + Hash, V>(hashbrown::HashMap<K, (Properties, RefCell<V>)>);
 
+#[derive(Deserialize, Serialize)]
 pub struct Properties {
     pub active: Cell<bool>,
 }

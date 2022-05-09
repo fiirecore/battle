@@ -1,11 +1,10 @@
 use core::ops::{Deref, DerefMut};
-use std::collections::HashSet;
+use hashbrown::HashSet;
 
 use pokedex::{
     item::Item,
     moves::{Move, MoveId},
     pokemon::{owned::OwnedPokemon, Pokemon},
-    Uninitializable,
 };
 
 use crate::{

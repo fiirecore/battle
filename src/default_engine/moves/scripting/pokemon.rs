@@ -1,6 +1,6 @@
 use core::ops::{Deref, DerefMut};
 
-use quad_compat_rhai::INT;
+use rhai::INT;
 use rand::Rng;
 
 use pokedex::{moves::MoveCategory, types::PokemonType};
@@ -79,7 +79,7 @@ impl<ID: Clone> ScriptPokemon<ID> {
                 item: pokemon.item.as_ref().map(|i| DerefPtr::of(i.deref())),
                 experience: pokemon.experience,
             },
-            stages: pokemon.stages,
+            stages: pokemon.stages.clone(),
         };
 
         // let p = pokemon.1 as *const BattlePokemon<'d>;

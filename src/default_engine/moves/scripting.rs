@@ -1,6 +1,6 @@
 use core::{hash::Hash, ops::Deref};
 
-use quad_compat_rhai::{Array, Dynamic, Scope};
+use rhai::{Array, Dynamic, Scope};
 use rand::Rng;
 
 use pokedex::{item::Item, moves::Move, pokemon::Pokemon};

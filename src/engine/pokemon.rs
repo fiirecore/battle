@@ -81,7 +81,7 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
     pub fn stat(&self, stat: StatType) -> BaseStat {
         StatStages::mult(
             self.p.stat(stat),
-            self.stages.get(BattleStatType::Basic(stat)),
+            self.stages[BattleStatType::Basic(stat)],
         )
     }
 
@@ -239,13 +239,13 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
 #[cfg(test)]
 mod tests {
 
-    use firecore_pokedex::{
+    use firecore_pokedex::{stat_set, 
         item::Item,
         moves::{set::OwnedMoveSet, Move, MoveCategory},
         pokemon::{
             data::{Breeding, Gender, GrowthRate, Training},
             owned::OwnedPokemon,
-            stat::StatSet,
+            stat::{StatSet, StatType},
             Nature, Pokemon,
         },
         types::{PokemonType, Types},
@@ -263,13 +263,13 @@ mod tests {
                 secondary: None,
             },
             moves: vec![],
-            base: StatSet {
-                hp: 85,
-                atk: 105,
-                def: 100,
-                sp_atk: 79,
-                sp_def: 83,
-                speed: 78,
+            base: stat_set! {
+                StatType::Health => 85,
+                StatType::Attack => 105,
+                StatType::Defense => 100,
+                StatType::SpAttack => 79,
+                StatType::SpDefense => 83,
+                StatType::Speed => 78,
             },
             species: "Big Jaw".to_owned(),
             evolution: None,
@@ -290,13 +290,13 @@ mod tests {
                 secondary: Some(PokemonType::Ground),
             },
             moves: vec![],
-            base: StatSet {
-                hp: 40,
-                atk: 80,
-                def: 100,
-                sp_atk: 30,
-                sp_def: 30,
-                speed: 20,
+            base: stat_set! {
+                StatType::Health => 40,
+                StatType::Attack =>  80,
+                StatType::Defense => 100,
+                StatType::SpAttack => 30,
+                StatType::SpDefense => 30,
+                StatType::Speed =>  20,
             },
             species: "Rock".to_owned(),
             evolution: None,
@@ -364,7 +364,7 @@ mod tests {
             .damage;
         assert!(
             damage <= 1200,
-            "Damage overreached threshold! {} > 1200",
+            "Damage passed threshold! {} > 1200",
             damage
         );
         assert!(

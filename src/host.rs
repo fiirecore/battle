@@ -3,6 +3,7 @@
 use core::{cell::RefMut, cmp::Reverse, fmt::Display, hash::Hash, ops::Deref};
 use log::warn;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 use pokedex::{
     item::Item,
@@ -35,6 +36,7 @@ mod party;
 mod player;
 mod pokemon;
 mod timer;
+// pub mod saved;
 
 use collections::BattleMap;
 use party::BattleParty;
@@ -62,7 +64,7 @@ pub struct Battle<
     timer: Timer,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 enum BattleState<ID> {
     Start,
     StartSelecting,
@@ -91,13 +93,13 @@ impl<
         I: Deref<Target = Item> + Clone,
     > Battle<ID, P, M, I>
 {
-    pub fn new<'d, R: Rng>(
+    pub fn new<R: Rng>(
         data: BattleData,
         random: &mut R,
         active: usize,
-        pokedex: &'d dyn Dex<'d, Pokemon, P>,
-        movedex: &'d dyn Dex<'d, Move, M>,
-        itemdex: &'d dyn Dex<'d, Item, I>,
+        pokedex: &impl Dex<Pokemon, Output = P>,
+        movedex: &impl Dex<Move, Output = M>,
+        itemdex: &impl Dex<Item, Output = I>,
         players: impl Iterator<Item = PlayerData<ID>>,
     ) -> Self {
         Self {
@@ -138,8 +140,8 @@ impl<
         random: &mut R,
         engine: &mut ENG,
         delta: f32,
-        movedex: &'d dyn Dex<'d, Move, M>,
-        itemdex: &'d dyn Dex<'d, Item, I>,
+        movedex: &impl Dex<Move, Output = M>,
+        itemdex: &impl Dex<Item, Output = I>,
     ) {
         self.timer.update(delta);
 
@@ -154,8 +156,8 @@ impl<
         &mut self,
         random: &mut R,
         engine: &mut ENG,
-        movedex: &'d dyn Dex<'d, Move, M>,
-        itemdex: &'d dyn Dex<'d, Item, I>,
+        movedex: &impl Dex<Move, Output = M>,
+        itemdex: &impl Dex<Item, Output = I>,
     ) {
         match self.state {
             BattleState::Start => self.begin(),
@@ -250,7 +252,7 @@ impl<
     fn receive<'d>(
         &self,
         mut player: RefMut<BattlePlayer<ID, P, M, I>>,
-        movedex: &'d dyn Dex<'d, Move, M>,
+        movedex: &impl Dex<Move, Output = M>,
     ) {
         loop {
             match player.receive() {
@@ -335,7 +337,7 @@ impl<
                         if let Some(pokemon) = player.party.pokemon.get_mut(pokemon) {
                             if pokemon.learnable_moves.remove(&id) {
                                 if let Some(m) = movedex.try_get(&id) {
-                                    pokemon.moves.add(index, m);
+                                    pokemon.moves.add(index, m.clone());
                                 }
                             }
                         }
@@ -357,8 +359,8 @@ impl<
         &mut self,
         random: &mut R,
         engine: &mut ENG,
-        movedex: &'d dyn Dex<'d, Move, M>,
-        itemdex: &'d dyn Dex<'d, Item, I>,
+        movedex: &impl Dex<Move, Output = M>,
+        itemdex: &impl Dex<Item, Output = I>,
         queue: Vec<Indexed<ID, BattleMove<ID>>>,
     ) -> Vec<Indexed<ID, ClientMove<ID>>> {
         let mut player_queue = Vec::with_capacity(queue.len());
@@ -484,9 +486,9 @@ impl<
                                                         ClientMoveAction::AddStat(stat, stage),
                                                     ));
                                                 }
-                                                MoveResult::Flinch => actions.push(Indexed(
+                                                MoveResult::Cancel(reason) => actions.push(Indexed(
                                                     target_id,
-                                                    ClientMoveAction::Flinch,
+                                                    ClientMoveAction::Cancel(reason),
                                                 )),
                                                 MoveResult::Miss => {
                                                     actions.push(Indexed(
@@ -544,7 +546,7 @@ impl<
 
                         if let Some(pokemon) = user.party.active_mut(user_id.index()) {
                             // decrement PP
-                            let pp = &mut pokemon.moves[move_index].1;
+                            let pp = &mut pokemon.moves.get_mut(move_index).unwrap().1;
                             *pp = pp.saturating_sub(1);
 
                             if pokemon.fainted() {
@@ -593,7 +595,7 @@ impl<
                             Err(err) => warn!("Cannot execute item engine with error {}", err),
                         }
                     }
-                    None => warn!("Could not get item with id {}", id),
+                    None => warn!("Could not get item with id {}", id.as_str()),
                 },
                 BattleMove::Switch(new) => match self.players.get_mut(user_id.team()) {
                     Some(mut user) => {

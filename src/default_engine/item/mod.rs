@@ -8,7 +8,6 @@ use firecore_pokedex::{
     item::{Item, ItemId},
     moves::Move,
     pokemon::Pokemon,
-    Uninitializable,
 };
 
 use crate::{

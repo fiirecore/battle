@@ -38,8 +38,8 @@ impl<
         R: Rng,
         ID: Eq + Hash + Clone,
         P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move>,
-        I: Deref<Target = Item>,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
     > BattleAi<R, ID, P, M, I>
 {
     pub fn new(random: R) -> Self {
@@ -67,11 +67,11 @@ impl<
         &self.endpoint
     }
 
-    pub fn update<'d>(
+    pub fn update(
         &mut self,
-        pokedex: &'d dyn Dex<'d, Pokemon, P>,
-        movedex: &'d dyn Dex<'d, Move, M>,
-        itemdex: &'d dyn Dex<'d, Item, I>,
+        pokedex: &impl Dex<Pokemon, Output = P>,
+        movedex: &impl Dex<Move, Output = M>,
+        itemdex: &impl Dex<Item, Output = I>,
     ) {
         while !self.client.receiver.is_empty() {
             match self.client.receiver.try_recv() {

@@ -4,6 +4,6 @@ version = "0.0.4"
 edition = "2021"
 
 [dependencies]
-firecore-battle = { path = ".." }
+firecore-battle = { path = "../.." }
 ron = "0.7"
 hashbrown = "0.9"

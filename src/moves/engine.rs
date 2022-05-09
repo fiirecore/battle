@@ -8,7 +8,7 @@ use pokedex::{ailment::LiveAilment, pokemon::Health};
 
 use crate::{
     engine::{BattlePokemon, Players},
-    moves::damage::DamageResult,
+    moves::{damage::DamageResult, MoveCancel},
     pokemon::{
         stat::{BattleStatType, Stage},
         Indexed, PokemonIdentifier,
@@ -44,7 +44,7 @@ pub enum MoveResult {
     Heal(i16),
     Ailment(LiveAilment),
     Stat(BattleStatType, Stage),
-    Flinch,
+    Cancel(MoveCancel),
     Miss,
     Error,
 }

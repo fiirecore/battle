@@ -1,4 +1,4 @@
-use quad_compat_rhai::INT;
+use rhai::INT;
 
 use crate::{moves::engine::MoveResult, pokemon::Indexed};
 

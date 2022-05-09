@@ -13,7 +13,7 @@ use pokedex::{
 
 use crate::{
     engine::BattlePokemon,
-    moves::{damage::DamageKind, engine::MoveResult, Percent},
+    moves::{damage::DamageKind, engine::MoveResult, MoveCancel, Percent},
     pokemon::{
         stat::{BattleStatType, Stage},
         Indexed,
@@ -121,7 +121,10 @@ pub fn move_usage<
             // MoveUseType::Linger(..) => {
             // 	results.insert(target.instance, Some(MoveAction::Todo));
             // }
-            MoveUse::Flinch => results.push(Indexed(target_id.clone(), MoveResult::Flinch)),
+            MoveUse::Flinch => results.push(Indexed(
+                target_id.clone(),
+                MoveResult::Cancel(MoveCancel::Flinch),
+            )),
             MoveUse::Chance(actions, chance) => {
                 if random.gen_range(0..=100) < *chance {
                     move_usage(

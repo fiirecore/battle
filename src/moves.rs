@@ -14,6 +14,13 @@ use crate::pokemon::{
 
 pub mod damage;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MoveCancel {
+    Flinch,
+    Sleep,
+    Paralysis,
+}
+
 #[cfg(feature = "move_engine")]
 pub mod engine;
 
@@ -41,7 +48,7 @@ pub enum ClientMoveAction {
     AddStat(BattleStatType, Stage),
     Ailment(LiveAilment),
 
-    Flinch,
+    Cancel(MoveCancel),
     Miss,
 
     SetExp(Experience, Level),
@@ -57,7 +64,7 @@ impl<ID: core::fmt::Display> core::fmt::Display for BattleMove<ID> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             BattleMove::Move(index, ..) => write!(f, "Move #{}", index),
-            BattleMove::UseItem(Indexed(.., id)) => write!(f, "Item {}", id),
+            BattleMove::UseItem(Indexed(.., id)) => write!(f, "Item {}", id.as_str()),
             BattleMove::Switch(index) => write!(f, "Switch to {}", index),
         }
     }

@@ -1,4 +1,4 @@
-use quad_compat_rhai::INT;
+use rhai::INT;
 
 use pokedex::{
     moves::{Accuracy, Move, MoveCategory},

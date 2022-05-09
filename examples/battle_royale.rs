@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::{Range, Deref};
 
 use firecore_pokedex::{
     item::Item,
@@ -22,15 +22,32 @@ use firecore_battle::{
 
 const POKEMON: Range<u16> = 0..6;
 
+#[derive(Clone)]
+struct Container<T>(T);
+
+impl<T> From<T> for Container<T> {
+    fn from(t: T) -> Self {
+        Self(t)
+    }
+}
+
+impl<T> Deref for Container<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 fn main() {
     simple_logger::SimpleLogger::new()
         .with_level(log::LevelFilter::Trace)
         .init()
         .unwrap();
 
-    let mut pokedex = BasicDex::default();
-    let mut movedex = BasicDex::default();
-    let itemdex = BasicDex::default();
+    let mut pokedex = BasicDex::<Pokemon, Container<_>>::default();
+    let mut movedex = BasicDex::<Move, Container<_>>::default();
+    let itemdex = BasicDex::<Item, Container<_>>::default();
 
     let move_id = [
         "default".parse().unwrap(),
@@ -105,16 +122,17 @@ fn main() {
     type RngType = rand::rngs::SmallRng;
     use rand::prelude::SeedableRng;
 
-    let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(325218);
+    let seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(325218);
 
     let mut random = RngType::seed_from_u64(seed);
 
     let party: Party<_> = POKEMON
         .into_iter()
         .enumerate()
-        .map(|(index, id)| {
-            SavedPokemon::generate(id, 10 + (index as u8) * 20, None, None)
-        })
+        .map(|(index, id)| SavedPokemon::generate(id, 10 + (index as u8) * 20, None, None))
         .map(|mut o| {
             for m in move_id {
                 o.moves.push(SavedMove::from(m));
@@ -127,7 +145,7 @@ fn main() {
 
     let mut players: Vec<_> = (1..100)
         .into_iter()
-        .map(|_| BattleAi::<RngType, u8, &Pokemon, &Move, &Item>::new(random.clone()))
+        .map(|_| BattleAi::<RngType, u8, _, _, _>::new(random.clone()))
         .collect();
 
     let mut battle = Battle::new(

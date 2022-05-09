@@ -2,8 +2,6 @@ use core::ops::Deref;
 
 use pokedex::{item::Item, moves::Move, pokemon::Pokemon};
 
-use pokedex::Uninitializable;
-
 use crate::{
     party::{PlayerParty, RemoteParty},
     pokemon::remote::{RemotePokemon, UnknownPokemon},

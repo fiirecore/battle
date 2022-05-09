@@ -7,7 +7,7 @@ use pokedex::{
     item::Item,
     moves::Move,
     pokemon::{data::Gender, owned::OwnedPokemon, Level, Pokemon, PokemonId},
-    Dex, Initializable, Uninitializable,
+    Dex,
 };
 
 pub type RemotePokemon = UnknownPokemon<PokemonId>;
@@ -50,11 +50,9 @@ impl<P: Deref<Target = Pokemon>> UnknownPokemon<P> {
     }
 }
 
-impl<P: Deref<Target = Pokemon>> Uninitializable for UnknownPokemon<P> {
-    type Output = RemotePokemon;
-
-    fn uninit(self) -> Self::Output {
-        Self::Output {
+impl<P: Deref<Target = Pokemon>> UnknownPokemon<P> {
+    pub fn uninit(self) -> RemotePokemon {
+        RemotePokemon {
             pokemon: self.pokemon.id,
             nickname: self.nickname,
             level: self.level,
@@ -65,12 +63,11 @@ impl<P: Deref<Target = Pokemon>> Uninitializable for UnknownPokemon<P> {
     }
 }
 
-impl<'d, P: Deref<Target = Pokemon>> Initializable<'d, Pokemon, P> for RemotePokemon {
-    type Output = UnknownPokemon<P>;
+impl RemotePokemon {
 
-    fn init(self, dex: &'d dyn Dex<'d, Pokemon, P>) -> Option<Self::Output> {
-        Some(Self::Output {
-            pokemon: dex.try_get(&self.pokemon)?,
+    pub fn init<P: Deref<Target = Pokemon> + Clone>(self, dex: &impl Dex<Pokemon, Output = P>) -> Option<UnknownPokemon<P>> {
+        Some(UnknownPokemon {
+            pokemon: dex.try_get(&self.pokemon)?.clone(),
             nickname: self.nickname,
             level: self.level,
             gender: self.gender,
