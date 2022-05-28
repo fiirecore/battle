@@ -44,16 +44,16 @@ pub fn damage_range(random: &mut impl Rng) -> Percent {
 
 #[derive(Debug, Clone)]
 pub struct BattlePokemon<
-    P: Deref<Target = Pokemon>,
-    M: Deref<Target = Move>,
-    I: Deref<Target = Item>,
+    P: Deref<Target = Pokemon> + Clone,
+    M: Deref<Target = Move> + Clone,
+    I: Deref<Target = Item> + Clone,
 > {
     pub p: OwnedPokemon<P, M, I>,
     // pub persistent: Option<PersistentMove>,
     pub stages: StatStages,
 }
 
-impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>>
+impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone>
     BattlePokemon<P, M, I>
 {
     // pub fn try_flinch(&mut self) -> bool {
@@ -79,10 +79,7 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
     }
 
     pub fn stat(&self, stat: StatType) -> BaseStat {
-        StatStages::mult(
-            self.p.stat(stat),
-            self.stages[BattleStatType::Basic(stat)],
-        )
+        StatStages::mult(self.p.stat(stat), self.stages[BattleStatType::Basic(stat)])
     }
 
     pub fn damage_kind(
@@ -207,8 +204,11 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
     }
 }
 
-impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>>
-    From<OwnedPokemon<P, M, I>> for BattlePokemon<P, M, I>
+impl<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+    > From<OwnedPokemon<P, M, I>> for BattlePokemon<P, M, I>
 {
     fn from(p: OwnedPokemon<P, M, I>) -> Self {
         Self {
@@ -218,8 +218,11 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
     }
 }
 
-impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> Deref
-    for BattlePokemon<P, M, I>
+impl<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+    > Deref for BattlePokemon<P, M, I>
 {
     type Target = OwnedPokemon<P, M, I>;
 
@@ -228,7 +231,7 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
     }
 }
 
-impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>> DerefMut
+impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone> DerefMut
     for BattlePokemon<P, M, I>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -239,7 +242,7 @@ impl<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item
 #[cfg(test)]
 mod tests {
 
-    use firecore_pokedex::{stat_set, 
+    use firecore_pokedex::{
         item::Item,
         moves::{set::OwnedMoveSet, Move, MoveCategory},
         pokemon::{
@@ -248,6 +251,7 @@ mod tests {
             stat::{StatSet, StatType},
             Nature, Pokemon,
         },
+        stat_set,
         types::{PokemonType, Types},
     };
 
@@ -362,11 +366,7 @@ mod tests {
                 100,
             )
             .damage;
-        assert!(
-            damage <= 1200,
-            "Damage passed threshold! {} > 1200",
-            damage
-        );
+        assert!(damage <= 1200, "Damage passed threshold! {} > 1200", damage);
         assert!(
             damage >= 1100,
             "Damage could not reach threshold! {} < 1100",

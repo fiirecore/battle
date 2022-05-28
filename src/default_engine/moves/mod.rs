@@ -30,9 +30,9 @@ impl MoveEngine for DefaultEngine {
     fn execute<
         ID: Clone + Hash + Eq + 'static + Debug,
         R: Rng + Clone + 'static,
-        P: Deref<Target = Pokemon>,
-        M: Deref<Target = Move>,
-        I: Deref<Target = Item>,
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
         PLR: Players<ID, P, M, I>,
     >(
         &self,

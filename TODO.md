@@ -2,5 +2,7 @@
 
 * Proper passive and selected item usage
 
-* AI hits self?
+* Joining mid game
+
+* Public server capability
 

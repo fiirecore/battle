@@ -29,9 +29,9 @@ use super::{super::scripting::ScriptingEngine, MoveError};
 
 impl ScriptingEngine {
     pub fn execute_move<
-        P: Deref<Target = Pokemon>,
-        M: Deref<Target = Move>,
-        I: Deref<Target = Item>,
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
         R: Rng + Clone + 'static,
         ID: Eq + Hash + Clone + 'static + core::fmt::Debug,
         PLR: Players<ID, P, M, I>,

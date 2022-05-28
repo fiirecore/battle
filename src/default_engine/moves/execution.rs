@@ -64,9 +64,9 @@ pub fn move_usage<
     'd,
     ID: Clone,
     R: Rng,
-    P: Deref<Target = Pokemon>,
-    M: Deref<Target = Move>,
-    I: Deref<Target = Item>,
+    P: Deref<Target = Pokemon> + Clone,
+    M: Deref<Target = Move> + Clone,
+    I: Deref<Target = Item> + Clone,
 >(
     user: &Indexed<ID, &BattlePokemon<P, M, I>>,
     random: &mut R,

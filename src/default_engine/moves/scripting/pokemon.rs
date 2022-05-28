@@ -5,7 +5,7 @@ use rand::Rng;
 
 use pokedex::{moves::MoveCategory, types::PokemonType};
 
-use pokedex::{item::Item, moves::Move, pokemon::owned::OwnablePokemon, pokemon::Pokemon};
+use pokedex::{item::Item, moves::Move, pokemon::owned::OwnedPokemon, pokemon::Pokemon};
 
 use crate::{
     engine::pokemon::{crit, throw_move, BattlePokemon},
@@ -59,12 +59,12 @@ impl<ID: Clone> ScriptPokemon<ID> {
     //         .map(|p| Self::new(Indexed(id, p)))
     // }
 
-    pub fn new<P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>>(
+    pub fn new<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone>(
         pokemon: Indexed<ID, &BattlePokemon<P, M, I>>,
     ) -> Self {
         let Indexed(id, pokemon) = pokemon;
         let p = BattlePokemon {
-            p: OwnablePokemon {
+            p: OwnedPokemon {
                 pokemon: DerefPtr(pokemon.pokemon.deref() as _),
                 level: pokemon.level,
                 gender: pokemon.gender,

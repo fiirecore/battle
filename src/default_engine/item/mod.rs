@@ -31,9 +31,9 @@ impl ItemEngine for DefaultEngine {
     fn execute<
         ID: PartialEq,
         R: Rng,
-        P: Deref<Target = Pokemon>,
-        M: Deref<Target = Move>,
-        I: Deref<Target = Item>,
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
         PLR: Players<ID, P, M, I>,
     >(
         &mut self,

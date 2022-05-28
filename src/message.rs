@@ -18,8 +18,8 @@ pub enum ClientMessage<ID> {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum ServerMessage<ID> {
-    Begin(ClientPlayerData<ID>),
+pub enum ServerMessage<ID, T> {
+    Begin(ClientPlayerData<ID, T>),
 
     Start(StartableAction<ID>),
 
@@ -31,7 +31,7 @@ pub enum ServerMessage<ID> {
 
     Catch(SavedPokemon),
 
-    PlayerEnd(EndMessage),
+    PlayerEnd(ID, EndMessage),
     GameEnd(
         /// Winner
         Option<ID>,
@@ -59,7 +59,7 @@ pub enum FailedAction {
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum EndMessage {
-    Win,  // add money gained
-    Lose, // add money lost
+    Lose,//(pokedex::Money), // add money lost
+    Run,
     Other,
 }

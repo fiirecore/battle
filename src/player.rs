@@ -22,25 +22,26 @@ impl Default for PlayerSettings {
     }
 }
 
-pub struct Player<ID, A: ActivePokemon, P, I, E> {
-    pub party: PlayerParty<ID, A, P>,
+pub struct Player<ID, A: ActivePokemon, P, I, T, E> {
+    pub party: PlayerParty<ID, A, P, T>,
     pub bag: Bag<I>,
     pub settings: PlayerSettings,
     pub endpoint: E,
 }
 
-impl<ID, A: ActivePokemon, P: PokemonView, I, E> Player<ID, A, P, I, E> {
+impl<ID, A: ActivePokemon, P: PokemonView, I, T, E> Player<ID, A, P, I, T, E> {
     pub fn new(
         id: ID,
         name: Option<String>,
         active: usize,
         pokemon: Party<P>,
         bag: Bag<I>,
+        trainer: Option<T>,
         settings: PlayerSettings,
         endpoint: E,
     ) -> Self {
         Self {
-            party: PlayerParty::new(id, name, active, pokemon),
+            party: PlayerParty::new(id, name, active, pokemon, trainer),
             bag,
             settings,
             endpoint,
@@ -57,9 +58,9 @@ impl<ID, A: ActivePokemon, P: PokemonView, I, E> Player<ID, A, P, I, E> {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ClientPlayerData<ID> {
+pub struct ClientPlayerData<ID, T> {
     pub data: BattleData,
-    pub local: PlayerParty<ID, usize, SavedPokemon>,
-    pub remotes: Vec<RemoteParty<ID>>,
+    pub local: PlayerParty<ID, usize, SavedPokemon, T>,
+    pub remotes: Vec<RemoteParty<ID, T>>,
     pub bag: SavedBag,
 }

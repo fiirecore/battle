@@ -4,16 +4,17 @@ use pokedex::pokemon::party::Party;
 
 use crate::pokemon::{remote::RemotePokemon, PokemonView};
 
-pub type RemoteParty<ID> = crate::party::PlayerParty<ID, usize, Option<RemotePokemon>>;
+pub type RemoteParty<ID, T> = crate::party::PlayerParty<ID, usize, Option<RemotePokemon>, T>;
 
 pub type Active<A> = Vec<Option<A>>;
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
-pub struct PlayerParty<ID, A, P> {
+pub struct PlayerParty<ID, A, P, T> {
     pub id: ID,
     pub name: Option<String>,
     pub active: Active<A>,
     pub pokemon: Party<P>,
+    pub trainer: Option<T>,
 }
 
 /// Get the index of the pokemon in the party from this type.
@@ -27,7 +28,7 @@ impl ActivePokemon for usize {
     }
 }
 
-impl<ID, A, P> PlayerParty<ID, A, P> {
+impl<ID, A, P, T> PlayerParty<ID, A, P, T> {
     pub fn id(&self) -> &ID {
         &self.id
     }
@@ -37,24 +38,18 @@ impl<ID, A, P> PlayerParty<ID, A, P> {
     }
 }
 
-impl<ID, A: ActivePokemon, P> PlayerParty<ID, A, P> {
+impl<ID, A: ActivePokemon, P, T> PlayerParty<ID, A, P, T> {
     pub fn index(&self, index: usize) -> Option<usize> {
         self.active
-            .get(index)
-            .map(|active| active.as_ref().map(ActivePokemon::index))
-            .flatten()
+            .get(index).and_then(|active| active.as_ref().map(ActivePokemon::index))
     }
 
     pub fn active(&self, active: usize) -> Option<&P> {
-        self.index(active)
-            .map(move |index| self.pokemon.get(index))
-            .flatten()
+        self.index(active).and_then(move |index| self.pokemon.get(index))
     }
 
     pub fn active_mut(&mut self, active: usize) -> Option<&mut P> {
-        self.index(active)
-            .map(move |index| self.pokemon.get_mut(index))
-            .flatten()
+        self.index(active).and_then(move |index| self.pokemon.get_mut(index))
     }
 
     pub fn active_contains(&self, index: usize) -> bool {
@@ -64,7 +59,7 @@ impl<ID, A: ActivePokemon, P> PlayerParty<ID, A, P> {
             .any(|active| active.index() == index)
     }
 
-    pub fn active_iter(&self) -> impl Iterator<Item = (usize, &P)> + '_ {
+    pub fn active_iter(&self) -> impl DoubleEndedIterator<Item = (usize, &P)> + '_ {
         self.active
             .iter()
             .enumerate()
@@ -89,20 +84,24 @@ impl<ID, A: ActivePokemon, P> PlayerParty<ID, A, P> {
     }
 
     pub fn take(&mut self, active: usize) -> Option<P> {
-        self.index(active)
-            .map(|index| {
+        self.index(active).and_then(|index| {
                 if self.pokemon.len() < index {
                     Some(self.pokemon.remove(index))
                 } else {
                     None
                 }
             })
-            .flatten()
     }
 }
 
-impl<ID, A: ActivePokemon, P: PokemonView> PlayerParty<ID, A, P> {
-    pub fn new(id: ID, name: Option<String>, active: usize, pokemon: Party<P>) -> Self {
+impl<ID, A: ActivePokemon, P: PokemonView, T> PlayerParty<ID, A, P, T> {
+    pub fn new(
+        id: ID,
+        name: Option<String>,
+        active: usize,
+        pokemon: Party<P>,
+        trainer: Option<T>,
+    ) -> Self {
         let mut active = Vec::with_capacity(active);
         for (index, pokemon) in pokemon.iter().enumerate() {
             if !pokemon.fainted() {
@@ -123,6 +122,7 @@ impl<ID, A: ActivePokemon, P: PokemonView> PlayerParty<ID, A, P> {
             name,
             active,
             pokemon,
+            trainer,
         }
     }
 

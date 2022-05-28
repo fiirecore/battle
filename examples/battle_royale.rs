@@ -1,4 +1,4 @@
-use std::ops::{Range, Deref};
+use std::ops::{Deref, Range};
 
 use firecore_pokedex::{
     item::Item,
@@ -132,7 +132,11 @@ fn main() {
     let party: Party<_> = POKEMON
         .into_iter()
         .enumerate()
-        .map(|(index, id)| SavedPokemon::generate(id, 10 + (index as u8) * 20, None, None))
+        .map(|(index, id)| SavedPokemon {
+            pokemon: id,
+            level: 10 + (index as u8) * 20,
+            ..Default::default()
+        })
         .map(|mut o| {
             for m in move_id {
                 o.moves.push(SavedMove::from(m));
@@ -145,7 +149,7 @@ fn main() {
 
     let mut players: Vec<_> = (1..100)
         .into_iter()
-        .map(|_| BattleAi::<RngType, u8, _, _, _>::new(random.clone()))
+        .map(|_| BattleAi::<u8, (), RngType, _, _, _>::new(random.clone()))
         .collect();
 
     let mut battle = Battle::new(
@@ -160,6 +164,7 @@ fn main() {
             name: Some(format!("Player {}", id)),
             party: party.clone(),
             bag: Default::default(),
+            trainer: Some(()),
             settings: PlayerSettings { gains_exp: false },
             endpoint: Box::new(player.endpoint().clone()),
         }),
@@ -198,11 +203,9 @@ fn main() {
     engine.scripting.moves.insert(move_id[1], script.to_owned());
 
     while !battle.finished() {
-        battle.update(&mut random, &mut engine, 0.0, &movedex, &itemdex);
+        battle.update(&mut random, &mut engine, &movedex, &itemdex);
         for player in players.iter_mut() {
-            if !player.finished() {
-                player.update(&pokedex, &movedex, &itemdex);
-            }
+            player.update(&pokedex, &movedex, &itemdex);
         }
     }
 

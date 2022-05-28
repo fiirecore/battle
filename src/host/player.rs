@@ -18,22 +18,28 @@ use crate::{
 
 use super::pokemon::{ActiveBattlePokemon, HostPokemon};
 
-pub type BattlePlayer<ID, P, M, I> =
-    Player<ID, ActiveBattlePokemon<ID>, HostPokemon<P, M, I>, I, Box<dyn BattleEndpoint<ID>>>;
+pub type BattlePlayer<ID, P, M, I, T> =
+    Player<ID, ActiveBattlePokemon<ID>, HostPokemon<P, M, I>, I, T, Box<dyn BattleEndpoint<ID, T>>>;
 
-pub struct PlayerData<ID> {
+pub struct PlayerData<ID, T> {
     pub id: ID,
     pub name: Option<String>,
     pub party: Party<SavedPokemon>,
     pub bag: SavedBag,
+    pub trainer: Option<T>,
     pub settings: PlayerSettings,
-    pub endpoint: Box<dyn BattleEndpoint<ID>>,
+    pub endpoint: Box<dyn BattleEndpoint<ID, T>>,
 }
 
-impl<ID, P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = Item>>
-    BattlePlayer<ID, P, M, I>
+impl<
+        ID,
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+        T,
+    > BattlePlayer<ID, P, M, I, T>
 {
-    pub fn send(&mut self, message: ServerMessage<ID>) {
+    pub fn send(&mut self, message: ServerMessage<ID, T>) {
         self.endpoint.send(message)
     }
 
@@ -42,7 +48,7 @@ impl<ID, P: Deref<Target = Pokemon>, M: Deref<Target = Move>, I: Deref<Target = 
     }
 }
 
-impl<ID> PlayerData<ID> {
+impl<ID, T> PlayerData<ID, T> {
     pub(crate) fn init<
         P: Deref<Target = Pokemon> + Clone,
         M: Deref<Target = Move> + Clone,
@@ -54,7 +60,7 @@ impl<ID> PlayerData<ID> {
         pokedex: &impl Dex<Pokemon, Output = P>,
         movedex: &impl Dex<Move, Output = M>,
         itemdex: &impl Dex<Item, Output = I>,
-    ) -> BattlePlayer<ID, P, M, I> {
+    ) -> BattlePlayer<ID, P, M, I, T> {
         let pokemon: Party<HostPokemon<P, M, I>> = self
             .party
             .into_iter()
@@ -62,7 +68,7 @@ impl<ID> PlayerData<ID> {
             .map(Into::into)
             .collect();
 
-        let mut party = PlayerParty::new(self.id, self.name, active, pokemon);
+        let mut party = PlayerParty::new(self.id, self.name, active, pokemon, self.trainer);
 
         for index in party.active.iter().flatten().map(ActivePokemon::index) {
             if let Some(pokemon) = party.pokemon.get_mut(index) {
@@ -81,20 +87,21 @@ impl<ID> PlayerData<ID> {
     }
 }
 
-impl<ID: Clone> ClientPlayerData<ID> {
+impl<ID: Clone, T: Clone> ClientPlayerData<ID, T> {
     pub fn new<
         'a,
         P: Deref<Target = Pokemon> + 'a + Clone,
         M: Deref<Target = Move> + 'a + Clone,
         I: Deref<Target = Item> + 'a + Clone,
-        ITER: Iterator<Item = Ref<'a, BattlePlayer<ID, P, M, I>>>,
+        ITER: Iterator<Item = Ref<'a, BattlePlayer<ID, P, M, I, T>>>,
     >(
         data: BattleData,
-        player: &BattlePlayer<ID, P, M, I>,
+        player: &BattlePlayer<ID, P, M, I, T>,
         others: ITER,
     ) -> Self
     where
         ID: 'a,
+        T: 'a,
     {
         Self {
             local: PlayerParty {
@@ -109,6 +116,7 @@ impl<ID: Clone> ClientPlayerData<ID> {
                     .cloned()
                     .map(|pokemon| pokemon.uninit())
                     .collect(),
+                trainer: player.party.trainer.clone(),
             },
             data,
             remotes: others.map(|player| player.party.as_remote()).collect(),

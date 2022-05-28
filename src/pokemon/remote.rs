@@ -26,10 +26,11 @@ impl<P> UnknownPokemon<P> {
     pub fn fainted(&self) -> bool {
         self.hp <= 0.0
     }
+
 }
 
-impl<P: Deref<Target = Pokemon>> UnknownPokemon<P> {
-    pub fn new<M: Deref<Target = Move>, I: Deref<Target = Item>>(
+impl<P: Deref<Target = Pokemon> + Clone> UnknownPokemon<P> {
+    pub fn new<M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone>(
         pokemon: &OwnedPokemon<P, M, I>,
     ) -> Self
     where
@@ -43,6 +44,10 @@ impl<P: Deref<Target = Pokemon>> UnknownPokemon<P> {
             hp: pokemon.percent_hp(),
             ailment: pokemon.ailment,
         }
+    }
+
+    pub fn oname(u: Option<&Self>) -> &str {
+        u.map(UnknownPokemon::name).unwrap_or("Unknown")
     }
 
     pub fn name(&self) -> &str {

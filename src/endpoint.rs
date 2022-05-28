@@ -1,8 +1,8 @@
 use crate::message::{ClientMessage, ServerMessage};
 
 /// Represents a client endpoint for the battle host.
-pub trait BattleEndpoint<ID> {
-    fn send(&mut self, message: ServerMessage<ID>);
+pub trait BattleEndpoint<ID, T> {
+    fn send(&mut self, message: ServerMessage<ID, T>);
 
     fn receive(&mut self) -> Result<ClientMessage<ID>, Option<ReceiveError>>;
 }
@@ -24,7 +24,7 @@ mod mpsc {
 
     use super::{BattleEndpoint, ReceiveError};
 
-    pub fn create<ID>() -> (MpscClient<ID>, MpscEndpoint<ID>) {
+    pub fn create<ID, T>() -> (MpscClient<ID, T>, MpscEndpoint<ID, T>) {
         let (serv_sender, receiver) = unbounded();
         let (sender, serv_receiver) = unbounded();
 
@@ -38,18 +38,18 @@ mod mpsc {
     }
 
     #[derive(Clone)]
-    pub struct MpscClient<ID> {
+    pub struct MpscClient<ID, T> {
         pub sender: Sender<ClientMessage<ID>>,
-        pub receiver: Receiver<ServerMessage<ID>>,
+        pub receiver: Receiver<ServerMessage<ID, T>>,
     }
 
     #[derive(Clone)]
-    pub struct MpscEndpoint<ID> {
+    pub struct MpscEndpoint<ID, T> {
         pub receiver: Receiver<ClientMessage<ID>>,
-        pub sender: Sender<ServerMessage<ID>>,
+        pub sender: Sender<ServerMessage<ID, T>>,
     }
 
-    impl<ID> MpscClient<ID> {
+    impl<ID, T> MpscClient<ID, T> {
         pub fn send(&self, message: ClientMessage<ID>) {
             if let Err(err) = self.sender.try_send(message) {
                 log::error!("AI cannot send client message with error {}", err);
@@ -57,8 +57,8 @@ mod mpsc {
         }
     }
 
-    impl<ID> BattleEndpoint<ID> for MpscEndpoint<ID> {
-        fn send(&mut self, message: ServerMessage<ID>) {
+    impl<ID, T> BattleEndpoint<ID, T> for MpscEndpoint<ID, T> {
+        fn send(&mut self, message: ServerMessage<ID, T>) {
             if let Err(err) = self.sender.try_send(message) {
                 log::error!("Cannot send server message to AI with error {}", err);
             }
