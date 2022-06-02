@@ -23,7 +23,7 @@ use crate::{
         BattleMove, ClientMove, ClientMoveAction,
     },
     player::ClientPlayerData,
-    pokemon::{Indexed, PokemonIdentifier},
+    pokemon::{Indexed, PokemonIdentifier}, prelude::CommandAction,
 };
 
 mod collections;
@@ -225,8 +225,14 @@ impl<
         }
     }
 
+    pub fn remove(&mut self, id: &ID, reason: EndMessage) {
+        if let Some(mut player) = self.players.get_mut(id) {
+            self.remove_player(&mut player, reason);
+        }
+    }
+
     /// Remember to drop the player that is in use before calling this!
-    pub fn remove_player(&self, player: &mut BattlePlayer<ID, P, M, I, T>, reason: EndMessage) {
+    fn remove_player(&self, player: &mut BattlePlayer<ID, P, M, I, T>, reason: EndMessage) {
         match self.players.deactivate(player.id()) {
             true => {
                 let id = player.id().clone();
@@ -238,6 +244,18 @@ impl<
             }
             false => {
                 log::error!("Cannot remove player!");
+            }
+        }
+    }
+
+    pub fn faint(&mut self, pokemon: PokemonIdentifier<ID>) {
+        if let Some(mut team) = self.players.get_mut(pokemon.team()) {
+            if let Some(pokemon1) = team.party.pokemon.get_mut(pokemon.index()) {
+                pokemon1.hp = 0;
+                drop(team);
+                for mut player in self.players.all_values_mut() {
+                    player.send(ServerMessage::Command(CommandAction::Faint(pokemon.clone())));
+                }
             }
         }
     }
@@ -291,11 +309,7 @@ impl<
                             }
                             BattleMove::UseItem(..) => true,
                         } {
-                            match player
-                                .party
-                                .active
-                                .get_mut(active).and_then(Option::as_mut)
-                            {
+                            match player.party.active.get_mut(active).and_then(Option::as_mut) {
                                 Some(pokemon) => pokemon.queued_move = Some(bmove),
                                 None => warn!(
                                     "Party {} could not add move #{} to pokemon #{}",
@@ -624,7 +638,8 @@ impl<
 
                         if let Some(unknown) = user
                             .party
-                            .index(user_id.index()).and_then(|index| user.party.know(index))
+                            .index(user_id.index())
+                            .and_then(|index| user.party.know(index))
                         {
                             for mut other in self.players.values_mut() {
                                 other.send(ServerMessage::AddRemote(Indexed(

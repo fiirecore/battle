@@ -14,6 +14,7 @@ use crate::{
     moves::{BattleMove, ClientMove, ClientMoveAction},
     party::{PlayerParty, RemoteParty},
     pokemon::Indexed,
+    prelude::CommandAction,
 };
 
 use hashbrown::HashMap;
@@ -178,7 +179,8 @@ impl<
                                                     .filter(|r| r.id() == target.team())
                                                     .map(|r| &mut r.active)
                                                     .next(),
-                                            }.and_then(|a| a.get_mut(target.index()))
+                                            }
+                                            .and_then(|a| a.get_mut(target.index()))
                                             {
                                                 *index = Some(new)
                                             }
@@ -238,6 +240,33 @@ impl<
                                                     active
                                                 );
                                                 self.client.send(ClientMessage::Forfeit);
+                                            }
+                                        },
+                                        ServerMessage::Command(command) => match command {
+                                            CommandAction::Faint(id) => {
+                                                match id.team() == local.id() {
+                                                    true => {
+                                                        if let Some(pokemon) =
+                                                            local.pokemon.get_mut(id.index())
+                                                        {
+                                                            pokemon.hp = 0;
+                                                        }
+                                                    }
+                                                    false => {
+                                                        if let Some(pokemon) = self
+                                                            .remotes
+                                                            .get_mut(id.team())
+                                                            .and_then(|team| {
+                                                                team.pokemon
+                                                                    .get_mut(id.index())
+                                                                    .map(Option::as_mut)
+                                                            })
+                                                            .flatten()
+                                                        {
+                                                            pokemon.hp = 0.0;
+                                                        }
+                                                    }
+                                                }
                                             }
                                         },
                                         ServerMessage::Begin(..)

@@ -2,7 +2,11 @@ use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 
-use pokedex::{item::Item, moves::Move, pokemon::{Pokemon, owned::OwnedPokemon}};
+use pokedex::{
+    item::Item,
+    moves::Move,
+    pokemon::{owned::OwnedPokemon, Pokemon},
+};
 
 pub mod remote;
 pub mod stat;
@@ -33,16 +37,28 @@ impl<ID: core::fmt::Display> core::fmt::Display for PokemonIdentifier<ID> {
 }
 
 pub trait PokemonView {
+    // fn id(&self) -> &PokemonId;
+
     fn fainted(&self) -> bool;
 }
 
 impl<P> PokemonView for Option<remote::UnknownPokemon<P>> {
+    // fn id(&self) -> &PokemonId {
+    //     self.as_ref()
+    //         .map(|u| u.pokemon.as_id())
+    //         .unwrap_or(&Pokemon::UNKNOWN)
+    // }
+
     fn fainted(&self) -> bool {
         self.as_ref().map(|u| u.fainted()).unwrap_or_default()
     }
 }
 
 impl<P> PokemonView for remote::UnknownPokemon<P> {
+    // fn id(&self) -> &PokemonId {
+    //     self.pokemon.as_id()
+    // }
+
     fn fainted(&self) -> bool {
         remote::UnknownPokemon::fainted(self)
     }
@@ -57,4 +73,8 @@ impl<
     fn fainted(&self) -> bool {
         OwnedPokemon::<P, M, I>::fainted(self)
     }
+
+    // fn id(&self) -> &PokemonId {
+    //     &self.pokemon.id
+    // }
 }

@@ -14,6 +14,18 @@ pub enum BattleType {
     GymLeader,
 }
 
+impl BattleType {
+
+    pub fn is_wild(&self) -> bool {
+        matches!(self, BattleType::Wild)
+    }
+
+    pub fn is_trainer(&self) -> bool {
+        !self.is_wild()
+    }
+
+}
+
 impl Default for BattleType {
     fn default() -> Self {
         Self::Wild

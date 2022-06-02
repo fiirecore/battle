@@ -35,15 +35,21 @@ impl<ID> ActiveBattlePokemon<ID> {
     }
 }
 
-pub struct HostPokemon<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone>
-{
+pub struct HostPokemon<
+    P: Deref<Target = Pokemon> + Clone,
+    M: Deref<Target = Move> + Clone,
+    I: Deref<Target = Item> + Clone,
+> {
     pub p: BattlePokemon<P, M, I>,
     pub learnable_moves: HashSet<MoveId>,
     pub known: bool,
 }
 
-impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone>
-    HostPokemon<P, M, I>
+impl<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+    > HostPokemon<P, M, I>
 {
     pub fn know(&mut self) -> Option<RemotePokemon> {
         (!self.known).then(|| {
@@ -94,16 +100,26 @@ impl<
     }
 }
 
-impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone> PokemonView
-    for HostPokemon<P, M, I>
+impl<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+    > PokemonView for HostPokemon<P, M, I>
 {
+    // fn id(&self) -> &PokemonId {
+    //     &self.pokemon.id
+    // }
+
     fn fainted(&self) -> bool {
         OwnedPokemon::fainted(self)
     }
 }
 
-impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone> Deref
-    for HostPokemon<P, M, I>
+impl<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+    > Deref for HostPokemon<P, M, I>
 {
     type Target = BattlePokemon<P, M, I>;
 
@@ -112,16 +128,22 @@ impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Der
     }
 }
 
-impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone> DerefMut
-    for HostPokemon<P, M, I>
+impl<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+    > DerefMut for HostPokemon<P, M, I>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.p
     }
 }
 
-impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone>
-    core::fmt::Display for BattlePokemon<P, M, I>
+impl<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+    > core::fmt::Display for BattlePokemon<P, M, I>
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(

@@ -6,7 +6,7 @@ use pokedex::{moves::MoveId, pokemon::owned::SavedPokemon};
 use crate::{
     moves::{BattleMove, ClientMove},
     player::ClientPlayerData,
-    pokemon::{remote::RemotePokemon, ActivePosition, Indexed, PartyPosition},
+    pokemon::{remote::RemotePokemon, ActivePosition, Indexed, PartyPosition, PokemonIdentifier},
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
@@ -25,6 +25,7 @@ pub enum ServerMessage<ID, T> {
 
     Ping(TimedAction),
     Fail(FailedAction),
+    Command(CommandAction<ID>),
 
     AddRemote(Indexed<ID, RemotePokemon>),
     Replace(Indexed<ID, usize>),
@@ -48,6 +49,12 @@ pub enum StartableAction<ID> {
 pub enum TimedAction {
     Selecting,
     Replace,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum CommandAction<ID> {
+    /// Team ID + Pokemon Index
+    Faint(PokemonIdentifier<ID>),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
