@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 firecore-battle = { path = "../.." }
 ron = "0.7"
-hashbrown = "0.9"
+hashbrown = { version = "0.12", features = ["serde"] }

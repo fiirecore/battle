@@ -44,3 +44,7 @@ crossbeam-channel = { version = "0.5", optional = true }
 [dev-dependencies]
 simple_logger = "2"
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
+
+[workspace]
+default-members = ["crates/*"]
+members = ["crates/*"]
