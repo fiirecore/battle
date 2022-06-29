@@ -28,7 +28,7 @@ mpsc_endpoint = ["crossbeam-channel", "log"]
 
 [dependencies]
 
-firecore-pokedex = { version = "0.0.8", git = "https://github.com/fiirecore/pokedex", rev = "904142c" }
+firecore-pokedex = { version = "0.0.8", git = "https://github.com/fiirecore/pokedex", rev = "4dc9632" }
 # firecore-pokedex = { path = "../pokedex" }
 
 serde = { version = "1", features = ["derive"] }
