@@ -51,8 +51,9 @@ fn main() {
 
     let move_id = [
         "default".parse().unwrap(),
-        "script".parse().unwrap(),
+        "script1".parse().unwrap(),
         "damage".parse().unwrap(),
+        "script2".parse().unwrap(),
     ];
 
     movedex.insert(Move {
@@ -97,6 +98,20 @@ fn main() {
         crit_rate: 2,
     });
 
+    movedex.insert(Move {
+        id: move_id[3],
+        name: "Aromatherapy".to_owned(),
+        category: MoveCategory::Status,
+        pokemon_type: PokemonType::Grass,
+        accuracy: Some(80),
+        power: None,
+        pp: 50,
+        priority: 0,
+        target: MoveTarget::UserAndAllies,
+        contact: false,
+        crit_rate: 0,
+    });
+
     for id in POKEMON {
         pokedex.insert(Pokemon {
             id,
@@ -105,7 +120,12 @@ fn main() {
                 primary: PokemonType::Normal,
                 secondary: Some(PokemonType::Ice),
             },
-            moves: vec![LearnableMove(0, move_id[0]), LearnableMove(0, move_id[1])],
+            moves: vec![
+                LearnableMove(0, move_id[0]),
+                LearnableMove(0, move_id[1]),
+                LearnableMove(0, move_id[2]),
+                LearnableMove(0, move_id[3]),
+            ],
             base: StatSet::uniform(70),
             species: "Test".to_owned(),
             height: 100,
@@ -184,23 +204,59 @@ fn main() {
 
     engine.moves.insert(move_id[1], MoveExecution::Script);
 
-    let script = "
-    let results = [];
+    engine.moves.insert(move_id[3], MoveExecution::Script);
 
-    for target in targets {
-        switch user.throw_move(random, move) {
-            false => results.push(Miss(user)),
-            true => {
-                let result = damage(target.hp);
-                results.push(Damage(target, result));
+    let script1 = r#"
+
+    fn use_move(move, user, targets) {
+        let results = [];
+
+        for target in targets {
+            switch user.throw_move(random, move) {
+                false => {
+                    results.push(Miss(user));
+                },
+                true => {
+                    let result = damage(target.hp);
+                    results.push(Damage(target, result));
+                }
             }
         }
+    
+        results
     }
 
-    results
-    ";
+    "#;
 
-    engine.scripting.moves.insert(move_id[1], script.to_owned());
+    let script2 = r#"
+
+    fn use_move(move, user, targets) {
+        let results = [];
+
+        switch user.throw_move(random, move) {
+            false => {
+                results.push(Miss(user));
+            },
+            true => {
+                for target in targets {
+                    results.push(Ailment(target, CLEAR));
+                }
+            }
+        }
+    
+        results
+    }
+
+    "#;
+
+    engine
+        .scripting
+        .moves
+        .insert(move_id[1], script1.to_owned());
+    engine
+        .scripting
+        .moves
+        .insert(move_id[3], script2.to_owned());
 
     while !battle.finished() {
         battle.update(&mut random, &mut engine, &movedex, &itemdex);

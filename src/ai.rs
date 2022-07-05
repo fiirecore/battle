@@ -112,7 +112,12 @@ impl<
                         if self.running {
                             match message {
                                 ServerMessage::Begin(..) => unreachable!(),
-                                ServerMessage::PlayerEnd(..) | ServerMessage::GameEnd(..) => {
+                                ServerMessage::PlayerEnd(id, ..) => {
+                                    if Some(&id) == self.local.as_ref().map(|l| &l.id) {
+                                        self.running = false;
+                                    }
+                                }
+                                ServerMessage::GameEnd(..) => {
                                     self.running = false;
                                 }
                                 other => match self.local.as_mut() {

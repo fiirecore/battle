@@ -17,16 +17,13 @@ use crate::{
     pokemon::PokemonIdentifier,
 };
 
-use super::{DefaultEngine, ScriptError};
-
-#[cfg(feature = "default_engine_scripting")]
-pub mod scripting;
+use super::{DefaultBattleEngine, ScriptingEngine};
 
 mod execution;
 pub use execution::*;
 
-impl ItemEngine for DefaultEngine {
-    type Error = ItemError;
+impl<S: ScriptingEngine> ItemEngine for DefaultBattleEngine<S> {
+    type Error = ItemError<S::Error>;
 
     fn execute<
         ID: PartialEq,
@@ -62,7 +59,7 @@ impl ItemEngine for DefaultEngine {
                     #[cfg(feature = "default_engine_scripting")]
                     return self
                         .scripting
-                        .execute_item(battle, random, item, user, target, players);
+                        .execute_item(battle, random, item, user, target, players).map_err(ItemError::Script);
                     #[cfg(not(feature = "default_engine_scripting"))]
                     return Err(ItemError::Script(ScriptError::default()));
                 }
@@ -80,17 +77,17 @@ impl ItemEngine for DefaultEngine {
 }
 
 #[derive(Debug)]
-pub enum ItemError {
-    Script(ScriptError),
+pub enum ItemError<S: Error> {
+    Script(S),
     Missing(ItemId),
     NoTarget,
     Pokeball,
     Unimplemented,
 }
 
-impl Error for ItemError {}
+impl<S: Error> Error for ItemError<S> {}
 
-impl Display for ItemError {
+impl<S: Error> Display for ItemError<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             ItemError::Script(s) => Display::fmt(s, f),

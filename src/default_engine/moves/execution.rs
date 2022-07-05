@@ -34,7 +34,7 @@ pub enum MoveExecution {
 #[serde(deny_unknown_fields)]
 pub enum MoveUse {
     Damage(DamageKind),
-    Ailment(Ailment, AilmentLength, Percent),
+    Ailment(Option<(Ailment, AilmentLength)>, Percent),
     Drain(DamageKind, i8),
     Stat(BattleStatType, Stage),
     Flinch,
@@ -90,12 +90,26 @@ pub fn move_usage<
                     )),
                 ));
             }
-            MoveUse::Ailment(status, length, chance) => {
-                if target.ailment.is_none() && random.gen_bool(*chance as f64 / 100.0) {
-                    results.push(Indexed(
-                        target_id.clone(),
-                        MoveResult::Ailment(length.init(*status, random)),
-                    ));
+            MoveUse::Ailment(effect, chance) => {
+                if random.gen_bool(*chance as f64 / 100.0) {
+                    match effect {
+                        Some((ailment, length)) => {
+                            if target.ailment.is_none() {
+                                results.push(Indexed(
+                                    target_id.clone(),
+                                    MoveResult::Ailment(Some(length.init(*ailment, random))),
+                                ));
+                            }
+                        }
+                        None => {
+                            if target.ailment.is_some() {
+                                results.push(Indexed(
+                                    target_id.clone(),
+                                    MoveResult::Ailment(None),
+                                ))
+                            }
+                        },
+                    }
                 }
             }
             MoveUse::Drain(kind, percent) => {

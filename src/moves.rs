@@ -46,7 +46,7 @@ pub enum ClientMoveAction {
     /// A Pokemon faints when it's hp is set to 0.0
     SetHP(damage::ClientDamage<f32>),
     AddStat(BattleStatType, Stage),
-    Ailment(LiveAilment),
+    Ailment(Option<LiveAilment>),
 
     Cancel(MoveCancel),
     Miss,

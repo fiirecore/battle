@@ -42,7 +42,7 @@ use pokedex::{item::Item, moves::Move, pokemon::Pokemon};
 pub enum MoveResult {
     Damage(DamageResult<Health>),
     Heal(i16),
-    Ailment(LiveAilment),
+    Ailment(Option<LiveAilment>),
     Stat(BattleStatType, Stage),
     Cancel(MoveCancel),
     Miss,

@@ -10,8 +10,11 @@ use self::item::BattleItemExecution;
 pub mod moves;
 use self::moves::MoveExecution;
 
-#[cfg(feature = "default_engine_scripting")]
 pub mod scripting;
+use self::scripting::ScriptingEngine;
+
+#[cfg(feature = "default_engine_scripting")]
+pub mod default_scripting;
 
 pub(crate) mod prelude {
 
@@ -24,56 +27,25 @@ pub(crate) mod prelude {
 pub type EngineItems = HashMap<ItemId, BattleItemExecution>;
 pub type EngineMoves = HashMap<MoveId, MoveExecution>;
 
-pub struct DefaultEngine {
+#[cfg(feature = "default_engine_scripting")]
+pub type DefaultEngine = DefaultBattleEngine<default_scripting::RhaiScriptingEngine>;
+
+#[cfg(not(feature = "default_engine_scripting"))]
+pub type DefaultEngine = DefaultBattleEngine<scripting::DefaultScriptEngine>;
+
+pub struct DefaultBattleEngine<S: ScriptingEngine> {
     pub items: EngineItems,
     pub moves: EngineMoves,
-    #[cfg(feature = "default_engine_scripting")]
-    pub scripting: scripting::ScriptingEngine,
+    pub scripting: S,
 }
 
-impl DefaultEngine {
+#[cfg(feature = "default_engine_scripting")]
+impl DefaultBattleEngine<default_scripting::RhaiScriptingEngine> {
     pub fn new<ID: Clone + 'static, R: Rng + Clone + 'static>() -> Self {
         Self {
             items: Default::default(),
             moves: Default::default(),
-            #[cfg(feature = "default_engine_scripting")]
-            scripting: scripting::ScriptingEngine::new::<ID, R>(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ScriptError {
-    #[cfg(feature = "default_engine_scripting")]
-    Error(Box<rhai::EvalAltResult>),
-    #[cfg(not(feature = "default_engine_scripting"))]
-    NoScriptEngine,
-}
-
-#[cfg(not(feature = "default_engine_scripting"))]
-impl Default for ScriptError {
-    fn default() -> Self {
-        Self::NoScriptEngine
-    }
-}
-
-#[cfg(feature = "default_engine_scripting")]
-impl From<Box<rhai::EvalAltResult>> for ScriptError {
-    fn from(r: Box<rhai::EvalAltResult>) -> Self {
-        Self::Error(r)
-    }
-}
-
-impl core::fmt::Display for ScriptError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            #[cfg(feature = "default_engine_scripting")]
-            Self::Error(err) => core::fmt::Display::fmt(err, f),
-            #[cfg(not(feature = "default_engine_scripting"))]
-            Self::NoScriptEngine => write!(
-                f,
-                "No scripting engine has been provided to the default move/item engine!"
-            ),
+            scripting: default_scripting::RhaiScriptingEngine::new::<ID, R>(),
         }
     }
 }

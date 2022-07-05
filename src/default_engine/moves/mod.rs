@@ -1,4 +1,8 @@
-use core::{fmt::Debug, hash::Hash, ops::Deref};
+use core::{
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
+    hash::Hash,
+    ops::Deref,
+};
 
 use std::error::Error;
 
@@ -16,16 +20,13 @@ use crate::{
     pokemon::{Indexed, PokemonIdentifier},
 };
 
-use super::{DefaultEngine, ScriptError};
-
-#[cfg(feature = "default_engine_scripting")]
-pub mod scripting;
+use super::{DefaultBattleEngine, ScriptingEngine};
 
 mod execution;
 pub use execution::*;
 
-impl MoveEngine for DefaultEngine {
-    type Error = MoveError;
+impl<S: ScriptingEngine> MoveEngine for DefaultBattleEngine<S> {
+    type Error = MoveError<S::Error>;
 
     fn execute<
         ID: Clone + Hash + Eq + 'static + Debug,
@@ -76,7 +77,7 @@ impl MoveEngine for DefaultEngine {
                         #[cfg(feature = "default_engine_scripting")]
                         return self
                             .scripting
-                            .execute_move(random, m, user, targets, players);
+                            .execute_move(random, m, user, targets, players).map_err(MoveError::Script);
                         #[cfg(not(feature = "default_engine_scripting"))]
                         return Err(MoveError::Script(ScriptError::default()));
                     }
@@ -89,27 +90,32 @@ impl MoveEngine for DefaultEngine {
 }
 
 #[derive(Debug)]
-pub enum MoveError {
-    Script(ScriptError),
+pub enum MoveError<S: Error = NoScriptError> {
+    Script(S),
     Missing(MoveId),
     NoTarget,
 }
 
-impl MoveError {
-    #[cfg(feature = "default_engine_scripting")]
-    fn script(error: Box<rhai::EvalAltResult>) -> Self {
-        Self::Script(ScriptError::from(error))
+impl<S: Error> Error for MoveError<S> {}
+
+impl<S: Error> Display for MoveError<S> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::Script(err) => Display::fmt(err, f),
+            other => Debug::fmt(other, f),
+        }
     }
 }
 
-impl Error for MoveError {}
+#[derive(Debug)]
+pub enum NoScriptError {
+    NoScriptEngine,
+}
 
-impl core::fmt::Display for MoveError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            #[cfg(feature = "default_engine_scripting")]
-            Self::Script(err) => core::fmt::Display::fmt(err, f),
-            other => core::fmt::Debug::fmt(other, f),
-        }
+impl Error for NoScriptError {}
+
+impl Display for NoScriptError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "No scripting engine!")
     }
 }

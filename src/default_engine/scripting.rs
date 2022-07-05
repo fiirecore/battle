@@ -1,62 +1,106 @@
-use hashbrown::HashMap;
+use core::{hash::Hash, ops::Deref};
 
-use rhai::{
-    packages::{BasicArrayPackage, Package},
-    Engine,
-};
+use std::error::Error;
+
+use pokedex::{item::Item, moves::Move, pokemon::Pokemon};
+
 use rand::Rng;
 
-use pokedex::{item::ItemId, moves::MoveId};
+use crate::{
+    engine::{BattlePokemon, Players},
+    pokemon::{Indexed, PokemonIdentifier},
+    prelude::BattleData, item::engine::ItemResult, moves::engine::MoveResult,
+};
 
-use crate::moves::engine::MoveResult;
+pub trait ScriptingEngine {
+    type Error: Error;
 
-use super::moves::scripting::*;
+    fn execute_move<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+        R: Rng + Clone + 'static,
+        ID: Eq + Hash + Clone + 'static + core::fmt::Debug,
+        PLR: Players<ID, P, M, I>,
+    >(
+        &self,
+        random: &mut R,
+        m: &Move,
+        user: Indexed<ID, &BattlePokemon<P, M, I>>,
+        targets: Vec<PokemonIdentifier<ID>>,
+        players: &PLR,
+    ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error>;
 
-type Scripts<ID> = HashMap<ID, String>;
-
-pub type MoveScripts = Scripts<MoveId>;
-pub type ItemScripts = Scripts<ItemId>;
-
-pub struct ScriptingEngine {
-    pub engine: Engine,
-    pub moves: MoveScripts,
-    pub items: ItemScripts,
+    fn execute_item<
+        ID: PartialEq,
+        R: Rng,
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+        PLR: Players<ID, P, M, I>,
+    >(
+        &mut self,
+        battle: &BattleData,
+        random: &mut R,
+        item: &Item,
+        user: &ID,
+        target: PokemonIdentifier<ID>,
+        players: &mut PLR,
+    ) -> Result<Vec<ItemResult>, Self::Error>;
 }
 
-impl ScriptingEngine {
-    pub fn new<ID: Clone + 'static, R: Rng + Clone + 'static>() -> Self {
-        let mut engine = Engine::new_raw();
+pub struct DefaultScriptEngine;
 
-        engine
-            .register_global_module(BasicArrayPackage::new().as_shared_module())
-            .register_type_with_name::<ScriptRandom<R>>("Random")
-            .register_type_with_name::<ScriptDamage>("Damage")
-            .register_fn("damage", ScriptDamage::with_damage)
-            .register_set("damage", ScriptDamage::set_damage)
-            .register_get("damage", ScriptDamage::get_damage)
-            .register_get("effective", ScriptDamage::effective)
-            .register_iterator::<Vec<ScriptPokemon<ID>>>()
-            .register_type_with_name::<ScriptPokemon<ID>>("Pokemon")
-            .register_fn("throw_move", ScriptPokemon::<ID>::throw_move::<R>)
-            .register_fn("damage", ScriptPokemon::<ID>::get_damage::<R>)
-            .register_get("hp", ScriptPokemon::<ID>::hp)
-            .register_iterator::<Vec<ScriptPokemon<ID>>>()
-            .register_type_with_name::<ScriptMove>("Move")
-            .register_get("category", ScriptMove::get_category)
-            .register_get("type", ScriptMove::get_type)
-            .register_get("crit_rate", ScriptMove::get_crit_rate)
-            .register_type_with_name::<MoveCategory>("Category")
-            .register_type_with_name::<PokemonType>("Type")
-            .register_type::<MoveResult>()
-            .register_type_with_name::<ScriptMoveResult<ID>>("Result")
-            .register_fn("Miss", ScriptMoveResult::<ID>::miss)
-            .register_fn("Damage", ScriptMoveResult::<ID>::damage)
-            .register_fn("Drain", ScriptMoveResult::<ID>::heal);
+impl ScriptingEngine for DefaultScriptEngine {
+    type Error = DefaultScriptError;
 
-        Self {
-            items: Default::default(),
-            moves: Default::default(),
-            engine,
-        }
+    fn execute_move<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+        R: Rng + Clone + 'static,
+        ID: Eq + Hash + Clone + 'static + core::fmt::Debug,
+        PLR: Players<ID, P, M, I>,
+    >(
+        &self,
+        _: &mut R,
+        _: &Move,
+        _: Indexed<ID, &BattlePokemon<P, M, I>>,
+        _: Vec<PokemonIdentifier<ID>>,
+        _: &PLR,
+    ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error> {
+        Err(DefaultScriptError)
+    }
+
+    fn execute_item<
+        ID: PartialEq,
+        R: Rng,
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+        PLR: Players<ID, P, M, I>,
+    >(
+        &mut self,
+        _: &BattleData,
+        _: &mut R,
+        _: &Item,
+        _: &ID,
+        _: PokemonIdentifier<ID>,
+        _: &mut PLR,
+    ) -> Result<Vec<ItemResult>, Self::Error> {
+        Err(DefaultScriptError)
+    }
+
+
+}
+
+#[derive(Debug)]
+pub struct DefaultScriptError;
+
+impl Error for DefaultScriptError {}
+
+impl core::fmt::Display for DefaultScriptError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "No script engine is in use!")
     }
 }

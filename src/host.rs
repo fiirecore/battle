@@ -23,7 +23,8 @@ use crate::{
         BattleMove, ClientMove, ClientMoveAction,
     },
     player::ClientPlayerData,
-    pokemon::{Indexed, PokemonIdentifier}, prelude::CommandAction,
+    pokemon::{Indexed, PokemonIdentifier},
+    prelude::CommandAction,
 };
 
 mod collections;
@@ -178,6 +179,7 @@ impl<
                 }
             }
             BattleState::QueueMoves => {
+
                 let queue = moves::move_queue(&mut self.players, random);
 
                 let player_queue = self.run_queue(random, engine, movedex, itemdex, queue);
@@ -254,7 +256,9 @@ impl<
                 pokemon1.hp = 0;
                 drop(team);
                 for mut player in self.players.all_values_mut() {
-                    player.send(ServerMessage::Command(CommandAction::Faint(pokemon.clone())));
+                    player.send(ServerMessage::Command(CommandAction::Faint(
+                        pokemon.clone(),
+                    )));
                 }
             }
         }
@@ -491,7 +495,7 @@ impl<
                                                     result,
                                                 ),
                                                 MoveResult::Ailment(ailment) => {
-                                                    target.ailment = Some(ailment);
+                                                    target.ailment = ailment;
                                                     actions.push(Indexed(
                                                         target_id,
                                                         ClientMoveAction::Ailment(ailment),

@@ -1,18 +1,21 @@
 use core::ops::{Deref, DerefMut};
 
-use rhai::INT;
 use rand::Rng;
+use rhai::INT;
 
-use pokedex::{moves::MoveCategory, types::PokemonType};
-
-use pokedex::{item::Item, moves::Move, pokemon::owned::OwnedPokemon, pokemon::Pokemon};
+use pokedex::{
+    item::Item,
+    moves::{Move, MoveCategory},
+    pokemon::{owned::OwnedPokemon, Pokemon},
+    types::PokemonType,
+};
 
 use crate::{
     engine::pokemon::{crit, throw_move, BattlePokemon},
     pokemon::{Indexed, PokemonIdentifier},
 };
 
-use super::{moves::ScriptMove, ScriptDamage, ScriptRandom};
+use super::{ScriptDamage, ScriptMove, ScriptRandom};
 
 #[derive(Debug)]
 pub struct DerefPtr<T>(*const T);
@@ -59,7 +62,11 @@ impl<ID: Clone> ScriptPokemon<ID> {
     //         .map(|p| Self::new(Indexed(id, p)))
     // }
 
-    pub fn new<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone>(
+    pub fn new<
+        P: Deref<Target = Pokemon> + Clone,
+        M: Deref<Target = Move> + Clone,
+        I: Deref<Target = Item> + Clone,
+    >(
         pokemon: Indexed<ID, &BattlePokemon<P, M, I>>,
     ) -> Self {
         let Indexed(id, pokemon) = pokemon;
@@ -96,6 +103,13 @@ impl<ID: Clone> ScriptPokemon<ID> {
     ) -> bool {
         throw_move(random.deref_mut(), m.accuracy)
     }
+
+    // pub fn ailment_affects(
+    //     &mut self,
+    //     ailment: ScriptAilmentEffect,
+    // ) -> bool {
+    //     true
+    // }
 
     pub fn get_damage<R: Rng + Clone + 'static>(
         &mut self,
