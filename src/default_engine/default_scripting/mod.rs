@@ -156,7 +156,7 @@ impl ScriptingEngine for RhaiScriptingEngine {
         I: Deref<Target = Item> + Clone,
         PLR: Players<ID, P, M, I>,
     >(
-        &mut self,
+        &self,
         _battle: &BattleData,
         _random: &mut R,
         _item: &Item,

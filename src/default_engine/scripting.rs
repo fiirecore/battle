@@ -39,7 +39,7 @@ pub trait ScriptingEngine {
         I: Deref<Target = Item> + Clone,
         PLR: Players<ID, P, M, I>,
     >(
-        &mut self,
+        &self,
         battle: &BattleData,
         random: &mut R,
         item: &Item,
@@ -80,7 +80,7 @@ impl ScriptingEngine for DefaultScriptEngine {
         I: Deref<Target = Item> + Clone,
         PLR: Players<ID, P, M, I>,
     >(
-        &mut self,
+        &self,
         _: &BattleData,
         _: &mut R,
         _: &Item,
