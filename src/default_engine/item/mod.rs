@@ -61,7 +61,7 @@ impl<S: ScriptingEngine> ItemEngine for DefaultBattleEngine<S> {
                         .scripting
                         .execute_item(battle, random, item, user, target, players).map_err(ItemError::Script);
                     #[cfg(not(feature = "default_engine_scripting"))]
-                    return Err(ItemError::Script(ScriptError::default()));
+                    return Err(ItemError::Unimplemented);
                 }
                 BattleItemExecution::Pokeball => match battle.type_ {
                     BattleType::Wild => Ok(match players.take(&target) {

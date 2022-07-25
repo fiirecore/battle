@@ -79,7 +79,7 @@ impl<S: ScriptingEngine> MoveEngine for DefaultBattleEngine<S> {
                             .scripting
                             .execute_move(random, m, user, targets, players).map_err(MoveError::Script);
                         #[cfg(not(feature = "default_engine_scripting"))]
-                        return Err(MoveError::Script(ScriptError::default()));
+                        return Err(MoveError::Unimplemented);
                     }
                     MoveExecution::None => Err(MoveError::Missing(m.id)),
                 }
@@ -94,6 +94,7 @@ pub enum MoveError<S: Error = NoScriptError> {
     Script(S),
     Missing(MoveId),
     NoTarget,
+    Unimplemented,
 }
 
 impl<S: Error> Error for MoveError<S> {}
