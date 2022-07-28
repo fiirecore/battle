@@ -11,7 +11,7 @@ use firecore_pokedex::{
         Pokemon,
     },
     types::{PokemonType, Types},
-    BasicDex,
+    Dex,
 };
 
 use firecore_battle::{
@@ -45,9 +45,9 @@ fn main() {
         .init()
         .unwrap();
 
-    let mut pokedex = BasicDex::<Pokemon, Container<_>>::default();
-    let mut movedex = BasicDex::<Move, Container<_>>::default();
-    let itemdex = BasicDex::<Item, Container<_>>::default();
+    let mut pokedex = Dex::<Pokemon>::default();
+    let mut movedex = Dex::<Move>::default();
+    let itemdex = Dex::<Item>::default();
 
     let move_id = [
         "default".parse().unwrap(),
@@ -169,7 +169,7 @@ fn main() {
 
     let mut players: Vec<_> = (1..100)
         .into_iter()
-        .map(|_| BattleAi::<u8, (), RngType, _, _, _>::new(random.clone()))
+        .map(|_| BattleAi::<u8, RngType, ()>::new(random.clone()))
         .collect();
 
     let mut battle = Battle::new(

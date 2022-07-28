@@ -3,12 +3,7 @@ use core::ops::{Deref, DerefMut};
 use rand::Rng;
 use rhai::INT;
 
-use pokedex::{
-    item::Item,
-    moves::{Move, MoveCategory},
-    pokemon::{owned::OwnedPokemon, Pokemon},
-    types::PokemonType,
-};
+use pokedex::{moves::MoveCategory, pokemon::owned::OwnedPokemon, types::PokemonType};
 
 use crate::{
     engine::pokemon::{crit, throw_move, BattlePokemon},
@@ -48,31 +43,16 @@ impl<T> Clone for DerefPtr<T> {
 
 impl<T> Copy for DerefPtr<T> {}
 
-type Pkmn = BattlePokemon<DerefPtr<Pokemon>, DerefPtr<Move>, DerefPtr<Item>>;
-
 #[derive(Debug, Clone)]
-pub struct ScriptPokemon<ID: Clone>(PokemonIdentifier<ID>, pub Pkmn);
+pub struct ScriptPokemon<ID: Clone>(PokemonIdentifier<ID>, pub BattlePokemon);
 
 impl<ID: Clone> ScriptPokemon<ID> {
-    // pub fn from_player<'d, const AS: usize>(
-    //     (id, p): (PokemonIdentifier<ID>, Ref<BattlePlayer<'d, ID, AS>>),
-    // ) -> Option<Self> {
-    //     p.party
-    //         .active(id.index())
-    //         .map(|p| Self::new(Indexed(id, p)))
-    // }
 
-    pub fn new<
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-    >(
-        pokemon: Indexed<ID, &BattlePokemon<P, M, I>>,
-    ) -> Self {
+    pub fn new(pokemon: Indexed<ID, &BattlePokemon>) -> Self {
         let Indexed(id, pokemon) = pokemon;
         let p = BattlePokemon {
             p: OwnedPokemon {
-                pokemon: DerefPtr(pokemon.pokemon.deref() as _),
+                pokemon: pokemon.pokemon.clone(),
                 level: pokemon.level,
                 gender: pokemon.gender,
                 nature: pokemon.nature,
@@ -83,16 +63,12 @@ impl<ID: Clone> ScriptPokemon<ID> {
                 ailment: pokemon.ailment,
                 nickname: None,
                 moves: Default::default(),
-                item: pokemon.item.as_ref().map(|i| DerefPtr::of(i.deref())),
+                item: pokemon.item.clone(),
                 experience: pokemon.experience,
             },
             stages: pokemon.stages.clone(),
         };
 
-        // let p = pokemon.1 as *const BattlePokemon<'d>;
-        // let p = unsafe {
-        //     core::mem::transmute::<*const BattlePokemon<'d>, *const BattlePokemon<'static>>(p)
-        // };
         Self(id, p)
     }
 
@@ -137,7 +113,7 @@ impl<ID: Clone> ScriptPokemon<ID> {
 }
 
 impl<ID: Clone> Deref for ScriptPokemon<ID> {
-    type Target = Pkmn;
+    type Target = BattlePokemon;
 
     fn deref(&self) -> &Self::Target {
         &self.1

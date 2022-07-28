@@ -41,15 +41,18 @@ impl<ID, A, P, T> PlayerParty<ID, A, P, T> {
 impl<ID, A: ActivePokemon, P, T> PlayerParty<ID, A, P, T> {
     pub fn index(&self, index: usize) -> Option<usize> {
         self.active
-            .get(index).and_then(|active| active.as_ref().map(ActivePokemon::index))
+            .get(index)
+            .and_then(|active| active.as_ref().map(ActivePokemon::index))
     }
 
     pub fn active(&self, active: usize) -> Option<&P> {
-        self.index(active).and_then(move |index| self.pokemon.get(index))
+        self.index(active)
+            .and_then(move |index| self.pokemon.get(index))
     }
 
     pub fn active_mut(&mut self, active: usize) -> Option<&mut P> {
-        self.index(active).and_then(move |index| self.pokemon.get_mut(index))
+        self.index(active)
+            .and_then(move |index| self.pokemon.get_mut(index))
     }
 
     pub fn active_contains(&self, index: usize) -> bool {
@@ -85,12 +88,12 @@ impl<ID, A: ActivePokemon, P, T> PlayerParty<ID, A, P, T> {
 
     pub fn take(&mut self, active: usize) -> Option<P> {
         self.index(active).and_then(|index| {
-                if self.pokemon.len() < index {
-                    Some(self.pokemon.remove(index))
-                } else {
-                    None
-                }
-            })
+            if self.pokemon.len() < index {
+                Some(self.pokemon.remove(index))
+            } else {
+                None
+            }
+        })
     }
 }
 

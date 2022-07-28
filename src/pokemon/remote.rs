@@ -1,16 +1,15 @@
-use core::ops::Deref;
+use alloc::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
     ailment::LiveAilment,
-    item::Item,
-    moves::Move,
     pokemon::{data::Gender, owned::OwnedPokemon, Level, Pokemon, PokemonId},
     Dex,
 };
 
 pub type RemotePokemon = UnknownPokemon<PokemonId>;
+pub type InitUnknownPokemon = UnknownPokemon<Arc<Pokemon>>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UnknownPokemon<P> {
@@ -26,16 +25,10 @@ impl<P> UnknownPokemon<P> {
     pub fn fainted(&self) -> bool {
         self.hp <= 0.0
     }
-
 }
 
-impl<P: Deref<Target = Pokemon> + Clone> UnknownPokemon<P> {
-    pub fn new<M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone>(
-        pokemon: &OwnedPokemon<P, M, I>,
-    ) -> Self
-    where
-        P: Clone,
-    {
+impl InitUnknownPokemon {
+    pub fn new(pokemon: &OwnedPokemon) -> Self {
         Self {
             pokemon: pokemon.pokemon.clone(),
             nickname: pokemon.nickname.clone(),
@@ -55,7 +48,7 @@ impl<P: Deref<Target = Pokemon> + Clone> UnknownPokemon<P> {
     }
 }
 
-impl<P: Deref<Target = Pokemon>> UnknownPokemon<P> {
+impl InitUnknownPokemon {
     pub fn uninit(self) -> RemotePokemon {
         RemotePokemon {
             pokemon: self.pokemon.id,
@@ -69,8 +62,7 @@ impl<P: Deref<Target = Pokemon>> UnknownPokemon<P> {
 }
 
 impl RemotePokemon {
-
-    pub fn init<P: Deref<Target = Pokemon> + Clone>(self, dex: &impl Dex<Pokemon, Output = P>) -> Option<UnknownPokemon<P>> {
+    pub fn init(self, dex: &Dex<Pokemon>) -> Option<InitUnknownPokemon> {
         Some(UnknownPokemon {
             pokemon: dex.try_get(&self.pokemon)?.clone(),
             nickname: self.nickname,

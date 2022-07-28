@@ -1,6 +1,8 @@
 //! Basic battle host
 
-use core::{cell::RefMut, fmt::Display, hash::Hash, ops::Deref};
+use alloc::vec::Vec;
+use core::{cell::RefMut, fmt::Display, hash::Hash};
+
 use log::warn;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -15,11 +17,10 @@ use pokedex::{
 use crate::{
     data::*,
     endpoint::ReceiveError,
-    item::engine::{ItemEngine, ItemResult},
+    engine::{BattleEngine, MoveResult, ItemResult},
     message::{ClientMessage, EndMessage, FailedAction, ServerMessage, StartableAction},
     moves::{
         damage::{ClientDamage, DamageResult},
-        engine::{MoveEngine, MoveResult},
         BattleMove, ClientMove, ClientMoveAction,
     },
     player::ClientPlayerData,
@@ -46,16 +47,10 @@ pub(crate) mod prelude {
 }
 
 /// A battle host.
-pub struct Battle<
-    ID: core::fmt::Debug + Display + Clone + Ord + Hash + 'static,
-    T: Clone,
-    P: Deref<Target = Pokemon> + Clone,
-    M: Deref<Target = Move> + Clone,
-    I: Deref<Target = Item> + Clone,
-> {
+pub struct Battle<ID: core::fmt::Debug + Display + Clone + Ord + Hash + 'static, T: Clone> {
     state: BattleState<ID>,
     data: BattleData,
-    players: BattleMap<ID, BattlePlayer<ID, P, M, I, T>>,
+    players: BattleMap<ID, BattlePlayer<ID, T>>,
     // timer: Timer,
 }
 
@@ -75,21 +70,14 @@ impl<ID> Default for BattleState<ID> {
     }
 }
 
-impl<
-        ID: core::fmt::Debug + Display + Clone + Ord + Hash + 'static,
-        T: Clone,
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-    > Battle<ID, T, P, M, I>
-{
+impl<ID: core::fmt::Debug + Display + Clone + Ord + Hash + 'static, T: Clone> Battle<ID, T> {
     pub fn new<R: Rng>(
         data: BattleData,
         random: &mut R,
         active: usize,
-        pokedex: &impl Dex<Pokemon, Output = P>,
-        movedex: &impl Dex<Move, Output = M>,
-        itemdex: &impl Dex<Item, Output = I>,
+        pokedex: &Dex<Pokemon>,
+        movedex: &Dex<Move>,
+        itemdex: &Dex<Item>,
         players: impl Iterator<Item = PlayerData<ID, T>>,
     ) -> Self {
         Self {
@@ -125,12 +113,12 @@ impl<
         self.state = BattleState::End(winner);
     }
 
-    pub fn update<'d, R: Rng + Clone + 'static, ENG: MoveEngine + ItemEngine>(
+    pub fn update<R: Rng + Clone + 'static, E: BattleEngine>(
         &mut self,
         random: &mut R,
-        engine: &mut ENG,
-        movedex: &impl Dex<Move, Output = M>,
-        itemdex: &impl Dex<Item, Output = I>,
+        engine: &E,
+        movedex: &Dex<Move>,
+        itemdex: &Dex<Item>,
     ) {
         // self.timer.update(delta);
 
@@ -147,12 +135,12 @@ impl<
         self.update_state(random, engine, movedex, itemdex);
     }
 
-    fn update_state<'d, R: Rng + Clone + 'static, ENG: MoveEngine + ItemEngine>(
+    fn update_state<R: Rng + Clone + 'static, E: BattleEngine>(
         &mut self,
         random: &mut R,
-        engine: &mut ENG,
-        movedex: &impl Dex<Move, Output = M>,
-        itemdex: &impl Dex<Item, Output = I>,
+        engine: &E,
+        movedex: &Dex<Move>,
+        itemdex: &Dex<Item>,
     ) {
         match self.state {
             BattleState::Begin => self.begin(),
@@ -179,7 +167,6 @@ impl<
                 }
             }
             BattleState::QueueMoves => {
-
                 let queue = moves::move_queue(&mut self.players, random);
 
                 let player_queue = self.run_queue(random, engine, movedex, itemdex, queue);
@@ -234,7 +221,7 @@ impl<
     }
 
     /// Remember to drop the player that is in use before calling this!
-    fn remove_player(&self, player: &mut BattlePlayer<ID, P, M, I, T>, reason: EndMessage) {
+    fn remove_player(&self, player: &mut BattlePlayer<ID, T>, reason: EndMessage) {
         match self.players.deactivate(player.id()) {
             true => {
                 let id = player.id().clone();
@@ -279,11 +266,7 @@ impl<
         }
     }
 
-    fn receive<'d>(
-        &self,
-        mut player: RefMut<BattlePlayer<ID, P, M, I, T>>,
-        movedex: &impl Dex<Move, Output = M>,
-    ) {
+    fn receive(&self, mut player: RefMut<BattlePlayer<ID, T>>, movedex: &Dex<Move>) {
         loop {
             match player.receive() {
                 Ok(message) => match message {
@@ -392,12 +375,12 @@ impl<
         }
     }
 
-    fn run_queue<'d, R: Rng + Clone + 'static, ENG: MoveEngine + ItemEngine>(
+    fn run_queue<R: Rng + Clone + 'static, E: BattleEngine>(
         &mut self,
         random: &mut R,
-        engine: &mut ENG,
-        movedex: &impl Dex<Move, Output = M>,
-        itemdex: &impl Dex<Item, Output = I>,
+        engine: &E,
+        movedex: &Dex<Move>,
+        itemdex: &Dex<Item>,
         queue: Vec<Indexed<ID, BattleMove<ID>>>,
     ) -> Vec<Indexed<ID, ClientMove<ID>>> {
         let mut player_queue = Vec::with_capacity(queue.len());
@@ -413,8 +396,7 @@ impl<
                                     Some(m) => {
                                         if m.pp() != 0 {
                                             let used_move = &*m.0;
-                                            match MoveEngine::execute(
-                                                engine,
+                                            match engine.execute_move(
                                                 random,
                                                 used_move,
                                                 Indexed(user_id.clone(), pokemon),
@@ -460,14 +442,9 @@ impl<
                                     match player.party.active_mut(target_id.index()) {
                                         Some(target) => {
                                             /// calculates hp and adds it to actions
-                                            fn on_damage<
-                                                P: Deref<Target = Pokemon> + Clone,
-                                                M: Deref<Target = Move> + Clone,
-                                                I: Deref<Target = Item> + Clone,
-                                                ID,
-                                            >(
+                                            fn on_damage<ID>(
                                                 location: PokemonIdentifier<ID>,
-                                                pokemon: &mut HostPokemon<P, M, I>,
+                                                pokemon: &mut HostPokemon,
                                                 actions: &mut Vec<Indexed<ID, ClientMoveAction>>,
                                                 result: DamageResult<Health>,
                                             ) {
@@ -502,7 +479,7 @@ impl<
                                                     ));
                                                 }
                                                 MoveResult::Heal(health) => {
-                                                    let hp = health.abs() as u16;
+                                                    let hp = health.unsigned_abs();
                                                     target.hp = match health.is_positive() {
                                                         true => target.hp + hp.min(target.max_hp()),
                                                         false => target.hp.saturating_sub(hp),
@@ -540,6 +517,7 @@ impl<
                                                     target_id,
                                                     ClientMoveAction::Error,
                                                 )),
+                                                MoveResult::Custom => todo!("Implement custom move results"),
                                             }
 
                                             if target.fainted() {
@@ -603,8 +581,7 @@ impl<
                 }
                 BattleMove::UseItem(Indexed(target, id)) => match itemdex.try_get(&id) {
                     Some(item) => {
-                        match ItemEngine::execute(
-                            engine,
+                        match engine.execute_item(
                             &self.data,
                             random,
                             &*item,

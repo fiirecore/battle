@@ -1,12 +1,6 @@
-use std::ops::Deref;
-
 use serde::{Deserialize, Serialize};
 
-use pokedex::{
-    item::Item,
-    moves::Move,
-    pokemon::{owned::OwnedPokemon, Pokemon},
-};
+use pokedex::pokemon::owned::OwnedPokemon;
 
 pub mod remote;
 pub mod stat;
@@ -64,14 +58,9 @@ impl<P> PokemonView for remote::UnknownPokemon<P> {
     }
 }
 
-impl<
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-    > PokemonView for OwnedPokemon<P, M, I>
-{
+impl PokemonView for OwnedPokemon {
     fn fainted(&self) -> bool {
-        OwnedPokemon::<P, M, I>::fainted(self)
+        OwnedPokemon::fainted(self)
     }
 
     // fn id(&self) -> &PokemonId {

@@ -1,12 +1,20 @@
-use core::{cmp::Reverse, ops::Deref, hash::Hash};
-use std::collections::BTreeMap;
+use core::{cmp::Reverse, hash::Hash};
 use rand::Rng;
+use std::collections::BTreeMap;
 
-use pokedex::{moves::{Priority, Move}, pokemon::{stat::{BaseStat, StatType}, Pokemon}, item::Item};
+use pokedex::{
+    moves::{Priority},
+    pokemon::{
+        stat::{BaseStat, StatType},
+    },
+};
 
-use crate::{moves::BattleMove, pokemon::{Indexed, PokemonIdentifier}};
+use crate::{
+    moves::BattleMove,
+    pokemon::{Indexed, PokemonIdentifier},
+};
 
-use super::{player::BattlePlayer, collections::BattleMap, party::BattleParty};
+use super::{collections::BattleMap, party::BattleParty, player::BattlePlayer};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MovePriority<ID: Ord> {
@@ -14,15 +22,8 @@ pub enum MovePriority<ID: Ord> {
     Second(Reverse<Priority>, Reverse<BaseStat>, Option<u16>),
 }
 
-pub fn move_queue<
-    ID: Clone + Ord + Hash,
-    R: Rng,
-    P: Deref<Target = Pokemon> + Clone,
-    M: Deref<Target = Move> + Clone,
-    I: Deref<Target = Item> + Clone,
-    T,
->(
-    players: &mut BattleMap<ID, BattlePlayer<ID, P, M, I, T>>,
+pub fn move_queue<ID: Clone + Ord + Hash, R: Rng, T>(
+    players: &mut BattleMap<ID, BattlePlayer<ID, T>>,
     random: &mut R,
 ) -> Vec<Indexed<ID, BattleMove<ID>>> {
     let mut queue = BTreeMap::new();
@@ -34,16 +35,9 @@ pub fn move_queue<
     queue.into_values().collect()
 }
 
-fn queue_player<
-    ID: Clone + Ord,
-    R: Rng,
-    P: Deref<Target = Pokemon> + Clone,
-    M: Deref<Target = Move> + Clone,
-    I: Deref<Target = Item> + Clone,
-    T,
->(
+fn queue_player<ID: Clone + Ord, R: Rng, T>(
     queue: &mut BTreeMap<MovePriority<ID>, Indexed<ID, BattleMove<ID>>>,
-    party: &mut BattleParty<ID, P, M, I, T>,
+    party: &mut BattleParty<ID, T>,
     random: &mut R,
 ) {
     for index in 0..party.active.len() {

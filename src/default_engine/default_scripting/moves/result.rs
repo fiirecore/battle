@@ -1,6 +1,6 @@
 use rhai::INT;
 
-use crate::{moves::engine::MoveResult, pokemon::Indexed};
+use crate::{engine::MoveResult, pokemon::Indexed};
 
 use super::{damage::ScriptDamage, pokemon::ScriptPokemon, LiveScriptAilment};
 
@@ -29,5 +29,4 @@ impl<ID: Clone> ScriptMoveResult<ID> {
     pub fn miss(pokemon: ScriptPokemon<ID>) -> Self {
         Self::new(pokemon, MoveResult::Miss)
     }
-    
 }

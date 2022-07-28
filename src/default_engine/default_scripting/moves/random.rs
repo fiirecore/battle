@@ -14,7 +14,6 @@ impl<R: Rng> ScriptRandom<R> {
     pub fn chance(&mut self, percent: INT) -> bool {
         self.deref_mut().gen_bool(percent as f64 / 100.0)
     }
-
 }
 
 impl<R: Rng> Deref for ScriptRandom<R> {

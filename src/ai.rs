@@ -1,6 +1,6 @@
 //! Basic Battle AI
 
-use core::{hash::Hash, ops::Deref};
+use core::hash::Hash;
 
 use rand::{prelude::IteratorRandom, Rng};
 
@@ -19,31 +19,16 @@ use crate::{
 
 use hashbrown::HashMap;
 
-pub struct BattleAi<
-    ID: Eq + Hash + Clone,
-    T,
-    R: Rng,
-    P: Deref<Target = Pokemon> + Clone,
-    M: Deref<Target = Move> + Clone,
-    I: Deref<Target = Item> + Clone,
-> {
+pub struct BattleAi<ID: Eq + Hash + Clone, R: Rng, T> {
     running: bool,
     random: R,
-    local: Option<PlayerParty<ID, usize, OwnedPokemon<P, M, I>, T>>,
+    local: Option<PlayerParty<ID, usize, OwnedPokemon, T>>,
     remotes: HashMap<ID, RemoteParty<ID, T>>,
     client: MpscClient<ID, T>,
     endpoint: MpscEndpoint<ID, T>,
 }
 
-impl<
-        ID: Eq + Hash + Clone,
-        T,
-        R: Rng,
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-    > BattleAi<ID, T, R, P, M, I>
-{
+impl<ID: Eq + Hash + Clone, R: Rng, T> BattleAi<ID, R, T> {
     pub fn new(random: R) -> Self {
         let (client, endpoint) = crate::endpoint::create();
 
@@ -57,7 +42,7 @@ impl<
         }
     }
 
-    pub fn party(&self) -> Option<&Party<OwnedPokemon<P, M, I>>> {
+    pub fn party(&self) -> Option<&Party<OwnedPokemon>> {
         self.local.as_ref().map(|local| &local.pokemon)
     }
 
@@ -65,12 +50,7 @@ impl<
         &self.endpoint
     }
 
-    pub fn update(
-        &mut self,
-        pokedex: &impl Dex<Pokemon, Output = P>,
-        movedex: &impl Dex<Move, Output = M>,
-        itemdex: &impl Dex<Item, Output = I>,
-    ) {
+    pub fn update(&mut self, pokedex: &Dex<Pokemon>, movedex: &Dex<Move>, itemdex: &Dex<Item>) {
         while !self.client.receiver.is_empty() {
             match self.client.receiver.try_recv() {
                 Ok(message) => match message {
@@ -311,7 +291,7 @@ impl<
     }
 
     fn queue_moves(
-        local: &mut PlayerParty<ID, usize, OwnedPokemon<P, M, I>, T>,
+        local: &mut PlayerParty<ID, usize, OwnedPokemon, T>,
         random: &mut R,
         client: &MpscClient<ID, T>,
     ) {
@@ -327,7 +307,7 @@ impl<
 
     fn queue_move(
         active: usize,
-        pokemon: &OwnedPokemon<P, M, I>,
+        pokemon: &OwnedPokemon,
         random: &mut R,
         client: &MpscClient<ID, T>,
     ) {

@@ -1,19 +1,15 @@
-use core::ops::Deref;
-
 use rand::Rng;
 
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
     ailment::{Ailment, AilmentLength},
-    item::Item,
     moves::Move,
-    pokemon::Pokemon,
 };
 
 use crate::{
-    engine::BattlePokemon,
-    moves::{damage::DamageKind, engine::MoveResult, MoveCancel, Percent},
+    engine::{BattlePokemon, MoveResult},
+    moves::{damage::DamageKind, MoveCancel, Percent},
     pokemon::{
         stat::{BattleStatType, Stage},
         Indexed,
@@ -60,20 +56,13 @@ impl MoveUse {
     }
 }
 
-pub fn move_usage<
-    'd,
-    ID: Clone,
-    R: Rng,
-    P: Deref<Target = Pokemon> + Clone,
-    M: Deref<Target = Move> + Clone,
-    I: Deref<Target = Item> + Clone,
->(
-    user: &Indexed<ID, &BattlePokemon<P, M, I>>,
+pub fn move_usage<ID: Clone, R: Rng>(
+    user: &Indexed<ID, &BattlePokemon>,
     random: &mut R,
     results: &mut Vec<Indexed<ID, MoveResult>>,
     actions: &[MoveUse],
     m: &Move,
-    Indexed(target_id, target): Indexed<ID, &BattlePokemon<P, M, I>>,
+    Indexed(target_id, target): Indexed<ID, &BattlePokemon>,
 ) {
     for action in actions {
         match action {
@@ -103,12 +92,9 @@ pub fn move_usage<
                         }
                         None => {
                             if target.ailment.is_some() {
-                                results.push(Indexed(
-                                    target_id.clone(),
-                                    MoveResult::Ailment(None),
-                                ))
+                                results.push(Indexed(target_id.clone(), MoveResult::Ailment(None)))
                             }
-                        },
+                        }
                     }
                 }
             }

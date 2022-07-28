@@ -1,44 +1,37 @@
-use core::{hash::Hash, ops::Deref};
-
+use alloc::vec::Vec;
+use core::{fmt::Debug, hash::Hash};
 use std::error::Error;
 
-use pokedex::{item::Item, moves::Move, pokemon::Pokemon};
+// use std::error::Error;
+
+use pokedex::{item::Item, moves::Move};
 
 use rand::Rng;
 
 use crate::{
     engine::{BattlePokemon, Players},
+    engine::{ItemResult, MoveResult},
     pokemon::{Indexed, PokemonIdentifier},
-    prelude::BattleData, item::engine::ItemResult, moves::engine::MoveResult,
+    prelude::BattleData,
 };
 
 pub trait ScriptingEngine {
     type Error: Error;
 
     fn execute_move<
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
+        ID: Eq + Hash + Clone + 'static + Debug,
         R: Rng + Clone + 'static,
-        ID: Eq + Hash + Clone + 'static + core::fmt::Debug,
-        PLR: Players<ID, P, M, I>,
+        PLR: Players<ID>,
     >(
         &self,
         random: &mut R,
         m: &Move,
-        user: Indexed<ID, &BattlePokemon<P, M, I>>,
+        user: Indexed<ID, &BattlePokemon>,
         targets: Vec<PokemonIdentifier<ID>>,
         players: &PLR,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error>;
 
-    fn execute_item<
-        ID: PartialEq,
-        R: Rng,
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-        PLR: Players<ID, P, M, I>,
-    >(
+    fn execute_item<ID: PartialEq, R: Rng, PLR: Players<ID>>(
         &self,
         battle: &BattleData,
         random: &mut R,
@@ -55,31 +48,21 @@ impl ScriptingEngine for DefaultScriptEngine {
     type Error = DefaultScriptError;
 
     fn execute_move<
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-        R: Rng + Clone + 'static,
         ID: Eq + Hash + Clone + 'static + core::fmt::Debug,
-        PLR: Players<ID, P, M, I>,
+        R: Rng + Clone + 'static,
+        PLR: Players<ID>,
     >(
         &self,
         _: &mut R,
         _: &Move,
-        _: Indexed<ID, &BattlePokemon<P, M, I>>,
+        _: Indexed<ID, &BattlePokemon>,
         _: Vec<PokemonIdentifier<ID>>,
         _: &PLR,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error> {
         Err(DefaultScriptError)
     }
 
-    fn execute_item<
-        ID: PartialEq,
-        R: Rng,
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-        PLR: Players<ID, P, M, I>,
-    >(
+    fn execute_item<ID: PartialEq, R: Rng, PLR: Players<ID>>(
         &self,
         _: &BattleData,
         _: &mut R,
@@ -90,8 +73,6 @@ impl ScriptingEngine for DefaultScriptEngine {
     ) -> Result<Vec<ItemResult>, Self::Error> {
         Err(DefaultScriptError)
     }
-
-
 }
 
 #[derive(Debug)]

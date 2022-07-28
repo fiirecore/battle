@@ -1,6 +1,6 @@
-use core::ops::Deref;
 
-use pokedex::{item::Item, moves::Move, pokemon::Pokemon};
+
+
 
 use crate::{
     party::{PlayerParty, RemoteParty},
@@ -9,11 +9,9 @@ use crate::{
 
 use super::pokemon::{ActiveBattlePokemon, HostPokemon};
 
-pub type BattleParty<ID, P, M, I, T> = PlayerParty<ID, ActiveBattlePokemon<ID>, HostPokemon<P, M, I>, T>;
+pub type BattleParty<ID, T> = PlayerParty<ID, ActiveBattlePokemon<ID>, HostPokemon, T>;
 
-impl<ID, P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone, T>
-    BattleParty<ID, P, M, I, T>
-{
+impl<ID, T> BattleParty<ID, T> {
     pub fn know(&mut self, index: usize) -> Option<RemotePokemon> {
         self.pokemon.get_mut(index).and_then(HostPokemon::know)
     }
@@ -29,7 +27,6 @@ impl<ID, P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I:
     pub fn as_remote(&self) -> RemoteParty<ID, T>
     where
         ID: Clone,
-        P: Clone,
         T: Clone,
     {
         RemoteParty {

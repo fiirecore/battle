@@ -1,5 +1,7 @@
-use core::{hash::Hash, ops::Deref};
-use std::error::Error;
+use alloc::{boxed::Box, string::String, vec::Vec};
+use core::{fmt::Debug, hash::Hash};
+
+// use std::error::Error;
 
 use hashbrown::HashMap;
 use rand::Rng;
@@ -11,13 +13,10 @@ use rhai::{
 use pokedex::{
     item::{Item, ItemId},
     moves::{Move, MoveId},
-    pokemon::Pokemon,
 };
 
 use crate::{
-    engine::{BattlePokemon, Players},
-    item::engine::ItemResult,
-    moves::engine::MoveResult,
+    engine::{BattlePokemon, ItemResult, MoveResult, Players},
     pokemon::{Indexed, PokemonIdentifier},
     prelude::BattleData,
 };
@@ -96,17 +95,14 @@ impl ScriptingEngine for RhaiScriptingEngine {
     type Error = RhaiScriptError;
 
     fn execute_move<
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
+        ID: Eq + Hash + Clone + 'static + Debug,
         R: Rng + Clone + 'static,
-        ID: Eq + Hash + Clone + 'static + core::fmt::Debug,
-        PLR: Players<ID, P, M, I>,
+        PLR: Players<ID>,
     >(
         &self,
         random: &mut R,
         m: &Move,
-        user: Indexed<ID, &BattlePokemon<P, M, I>>,
+        user: Indexed<ID, &BattlePokemon>,
         targets: Vec<PokemonIdentifier<ID>>,
         players: &PLR,
     ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error> {
@@ -148,14 +144,7 @@ impl ScriptingEngine for RhaiScriptingEngine {
         }
     }
 
-    fn execute_item<
-        ID: PartialEq,
-        R: Rng,
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-        PLR: Players<ID, P, M, I>,
-    >(
+    fn execute_item<ID: PartialEq, R: Rng, PLR: Players<ID>>(
         &self,
         _battle: &BattleData,
         _random: &mut R,
@@ -177,7 +166,7 @@ pub enum RhaiScriptError {
     Unimplemented,
 }
 
-impl Error for RhaiScriptError {}
+impl std::error::Error for RhaiScriptError {}
 
 impl From<Box<EvalAltResult>> for RhaiScriptError {
     fn from(r: Box<EvalAltResult>) -> Self {

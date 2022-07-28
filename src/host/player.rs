@@ -1,4 +1,4 @@
-use core::{cell::Ref, ops::Deref};
+use core::{cell::Ref};
 use rand::Rng;
 
 use pokedex::{
@@ -18,8 +18,8 @@ use crate::{
 
 use super::pokemon::{ActiveBattlePokemon, HostPokemon};
 
-pub type BattlePlayer<ID, P, M, I, T> =
-    Player<ID, ActiveBattlePokemon<ID>, HostPokemon<P, M, I>, I, T, Box<dyn BattleEndpoint<ID, T>>>;
+pub type BattlePlayer<ID, T> =
+    Player<ID, ActiveBattlePokemon<ID>, HostPokemon, T, Box<dyn BattleEndpoint<ID, T>>>;
 
 pub struct PlayerData<ID, T> {
     pub id: ID,
@@ -31,14 +31,7 @@ pub struct PlayerData<ID, T> {
     pub endpoint: Box<dyn BattleEndpoint<ID, T>>,
 }
 
-impl<
-        ID,
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-        T,
-    > BattlePlayer<ID, P, M, I, T>
-{
+impl<ID, T> BattlePlayer<ID, T> {
     pub fn send(&mut self, message: ServerMessage<ID, T>) {
         self.endpoint.send(message)
     }
@@ -49,19 +42,15 @@ impl<
 }
 
 impl<ID, T> PlayerData<ID, T> {
-    pub(crate) fn init<
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-    >(
+    pub(crate) fn init<R: Rng>(
         self,
-        random: &mut impl Rng,
+        random: &mut R,
         active: usize,
-        pokedex: &impl Dex<Pokemon, Output = P>,
-        movedex: &impl Dex<Move, Output = M>,
-        itemdex: &impl Dex<Item, Output = I>,
-    ) -> BattlePlayer<ID, P, M, I, T> {
-        let pokemon: Party<HostPokemon<P, M, I>> = self
+        pokedex: &Dex<Pokemon>,
+        movedex: &Dex<Move>,
+        itemdex: &Dex<Item>,
+    ) -> BattlePlayer<ID, T> {
+        let pokemon: Party<HostPokemon> = self
             .party
             .into_iter()
             .flat_map(|p| p.init(random, pokedex, movedex, itemdex))
@@ -88,15 +77,9 @@ impl<ID, T> PlayerData<ID, T> {
 }
 
 impl<ID: Clone, T: Clone> ClientPlayerData<ID, T> {
-    pub fn new<
-        'a,
-        P: Deref<Target = Pokemon> + 'a + Clone,
-        M: Deref<Target = Move> + 'a + Clone,
-        I: Deref<Target = Item> + 'a + Clone,
-        ITER: Iterator<Item = Ref<'a, BattlePlayer<ID, P, M, I, T>>>,
-    >(
+    pub fn new<'a, ITER: Iterator<Item = Ref<'a, BattlePlayer<ID, T>>>>(
         data: BattleData,
-        player: &BattlePlayer<ID, P, M, I, T>,
+        player: &BattlePlayer<ID, T>,
         others: ITER,
     ) -> Self
     where

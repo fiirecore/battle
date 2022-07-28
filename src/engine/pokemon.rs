@@ -1,12 +1,11 @@
 use core::ops::{Deref, DerefMut};
 
 use pokedex::{
-    item::Item,
-    moves::{Accuracy, CriticalRate, Move, MoveCategory, Power},
+    moves::{Accuracy, CriticalRate, MoveCategory, Power},
     pokemon::{
         owned::OwnedPokemon,
         stat::{BaseStat, StatType},
-        Experience, Health, Pokemon,
+        Experience, Health,
     },
     types::{Effective, PokemonType},
 };
@@ -43,19 +42,15 @@ pub fn damage_range(random: &mut impl Rng) -> Percent {
 }
 
 #[derive(Debug, Clone)]
-pub struct BattlePokemon<
-    P: Deref<Target = Pokemon> + Clone,
-    M: Deref<Target = Move> + Clone,
-    I: Deref<Target = Item> + Clone,
-> {
-    pub p: OwnedPokemon<P, M, I>,
-    // pub persistent: Option<PersistentMove>,
+pub struct BattlePokemon {
+    pub p: OwnedPokemon,
     pub stages: StatStages,
+    // /// Move engine state
+    // #[deprecated]
+    // pub state: (),
 }
 
-impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone>
-    BattlePokemon<P, M, I>
-{
+impl BattlePokemon {
     // pub fn try_flinch(&mut self) -> bool {
     //     if self.flinch {
     //         self.flinch = false;
@@ -204,13 +199,8 @@ impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Der
     }
 }
 
-impl<
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-    > From<OwnedPokemon<P, M, I>> for BattlePokemon<P, M, I>
-{
-    fn from(p: OwnedPokemon<P, M, I>) -> Self {
+impl From<OwnedPokemon> for BattlePokemon {
+    fn from(p: OwnedPokemon) -> Self {
         Self {
             p,
             stages: Default::default(),
@@ -218,22 +208,15 @@ impl<
     }
 }
 
-impl<
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-    > Deref for BattlePokemon<P, M, I>
-{
-    type Target = OwnedPokemon<P, M, I>;
+impl Deref for BattlePokemon {
+    type Target = OwnedPokemon;
 
     fn deref(&self) -> &Self::Target {
         &self.p
     }
 }
 
-impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Deref<Target = Item> + Clone> DerefMut
-    for BattlePokemon<P, M, I>
-{
+impl DerefMut for BattlePokemon {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.p
     }
@@ -242,9 +225,10 @@ impl<P: Deref<Target = Pokemon> + Clone, M: Deref<Target = Move> + Clone, I: Der
 #[cfg(test)]
 mod tests {
 
+    use std::sync::Arc;
+
     use firecore_pokedex::{
-        item::Item,
-        moves::{set::OwnedMoveSet, Move, MoveCategory},
+        moves::{set::OwnedMoveSet, MoveCategory},
         pokemon::{
             data::{Breeding, Gender, GrowthRate, Training},
             owned::OwnedPokemon,
@@ -259,7 +243,7 @@ mod tests {
 
     #[test]
     fn damage() {
-        let feraligatr = Pokemon {
+        let feraligatr = Arc::new(Pokemon {
             id: 160,
             name: "Feraligatr".to_owned(),
             types: Types {
@@ -284,9 +268,9 @@ mod tests {
                 growth: GrowthRate::MediumSlow,
             },
             breeding: Breeding { gender: Some(6) },
-        };
+        });
 
-        let geodude = Pokemon {
+        let geodude = Arc::new(Pokemon {
             id: 74,
             name: "Geodude".to_owned(),
             types: Types {
@@ -304,17 +288,17 @@ mod tests {
             },
             species: "Rock".to_owned(),
             evolution: None,
-            height: 0_4,
+            height: 4,
             weight: 20,
             training: Training {
                 base_exp: 60,
                 growth: GrowthRate::MediumSlow,
             },
             breeding: Breeding { gender: Some(3) },
-        };
+        });
 
         let mut user = OwnedPokemon {
-            pokemon: &feraligatr,
+            pokemon: feraligatr,
             level: 50,
             gender: Gender::Male,
             nature: Nature::Adamant,
@@ -324,15 +308,15 @@ mod tests {
             friendship: Pokemon::default_friendship(),
             ailment: None,
             nickname: None,
-            moves: OwnedMoveSet::<&Move>::default(),
-            item: Option::<&Item>::None,
+            moves: OwnedMoveSet::default(),
+            item: None,
             experience: 0,
         };
 
         user.heal_hp(None);
 
         let mut target = OwnedPokemon {
-            pokemon: &geodude,
+            pokemon: geodude,
             level: 10,
             gender: Gender::Female,
             nature: Nature::Hardy,
@@ -342,17 +326,14 @@ mod tests {
             friendship: Pokemon::default_friendship(),
             ailment: None,
             nickname: None,
-            moves: OwnedMoveSet::<&Move>::default(),
-            item: Option::<&Item>::None,
+            moves: OwnedMoveSet::default(),
+            item: None,
             experience: 0,
         };
 
         target.heal_hp(None);
 
-        let user = BattlePokemon {
-            p: user,
-            stages: Default::default(),
-        };
+        let user = BattlePokemon::from(user);
 
         let target = target.into();
 

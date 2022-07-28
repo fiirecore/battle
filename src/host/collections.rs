@@ -2,13 +2,10 @@ use core::{
     cell::{Cell, Ref, RefCell, RefMut},
     hash::Hash,
     iter::FromIterator,
-    ops::Deref,
 };
 
 use pokedex::{
-    item::Item,
     moves::{Move, MoveTarget},
-    pokemon::Pokemon,
 };
 use rand::{prelude::IteratorRandom, Rng};
 use serde::{Deserialize, Serialize};
@@ -34,13 +31,15 @@ impl<K: Eq + Hash, V> BattleMap<K, V> {
     pub fn get(&self, k: &K) -> Option<Ref<V>> {
         self.0
             .get(k)
-            .filter(|(p, ..)| p.active.get()).and_then(|(.., v)| v.try_borrow().ok())
+            .filter(|(p, ..)| p.active.get())
+            .and_then(|(.., v)| v.try_borrow().ok())
     }
 
     pub fn get_mut(&self, k: &K) -> Option<RefMut<V>> {
         self.0
             .get(k)
-            .filter(|(p, ..)| p.active.get()).and_then(|(.., v)| v.try_borrow_mut().ok())
+            .filter(|(p, ..)| p.active.get())
+            .and_then(|(.., v)| v.try_borrow_mut().ok())
     }
 
     // pub fn len(&self) -> usize {
@@ -123,24 +122,19 @@ impl<K: Eq + Hash, V> FromIterator<(K, V)> for BattleMap<K, V> {
     }
 }
 
-impl<
-        ID: Eq + Hash + Clone,
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-        T,
-    > BattleMap<ID, BattlePlayer<ID, P, M, I, T>>
-{
+impl<ID: Eq + Hash + Clone, T> BattleMap<ID, BattlePlayer<ID, T>> {
     fn ally(
         &self,
         random: &mut impl Rng,
         user: &PokemonIdentifier<ID>,
         id: PokemonIdentifier<ID>,
     ) -> Vec<PokemonIdentifier<ID>> {
-        self.get(id.team()).and_then(|p| {
+        self.get(id.team())
+            .and_then(|p| {
                 p.party
                     .active
-                    .iter().filter_map(|a| a.as_ref().map(ActivePokemon::index))
+                    .iter()
+                    .filter_map(|a| a.as_ref().map(ActivePokemon::index))
                     .filter(|i| *i != user.index())
                     .choose(random)
                     .map(|i| PokemonIdentifier(id.0, i))
@@ -156,7 +150,8 @@ impl<
     ) -> Vec<PokemonIdentifier<ID>> {
         self.values()
             .filter(|p| p.id() != user.team() && !p.party.all_fainted())
-            .choose(random).and_then(|p| {
+            .choose(random)
+            .and_then(|p| {
                 p.party
                     .active
                     .iter()
@@ -210,7 +205,8 @@ impl<
 
     fn user_and_allies(&self, user: &PokemonIdentifier<ID>) -> Vec<PokemonIdentifier<ID>> {
         self.get(user.team())
-            .into_iter().flat_map(move |p| {
+            .into_iter()
+            .flat_map(move |p| {
                 p.party
                     .active
                     .iter()
@@ -259,14 +255,7 @@ impl<
     }
 }
 
-impl<
-        ID: Eq + Hash + Clone,
-        P: Deref<Target = Pokemon> + Clone,
-        M: Deref<Target = Move> + Clone,
-        I: Deref<Target = Item> + Clone,
-        T,
-    > Players<ID, P, M, I> for BattleMap<ID, BattlePlayer<ID, P, M, I, T>>
-{
+impl<ID: Eq + Hash + Clone, T> Players<ID> for BattleMap<ID, BattlePlayer<ID, T>> {
     fn create_targets<R: Rng>(
         &self,
         user: &PokemonIdentifier<ID>,
@@ -284,7 +273,8 @@ impl<
                         !(p.id() == user.team() && m.category != MoveCategory::Status)
                             && !p.party.all_fainted()
                     })
-                    .choose(random).and_then(|p| {
+                    .choose(random)
+                    .and_then(|p| {
                         p.party
                             .active
                             .iter()
@@ -293,8 +283,7 @@ impl<
                             .map(|(i, ..)| i)
                             .choose(random)
                             .map(|i| PokemonIdentifier(p.id().clone(), i))
-                    })
-                {
+                    }) {
                     Some(id) => vec![id],
                     None => Vec::new(), //return Err(DefaultMoveError::NoTarget),
                 },
@@ -344,29 +333,29 @@ impl<
         }
     }
 
-    fn get(&self, id: &PokemonIdentifier<ID>) -> Option<&BattlePokemon<P, M, I>> {
+    fn get(&self, id: &PokemonIdentifier<ID>) -> Option<&BattlePokemon> {
         if let Some(p) = BattleMap::get(self, id.team()) {
             if let Some(p) = p.party.active(id.index()) {
                 // i think this is safe
-                let p2 = unsafe { &*((&p.p) as *const BattlePokemon<P, M, I>) };
+                let p2 = unsafe { &*((&p.p) as *const BattlePokemon) };
                 return Some(p2);
             }
         }
         None
     }
 
-    fn get_mut(&mut self, id: &PokemonIdentifier<ID>) -> Option<&mut BattlePokemon<P, M, I>> {
+    fn get_mut(&mut self, id: &PokemonIdentifier<ID>) -> Option<&mut BattlePokemon> {
         if let Some(mut p) = BattleMap::get_mut(self, id.team()) {
             if let Some(p) = p.party.active_mut(id.index()) {
                 // i think this is safe
-                let p2 = unsafe { &mut *((&mut p.p) as *mut BattlePokemon<P, M, I>) };
+                let p2 = unsafe { &mut *((&mut p.p) as *mut BattlePokemon) };
                 return Some(p2);
             }
         }
         None
     }
 
-    fn take(&mut self, id: &PokemonIdentifier<ID>) -> Option<BattlePokemon<P, M, I>> {
+    fn take(&mut self, id: &PokemonIdentifier<ID>) -> Option<BattlePokemon> {
         match BattleMap::get_mut(self, id.team()) {
             Some(mut player) => player.party.take(id.index()).map(|p| p.p),
             None => None,

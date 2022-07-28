@@ -1,8 +1,10 @@
+use alloc::vec::Vec;
+
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
-    item::bag::{Bag, SavedBag},
-    pokemon::{owned::SavedPokemon, party::Party},
+    item::bag::{InitBag, SavedBag},
+    pokemon::owned::SavedPokemon,
 };
 
 use crate::{
@@ -22,32 +24,14 @@ impl Default for PlayerSettings {
     }
 }
 
-pub struct Player<ID, A: ActivePokemon, P, I, T, E> {
+pub struct Player<ID, A: ActivePokemon, P, T, E> {
     pub party: PlayerParty<ID, A, P, T>,
-    pub bag: Bag<I>,
+    pub bag: InitBag,
     pub settings: PlayerSettings,
     pub endpoint: E,
 }
 
-impl<ID, A: ActivePokemon, P: PokemonView, I, T, E> Player<ID, A, P, I, T, E> {
-    pub fn new(
-        id: ID,
-        name: Option<String>,
-        active: usize,
-        pokemon: Party<P>,
-        bag: Bag<I>,
-        trainer: Option<T>,
-        settings: PlayerSettings,
-        endpoint: E,
-    ) -> Self {
-        Self {
-            party: PlayerParty::new(id, name, active, pokemon, trainer),
-            bag,
-            settings,
-            endpoint,
-        }
-    }
-
+impl<ID, A: ActivePokemon, P: PokemonView, T, E> Player<ID, A, P, T, E> {
     pub fn id(&self) -> &ID {
         self.party.id()
     }

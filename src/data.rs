@@ -15,7 +15,6 @@ pub enum BattleType {
 }
 
 impl BattleType {
-
     pub fn is_wild(&self) -> bool {
         matches!(self, BattleType::Wild)
     }
@@ -23,7 +22,6 @@ impl BattleType {
     pub fn is_trainer(&self) -> bool {
         !self.is_wild()
     }
-
 }
 
 impl Default for BattleType {
@@ -40,7 +38,9 @@ pub struct BattleSettings {
 
 impl Default for BattleSettings {
     fn default() -> Self {
-        Self { allow_forfeit: true }
+        Self {
+            allow_forfeit: true,
+        }
     }
 }
 

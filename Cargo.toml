@@ -13,12 +13,11 @@ keywords = ["pokemon", "battle", "turn-based"]
 [features]
 default = ["host", "ai", "default_engine_scripting"]
 
-move_engine = ["rand"]
-item_engine = ["move_engine"]
+engine = ["rand"]
 
-host = ["move_engine", "item_engine", "log"]
+host = ["engine", "log"]
 
-default_engine = ["move_engine", "item_engine", "log"]
+default_engine = ["engine", "log"]
 default_engine_scripting = ["default_engine", "rhai"]
 
 
@@ -28,23 +27,18 @@ mpsc_endpoint = ["crossbeam-channel", "log"]
 
 [dependencies]
 
-firecore-pokedex = { version = "0.0.9", git = "https://github.com/fiirecore/pokedex", rev = "83e97db" }
+firecore-pokedex = { version = "0.0.9" }# , git = "https://github.com/fiirecore/pokedex", rev = "83e97db" }"
 # firecore-pokedex = { path = "../pokedex" }
 
 serde = { version = "1", features = ["derive"] }
-rand = { version = "0.8", default-features = false, optional = true }
-log = { version = "0.4", optional = true }
 hashbrown = { version = "0.12", features = ["serde"] }
 enum-map = "2"
 
-rhai = { version = "1.7", optional = true }
-
+rand = { version = "0.8", default-features = false, optional = true }
+log = { version = "0.4", optional = true }
+rhai = { version = "1", optional = true }
 crossbeam-channel = { version = "0.5", optional = true }
 
 [dev-dependencies]
 simple_logger = "2"
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
-
-[workspace]
-default-members = ["crates/*"]
-members = ["crates/*"]

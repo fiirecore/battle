@@ -66,7 +66,7 @@ pub enum FailedAction {
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum EndMessage {
-    Lose,//(pokedex::Money), // add money lost
+    Lose, //(pokedex::Money), // add money lost
     Run,
     Other,
 }
