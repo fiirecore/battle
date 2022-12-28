@@ -1,23 +1,21 @@
 use core::ops::{Deref, DerefMut};
 
+use hashbrown::HashSet;
 use pokedex::{
-    moves::{Accuracy, CriticalRate, MoveCategory, Power},
     pokemon::{
         owned::OwnedPokemon,
         stat::{BaseStat, StatType},
         Experience, Health,
     },
     types::{Effective, PokemonType},
+    moves::MoveId,
 };
 use rand::Rng;
 
 use crate::{
-    data::BattleType,
-    moves::{
-        damage::{DamageKind, DamageResult},
-        Percent,
-    },
-    pokemon::stat::{BattleStatType, StatStages},
+    data::VersusType,
+    moves::{Accuracy, CriticalRate, DamageKind, DamageResult, MoveCategory, Percent, Power},
+    pokemon::{stat::{BattleStatType, StatStages}, remote::{RemotePokemon, UnknownPokemon}},
 };
 
 /// To - do: factor in accuracy
@@ -45,9 +43,8 @@ pub fn damage_range(random: &mut impl Rng) -> Percent {
 pub struct BattlePokemon {
     pub p: OwnedPokemon,
     pub stages: StatStages,
-    // /// Move engine state
-    // #[deprecated]
-    // pub state: (),
+    pub(crate) learnable: HashSet<MoveId>,
+    revealed: bool,
 }
 
 impl BattlePokemon {
@@ -60,9 +57,9 @@ impl BattlePokemon {
     //     }
     // }
 
-    pub fn battle_exp_from(&self, type_: &BattleType) -> Experience {
+    pub fn battle_exp_from(&self, versus: VersusType) -> Experience {
         let experience = self.exp_from();
-        let experience = match matches!(type_, BattleType::Wild) {
+        let experience = match versus.is_wild() {
             true => experience.saturating_mul(3) / 2,
             false => experience,
         };
@@ -86,7 +83,7 @@ impl BattlePokemon {
         move_type: PokemonType,
         crit_rate: CriticalRate,
     ) -> DamageResult<Health> {
-        let effective = target.pokemon.effective(move_type, category);
+        let effective = category.effective(move_type, target.pokemon.types);
         let crit = crit(random, crit_rate);
 
         if let DamageKind::Power(power) = kind {
@@ -142,7 +139,7 @@ impl BattlePokemon {
         crit: bool,
         range: u8,
     ) -> DamageResult<Health> {
-        let effective = target.pokemon.effective(move_type, category);
+        let effective = category.effective(move_type, target.pokemon.types);
         let (attack, defense) = category.stats();
         let attack = self.stat(attack);
         let defense = target.stat(defense);
@@ -162,13 +159,7 @@ impl BattlePokemon {
             }
         }
 
-        let mut e_mult = move_type
-            .effective(target.pokemon.types.primary, category)
-            .multiplier();
-        if let Some(secondary) = target.pokemon.types.secondary {
-            e_mult *= move_type.effective(secondary, category).multiplier();
-        }
-        let e_mult = e_mult as f64;
+        let mut e_mult = effective.multiplier() as f64;
 
         let mut damage = 2.0 * self.level as f64;
         damage /= 5.0;
@@ -197,6 +188,20 @@ impl BattlePokemon {
             crit,
         }
     }
+
+    
+    pub fn reveal(&mut self) {
+        self.revealed = true;
+    }
+
+    pub fn get_revealed(&self) -> Option<RemotePokemon> {
+        self.revealed.then(|| UnknownPokemon::new(&self.p).uninit())
+    }
+
+    pub fn try_learn_moves(&mut self, moves: impl IntoIterator<Item = MoveId>) {
+        self.learnable.extend(moves)
+    }
+
 }
 
 impl From<OwnedPokemon> for BattlePokemon {
@@ -204,6 +209,8 @@ impl From<OwnedPokemon> for BattlePokemon {
         Self {
             p,
             stages: Default::default(),
+            learnable: Default::default(),
+            revealed: false,
         }
     }
 }
@@ -222,31 +229,46 @@ impl DerefMut for BattlePokemon {
     }
 }
 
+impl core::fmt::Display for BattlePokemon {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "\"{}\": {}, {}/{} HP",
+            self.name(),
+            self.level,
+            self.hp(),
+            self.max_hp()
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
     use std::sync::Arc;
 
     use firecore_pokedex::{
-        moves::{set::OwnedMoveSet, MoveCategory},
+        moves::{set::OwnedMoveSet},
         pokemon::{
             data::{Breeding, Gender, GrowthRate, Training},
             owned::OwnedPokemon,
             stat::{StatSet, StatType},
-            Nature, Pokemon,
+            Nature, Pokemon, PokemonId,
         },
         stat_set,
-        types::{PokemonType, Types},
+        types::{PokemonType, PokemonTypes},
     };
+
+    use crate::moves::MoveCategory;
 
     use super::BattlePokemon;
 
     #[test]
     fn damage() {
         let feraligatr = Arc::new(Pokemon {
-            id: 160,
+            id: PokemonId(160),
             name: "Feraligatr".to_owned(),
-            types: Types {
+            types: PokemonTypes {
                 primary: PokemonType::Water,
                 secondary: None,
             },
@@ -271,9 +293,9 @@ mod tests {
         });
 
         let geodude = Arc::new(Pokemon {
-            id: 74,
+            id: PokemonId(74),
             name: "Geodude".to_owned(),
-            types: Types {
+            types: PokemonTypes {
                 primary: PokemonType::Rock,
                 secondary: Some(PokemonType::Ground),
             },

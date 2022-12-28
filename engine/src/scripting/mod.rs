@@ -1,4 +1,3 @@
-use alloc::{boxed::Box, string::String, vec::Vec};
 use core::{fmt::Debug, hash::Hash};
 
 // use std::error::Error;
@@ -10,18 +9,16 @@ use rhai::{
     Engine, EvalAltResult, ParseError, Scope,
 };
 
-use pokedex::{
-    item::{Item, ItemId},
-    moves::{Move, MoveId},
+use battle::{
+    data::BattleData,
+    engine::{ActionResult, BattlePokemon, PlayerQuery},
+    moves::{BattleMove, MoveCategory},
+    pokedex::{item::ItemId, moves::MoveId},
+    pokemon::{Indexed, TeamIndex},
+    select::ClientMoveAction,
 };
 
-use crate::{
-    engine::{BattlePokemon, ItemResult, MoveResult, Players},
-    pokemon::{Indexed, PokemonIdentifier},
-    prelude::BattleData,
-};
-
-use super::scripting::ScriptingEngine;
+use crate::ScriptingEngine;
 
 type Scripts<ID> = HashMap<ID, String>;
 
@@ -39,7 +36,8 @@ pub struct RhaiScriptingEngine {
 }
 
 impl RhaiScriptingEngine {
-    pub fn new<ID: Clone + 'static, R: Rng + Clone + 'static>() -> Self {
+    pub fn new<ID: Clone + Send + Sync + 'static, R: Rng + Clone + Send + Sync + 'static>() -> Self
+    {
         let mut engine = Engine::new();
 
         engine
@@ -68,12 +66,12 @@ impl RhaiScriptingEngine {
             .register_get("crit_rate", ScriptMove::get_crit_rate)
             .register_type_with_name::<MoveCategory>("Category")
             .register_type_with_name::<PokemonType>("Type")
-            .register_type::<MoveResult>()
-            .register_type_with_name::<ScriptMoveResult<ID>>("Result")
-            .register_fn("Miss", ScriptMoveResult::<ID>::miss)
-            .register_fn("Damage", ScriptMoveResult::<ID>::damage)
-            .register_fn("Ailment", ScriptMoveResult::<ID>::ailment)
-            .register_fn("Drain", ScriptMoveResult::<ID>::heal);
+            .register_type::<ActionResult>()
+            .register_type_with_name::<ScriptActionResult<ID>>("Result")
+            .register_fn("Miss", ScriptActionResult::<ID>::miss)
+            .register_fn("Damage", ScriptActionResult::<ID>::damage)
+            .register_fn("Ailment", ScriptActionResult::<ID>::ailment)
+            .register_fn("Drain", ScriptActionResult::<ID>::heal);
 
         engine.set_max_expr_depths(0, 0);
         // engine.set_optimization_level(rhai::OptimizationLevel::Full);
@@ -91,21 +89,23 @@ impl RhaiScriptingEngine {
     }
 }
 
-impl ScriptingEngine for RhaiScriptingEngine {
-    type Error = RhaiScriptError;
+impl<ID: Eq + Hash + Clone + Send + Sync + 'static, T> ScriptingEngine<ID, T>
+    for RhaiScriptingEngine
+{
+    type ExecutionError = RhaiScriptError;
 
-    fn execute_move<
-        ID: Eq + Hash + Clone + 'static + Debug,
-        R: Rng + Clone + 'static,
-        PLR: Players<ID>,
-    >(
-        &self,
-        random: &mut R,
-        m: &Move,
-        user: Indexed<ID, &BattlePokemon>,
-        targets: Vec<PokemonIdentifier<ID>>,
-        players: &PLR,
-    ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::Error> {
+    type Data = ();
+
+    fn execute_move<'a, 'b: 'a>(
+        &'b self,
+        data: &mut Self::Data,
+        random: &mut (impl Rng + Clone + Send + Sync + 'static),
+        battle: &mut BattleData,
+        m: &BattleMove,
+        user: Indexed<ID, &mut BattlePokemon>,
+        targets: Vec<TeamIndex<ID>>,
+        players: &'a mut PlayerQuery<'a, ID, T>,
+    ) -> Result<Vec<Indexed<ID, ClientMoveAction>>, Self::ExecutionError> {
         match self.moves.get(&m.id) {
             Some(script) => {
                 use rhai::*;
@@ -119,10 +119,15 @@ impl ScriptingEngine for RhaiScriptingEngine {
                     .compile_with_scope(&mut scope, script)
                     .map_err(|err| RhaiScriptError::Parse(m.id, err))?;
 
+                let mut iter = players.iter_mut();
+
                 let targets = targets
                     .into_iter()
-                    .flat_map(|id| (players.get(&id).map(|r| Indexed(id, r))))
-                    .map(ScriptPokemon::new)
+                    .flat_map(|id| {
+                        iter.find(|p| p.id() == id.team())
+                            .and_then(|p| p.party.active_mut(id.index()))
+                            .map(|r| ScriptPokemon::new(Indexed(id, r)))
+                    })
                     .collect::<Vec<ScriptPokemon<ID>>>();
 
                 let result: Array = self.engine.call_fn(
@@ -134,9 +139,9 @@ impl ScriptingEngine for RhaiScriptingEngine {
 
                 let result = result
                     .into_iter()
-                    .flat_map(Dynamic::try_cast::<ScriptMoveResult<ID>>)
+                    .flat_map(Dynamic::try_cast::<ScriptActionResult<ID>>)
                     .map(|r| r.0)
-                    .collect::<Vec<Indexed<ID, MoveResult>>>();
+                    .collect::<Vec<Indexed<ID, ClientMoveAction>>>();
 
                 Ok(result)
             }
@@ -144,16 +149,16 @@ impl ScriptingEngine for RhaiScriptingEngine {
         }
     }
 
-    fn execute_item<ID: PartialEq, R: Rng, PLR: Players<ID>>(
+    fn execute_item(
         &self,
-        _battle: &BattleData,
-        _random: &mut R,
-        _item: &Item,
+        _data: &mut Self::Data,
+        _random: &mut (impl Rng + Clone + Send + Sync + 'static),
+        _battle: &mut BattleData,
+        _item: &ItemId,
         _user: &ID,
-        _target: PokemonIdentifier<ID>,
-        _players: &mut PLR,
-    ) -> Result<Vec<ItemResult>, Self::Error> {
-        log::debug!("to - do: item scripting");
+        _target: TeamIndex<ID>,
+        _players: &mut PlayerQuery<ID, T>,
+    ) -> Result<Vec<Indexed<ID, ClientMoveAction>>, Self::ExecutionError> {
         Err(RhaiScriptError::Unimplemented)
     }
 }
@@ -177,13 +182,11 @@ impl From<Box<EvalAltResult>> for RhaiScriptError {
 impl core::fmt::Display for RhaiScriptError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            #[cfg(feature = "default_engine_scripting")]
             Self::Parse(id, err) => write!(
                 f,
                 "Cannot parse move script for {} with error {}",
                 &id.0, err
             ),
-            #[cfg(feature = "default_engine_scripting")]
             Self::Evaluate(err) => core::fmt::Display::fmt(err, f),
             Self::Missing(id) => write!(f, "Could not find move script with id {}", &id.0),
             Self::Unimplemented => write!(f, "Unimplemented feature!"),

@@ -1,16 +1,14 @@
-use alloc::vec::Vec;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
 use pokedex::{
-    item::bag::{InitBag, SavedBag},
-    pokemon::owned::SavedPokemon,
+    item::bag::{OwnedBag},
 };
 
 use crate::{
-    data::BattleData,
-    party::{ActivePokemon, PlayerParty, RemoteParty},
-    pokemon::PokemonView,
+    party::{ActivePokemon, PlayerParty},
+    pokemon::PokemonInstance, endpoint::BattleEndpoint, 
 };
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -24,27 +22,8 @@ impl Default for PlayerSettings {
     }
 }
 
-pub struct Player<ID, A: ActivePokemon, P, T, E> {
-    pub party: PlayerParty<ID, A, P, T>,
-    pub bag: InitBag,
-    pub settings: PlayerSettings,
-    pub endpoint: E,
-}
-
-impl<ID, A: ActivePokemon, P: PokemonView, T, E> Player<ID, A, P, T, E> {
-    pub fn id(&self) -> &ID {
-        self.party.id()
-    }
-
-    pub fn name(&self) -> &str {
-        self.party.name()
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ClientPlayerData<ID, T> {
-    pub data: BattleData,
-    pub local: PlayerParty<ID, usize, SavedPokemon, T>,
-    pub remotes: Vec<RemoteParty<ID, T>>,
-    pub bag: SavedBag,
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum RemovalReason {
+    Loss,
+    Run,
 }

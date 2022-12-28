@@ -1,91 +1,104 @@
 //! Move and item execution engine
 
 use alloc::vec::Vec;
+use hashbrown::HashMap;
 use core::{fmt::Debug, hash::Hash};
 use std::error::Error;
 
 use rand::Rng;
 
-use pokedex::{
-    ailment::LiveAilment,
-    item::Item,
-    moves::Move,
-    pokemon::{owned::SavedPokemon, Health},
-};
+use pokedex::{ailment::LiveAilment, item::ItemId, moves::MoveId, pokemon::Health};
 
 use crate::{
     data::BattleData,
-    moves::{damage::DamageResult, MoveCancel},
+    host::BattlePlayer,
+    moves::{BattleMove, DamageResult, MoveCancelId, RemovePokemonId},
     pokemon::{
         stat::{BattleStatType, Stage},
-        Indexed, PokemonIdentifier,
+        Indexed, TeamIndex, ActivePosition,
     },
+    select::{ClientMoveAction, BattleSelection, SelectMessage},
 };
 
 pub mod pokemon;
 pub use pokemon::BattlePokemon;
 
-pub trait BattleEngine {
+pub trait BattleEngine<ID: Clone + Hash + Eq + 'static, T>: Send + Sync + 'static {
     // type PokemonState;
 
-    type MoveError: Error;
-    
-    type ItemError: Error;
+    type ExecutionError: Error;
 
-    fn execute_move<
-        ID: Clone + Hash + Eq + Debug + 'static,
-        R: Rng + Clone + 'static,
-        PLR: Players<ID>,
-    >(
+    type Data: Default;
+
+    /// subtract pp on successful move use, todo subtract item
+    fn select(
         &self,
-        random: &mut R,
-        used_move: &Move,
-        user: Indexed<ID, &BattlePokemon>,
-        targeting: Option<PokemonIdentifier<ID>>,
-        players: &PLR,
-    ) -> Result<Vec<Indexed<ID, MoveResult>>, Self::MoveError>;
+        data: &mut Self::Data,
+        active: ActivePosition,
+        selection: &BattleSelection<ID>,
+        player: &mut BattlePlayer<ID, T>,
+    ) -> SelectMessage;
 
-    fn execute_item<ID: PartialEq, R: Rng, PLR: Players<ID>>(
+    /// execute a single move or item
+    fn execute(
         &self,
-        battle: &BattleData,
-        random: &mut R,
-        item: &Item,
-        user: &ID,
-        target: PokemonIdentifier<ID>,
-        players: &mut PLR,
-    ) -> Result<Vec<ItemResult>, Self::ItemError>;
+        data: &mut Self::Data,
+        random: &mut (impl Rng + Clone + Send + Sync + 'static),
+        battle: &mut BattleData,
+        action: ExecuteAction<ID>,
+        players: PlayerQuery<ID, T>,
+    ) -> Result<Vec<Indexed<ID, ClientMoveAction>>, Self::ExecutionError>;
 
-    fn update(&self);
+    /// run the actions after the moves finish
+    fn post(
+        &self,
+        data: &mut Self::Data,
+        random: &mut (impl Rng + Clone + Send + Sync + 'static),
+        battle: &mut BattleData,
+        players: PlayerQuery<ID, T>,
+    ) -> Result<Vec<Indexed<ID, ClientMoveAction>>, Self::ExecutionError>;
+
+    fn get_move(&self, id: &MoveId) -> Option<&BattleMove>;
 }
 
-pub trait Players<ID: PartialEq> {
-    fn create_targets<R: Rng>(
-        &self,
-        user: &PokemonIdentifier<ID>,
-        m: &Move,
-        targeting: Option<PokemonIdentifier<ID>>,
-        random: &mut R,
-    ) -> Vec<PokemonIdentifier<ID>>;
+pub struct PlayerQuery<'a, ID, T>(pub(crate) &'a mut Vec<BattlePlayer<ID, T>>);
 
-    fn get(&self, id: &PokemonIdentifier<ID>) -> Option<&BattlePokemon>;
+impl<'a, ID, T> PlayerQuery<'a, ID, T> {
 
-    fn get_mut(&mut self, id: &PokemonIdentifier<ID>) -> Option<&mut BattlePokemon>;
+    pub fn iter(&'a self) -> impl DoubleEndedIterator<Item = &'a BattlePlayer<ID, T>> + 'a {
+        self.0.iter().filter(|p| p.removed.is_none())
+    }
 
-    fn take(&mut self, id: &PokemonIdentifier<ID>) -> Option<BattlePokemon>;
+    pub fn iter_mut(&'a mut self) -> impl DoubleEndedIterator<Item = &'a mut BattlePlayer<ID, T>> + 'a {
+        self.0.iter_mut().filter(|p| p.removed.is_none())
+    }
+
+}
+
+pub enum ExecuteAction<'a, ID> {
+    Move(
+        &'a MoveId,
+        &'a TeamIndex<ID>,
+        Option<&'a TeamIndex<ID>>,
+    ),
+    Item(&'a ItemId, &'a ID, TeamIndex<ID>),
+}
+
+pub struct ExecuteResult<ID> {
+    pub global: Vec<Vec<Indexed<ID, ClientMoveAction>>>,
+    pub unique: HashMap<TeamIndex<ID>, Vec<Indexed<ID, ClientMoveAction>>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MoveResult {
+pub enum ActionResult {
     Damage(DamageResult<Health>),
     Heal(i16),
     Ailment(Option<LiveAilment>),
     Stat(BattleStatType, Stage),
-    Cancel(MoveCancel),
-    Custom,
+    /// partial reveal = false, full reveal = true
+    Reveal(bool),
+    Cancel(MoveCancelId),
+    Remove(RemovePokemonId),
+    Fail,
     Miss,
-    Error,
-}
-
-pub enum ItemResult {
-    Catch(SavedPokemon),
 }

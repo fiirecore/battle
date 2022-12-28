@@ -1,4 +1,4 @@
-pub use pokedex::{moves::MoveCategory, types::PokemonType};
+pub use battle::pokedex::types::PokemonType;
 
 mod ailment;
 mod damage;

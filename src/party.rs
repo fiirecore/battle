@@ -1,8 +1,10 @@
+use std::ops::{Index, IndexMut};
+
 use serde::{Deserialize, Serialize};
 
 use pokedex::pokemon::party::Party;
 
-use crate::pokemon::{remote::RemotePokemon, PokemonView};
+use crate::pokemon::{remote::RemotePokemon, PokemonInstance};
 
 pub type RemoteParty<ID, T> = crate::party::PlayerParty<ID, usize, Option<RemotePokemon>, T>;
 
@@ -29,10 +31,6 @@ impl ActivePokemon for usize {
 }
 
 impl<ID, A, P, T> PlayerParty<ID, A, P, T> {
-    pub fn id(&self) -> &ID {
-        &self.id
-    }
-
     pub fn name(&self) -> &str {
         self.name.as_deref().unwrap_or("Unknown")
     }
@@ -97,7 +95,7 @@ impl<ID, A: ActivePokemon, P, T> PlayerParty<ID, A, P, T> {
     }
 }
 
-impl<ID, A: ActivePokemon, P: PokemonView, T> PlayerParty<ID, A, P, T> {
+impl<ID, A: ActivePokemon, P: PokemonInstance, T> PlayerParty<ID, A, P, T> {
     pub fn new(
         id: ID,
         name: Option<String>,
@@ -162,5 +160,19 @@ impl<ID, A: ActivePokemon, P: PokemonView, T> PlayerParty<ID, A, P, T> {
         if let Some(a) = self.active.get_mut(active) {
             *a = new.map(Into::into);
         }
+    }
+}
+
+impl<ID, A: ActivePokemon, P, T> Index<usize> for PlayerParty<ID, A, P, T> {
+    type Output = P;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.active(index).expect("Could not get active pokemon!")
+    }
+}
+
+impl<ID, A: ActivePokemon, P, T> IndexMut<usize> for PlayerParty<ID, A, P, T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.active_mut(index).expect("Could not get active pokemon!")
     }
 }

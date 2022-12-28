@@ -1,109 +1,105 @@
-use core::{cell::Ref};
-use rand::Rng;
+use std::sync::Arc;
 
 use pokedex::{
-    item::{bag::SavedBag, Item},
-    moves::Move,
-    pokemon::{owned::SavedPokemon, party::Party, Pokemon},
-    Dex,
+    item::bag::OwnedBag,
+    pokemon::{owned::OwnedPokemon, party::Party},
 };
 
 use crate::{
-    data::BattleData,
-    endpoint::{BattleEndpoint, ReceiveError},
+    endpoint::{BattleEndpoint, ConnectionError},
+    engine::BattlePokemon,
     message::{ClientMessage, ServerMessage},
     party::{ActivePokemon, PlayerParty},
-    player::{ClientPlayerData, Player, PlayerSettings},
+    player::{PlayerSettings, RemovalReason},
 };
 
-use super::pokemon::{ActiveBattlePokemon, HostPokemon};
+use super::pokemon::ActiveBattlePokemon;
 
-pub type BattlePlayer<ID, T> =
-    Player<ID, ActiveBattlePokemon<ID>, HostPokemon, T, Box<dyn BattleEndpoint<ID, T>>>;
+type PlayerEndpoint<ID, T> =
+    Arc<dyn BattleEndpoint<ServerMessage<ID, T>, ClientMessage<ID>> + Send + Sync + 'static>;
+
+pub struct BattlePlayer<ID, T> {
+    pub party: PlayerParty<ID, ActiveBattlePokemon<ID>, BattlePokemon, T>,
+    pub bag: OwnedBag,
+    pub settings: PlayerSettings,
+    pub endpoint: PlayerEndpoint<ID, T>,
+    pub(crate) removed: Option<RemovalReason>,
+}
 
 pub struct PlayerData<ID, T> {
     pub id: ID,
     pub name: Option<String>,
-    pub party: Party<SavedPokemon>,
-    pub bag: SavedBag,
+    pub party: Party<OwnedPokemon>,
+    pub bag: OwnedBag,
     pub trainer: Option<T>,
     pub settings: PlayerSettings,
-    pub endpoint: Box<dyn BattleEndpoint<ID, T>>,
+    pub endpoint: PlayerEndpoint<ID, T>,
 }
 
 impl<ID, T> BattlePlayer<ID, T> {
-    pub fn send(&mut self, message: ServerMessage<ID, T>) {
+    pub fn id(&self) -> &ID {
+        &self.party.id
+    }
+
+    pub(crate) fn send(&self, message: ServerMessage<ID, T>) -> Result<(), ConnectionError> {
         self.endpoint.send(message)
     }
 
-    pub fn receive(&mut self) -> Result<ClientMessage<ID>, Option<ReceiveError>> {
+    pub fn receive(&self) -> Result<Option<ClientMessage<ID>>, ConnectionError> {
         self.endpoint.receive()
     }
 }
 
 impl<ID, T> PlayerData<ID, T> {
-    pub(crate) fn init<R: Rng>(
-        self,
-        random: &mut R,
-        active: usize,
-        pokedex: &Dex<Pokemon>,
-        movedex: &Dex<Move>,
-        itemdex: &Dex<Item>,
-    ) -> BattlePlayer<ID, T> {
-        let pokemon: Party<HostPokemon> = self
-            .party
-            .into_iter()
-            .flat_map(|p| p.init(random, pokedex, movedex, itemdex))
-            .map(Into::into)
-            .collect();
+    pub(crate) fn init(self, active: usize) -> BattlePlayer<ID, T> {
+        let pokemon: Party<BattlePokemon> = self.party.into_iter().map(Into::into).collect();
 
         let mut party = PlayerParty::new(self.id, self.name, active, pokemon, self.trainer);
 
         for index in party.active.iter().flatten().map(ActivePokemon::index) {
             if let Some(pokemon) = party.pokemon.get_mut(index) {
-                pokemon.known = true;
+                pokemon.reveal();
             }
         }
 
-        let bag = self.bag.init(itemdex).unwrap_or_default();
-
         BattlePlayer {
             party,
-            bag,
+            bag: self.bag,
             settings: self.settings,
             endpoint: self.endpoint,
+            removed: None,
         }
     }
 }
 
-impl<ID: Clone, T: Clone> ClientPlayerData<ID, T> {
-    pub fn new<'a, ITER: Iterator<Item = Ref<'a, BattlePlayer<ID, T>>>>(
-        data: BattleData,
-        player: &BattlePlayer<ID, T>,
-        others: ITER,
-    ) -> Self
-    where
-        ID: 'a,
-        T: 'a,
-    {
-        Self {
-            local: PlayerParty {
-                id: player.party.id().clone(),
-                name: player.party.name.clone(),
-                active: ActiveBattlePokemon::as_usize(&player.party.active),
-                pokemon: player
-                    .party
-                    .pokemon
-                    .iter()
-                    .map(|p| &p.p.p)
-                    .cloned()
-                    .map(|pokemon| pokemon.uninit())
-                    .collect(),
-                trainer: player.party.trainer.clone(),
-            },
-            data,
-            remotes: others.map(|player| player.party.as_remote()).collect(),
-            bag: player.bag.clone().uninit(),
-        }
-    }
-}
+// impl<ID: Clone, T: Clone> ClientPlayerData<ID, T> {
+//     pub fn new<'a, ITER: Iterator<Item = Ref<'a, BattlePlayer<ID, T>>>>(
+//         data: BattleData,
+//         player: &BattlePlayer<ID, T>,
+//         others: ITER,
+//     ) -> Self
+//     where
+//         ID: 'a,
+//         T: 'a,
+//     {
+//         Self {
+//             local: PlayerParty {
+//                 id: player.party.id().clone(),
+//                 name: player.party.name.clone(),
+//                 active: ActiveBattlePokemon::as_usize(&player.party.active),
+//                 pokemon: player
+//                     .party
+//                     .pokemon
+//                     .iter()
+//                     .map(|p| &p.p.p)
+//                     .cloned()
+//                     .map(|pokemon| pokemon.uninit())
+//                     .collect(),
+//                 trainer: player.party.trainer.clone(),
+//             },
+//             data,
+//             remotes: others.map(|player| player.party.as_remote()).collect(),
+//             bag: player.bag.clone().uninit(),
+//         }
+//     }
+// }

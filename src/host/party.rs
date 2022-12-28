@@ -1,19 +1,19 @@
-
-
-
-
 use crate::{
+    engine::BattlePokemon,
     party::{PlayerParty, RemoteParty},
-    pokemon::remote::{RemotePokemon, UnknownPokemon},
+    pokemon::remote::RemotePokemon,
 };
 
-use super::pokemon::{ActiveBattlePokemon, HostPokemon};
+use super::pokemon::ActiveBattlePokemon;
 
-pub type BattleParty<ID, T> = PlayerParty<ID, ActiveBattlePokemon<ID>, HostPokemon, T>;
+pub type BattleParty<ID, T> = PlayerParty<ID, ActiveBattlePokemon<ID>, BattlePokemon, T>;
 
 impl<ID, T> BattleParty<ID, T> {
-    pub fn know(&mut self, index: usize) -> Option<RemotePokemon> {
-        self.pokemon.get_mut(index).and_then(HostPokemon::know)
+    pub fn reveal_and_get(&mut self, index: usize) -> Option<RemotePokemon> {
+        self.pokemon.get_mut(index).and_then(|p| {
+            p.reveal();
+            p.get_revealed()
+        })
     }
 
     pub fn ready_to_move(&self) -> bool {
@@ -32,11 +32,7 @@ impl<ID, T> BattleParty<ID, T> {
         RemoteParty {
             id: self.id.clone(),
             name: self.name.clone(),
-            pokemon: self
-                .pokemon
-                .iter()
-                .map(|p| p.known.then(|| UnknownPokemon::new(p).uninit()))
-                .collect(),
+            pokemon: self.pokemon.iter().map(BattlePokemon::get_revealed).collect(),
             active: ActiveBattlePokemon::as_usize(&self.active),
             trainer: self.trainer.clone(),
         }

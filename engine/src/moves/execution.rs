@@ -2,14 +2,10 @@ use rand::Rng;
 
 use serde::{Deserialize, Serialize};
 
-use pokedex::{
-    ailment::{Ailment, AilmentLength},
-    moves::Move,
-};
-
-use crate::{
-    engine::{BattlePokemon, MoveResult},
-    moves::{damage::DamageKind, MoveCancel, Percent},
+use battle::{
+    engine::{ActionResult, BattlePokemon},
+    moves::{BattleMove, DamageKind, Percent},
+    pokedex::ailment::{Ailment, AilmentLength},
     pokemon::{
         stat::{BattleStatType, Stage},
         Indexed,
@@ -59,9 +55,9 @@ impl MoveUse {
 pub fn move_usage<ID: Clone, R: Rng>(
     user: &Indexed<ID, &BattlePokemon>,
     random: &mut R,
-    results: &mut Vec<Indexed<ID, MoveResult>>,
+    results: &mut Vec<Indexed<ID, ActionResult>>,
     actions: &[MoveUse],
-    m: &Move,
+    m: &BattleMove,
     Indexed(target_id, target): Indexed<ID, &BattlePokemon>,
 ) {
     for action in actions {
@@ -69,7 +65,7 @@ pub fn move_usage<ID: Clone, R: Rng>(
             MoveUse::Damage(kind) => {
                 results.push(Indexed(
                     target_id.clone(),
-                    MoveResult::Damage(user.1.damage_kind(
+                    ActionResult::Damage(user.1.damage_kind(
                         random,
                         target,
                         *kind,
@@ -86,13 +82,14 @@ pub fn move_usage<ID: Clone, R: Rng>(
                             if target.ailment.is_none() {
                                 results.push(Indexed(
                                     target_id.clone(),
-                                    MoveResult::Ailment(Some(length.init(*ailment, random))),
+                                    ActionResult::Ailment(Some(length.init(*ailment, random))),
                                 ));
                             }
                         }
                         None => {
                             if target.ailment.is_some() {
-                                results.push(Indexed(target_id.clone(), MoveResult::Ailment(None)))
+                                results
+                                    .push(Indexed(target_id.clone(), ActionResult::Ailment(None)))
                             }
                         }
                     }
@@ -110,12 +107,15 @@ pub fn move_usage<ID: Clone, R: Rng>(
 
                 let healing = (result.damage as f32 * *percent as f32 / 100.0) as i16;
 
-                results.push(Indexed(target_id.clone(), MoveResult::Damage(result)));
-                results.push(Indexed(user.0.clone(), MoveResult::Heal(healing)))
+                results.push(Indexed(target_id.clone(), ActionResult::Damage(result)));
+                results.push(Indexed(user.0.clone(), ActionResult::Heal(healing)))
             }
             MoveUse::Stat(stat, stage) => {
                 if target.stages.can_change(*stat, *stage) {
-                    results.push(Indexed(target_id.clone(), MoveResult::Stat(*stat, *stage)));
+                    results.push(Indexed(
+                        target_id.clone(),
+                        ActionResult::Stat(*stat, *stage),
+                    ));
                 }
             }
             // MoveUseType::Linger(..) => {
@@ -123,7 +123,7 @@ pub fn move_usage<ID: Clone, R: Rng>(
             // }
             MoveUse::Flinch => results.push(Indexed(
                 target_id.clone(),
-                MoveResult::Cancel(MoveCancel::Flinch),
+                ActionResult::Cancel("flinch".parse().unwrap()),
             )),
             MoveUse::Chance(actions, chance) => {
                 if random.gen_range(0..=100) < *chance {

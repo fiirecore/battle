@@ -1,8 +1,9 @@
 use rhai::INT;
 
-use pokedex::{pokemon::Health, types::Effective};
-
-use crate::moves::damage::DamageResult;
+use battle::{
+    moves::DamageResult,
+    pokedex::{pokemon::Health, types::Effective},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ScriptDamage(DamageResult<INT>);

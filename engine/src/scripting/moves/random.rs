@@ -4,9 +4,13 @@ use rand::Rng;
 use rhai::INT;
 
 #[derive(Clone, Copy)]
-pub struct ScriptRandom<R: Rng>(*mut R);
+pub struct ScriptRandom<R: Rng + Clone + Send + Sync + 'static>(*mut R);
 
-impl<R: Rng> ScriptRandom<R> {
+unsafe impl<R: Rng + Clone + Send + Sync + 'static> Send for ScriptRandom<R> {}
+
+unsafe impl<R: Rng + Clone + Send + Sync + 'static> Sync for ScriptRandom<R> {}
+
+impl<R: Rng + Clone + Send + Sync + 'static> ScriptRandom<R> {
     pub fn new(random: &mut R) -> Self {
         Self(random as _)
     }
@@ -16,7 +20,7 @@ impl<R: Rng> ScriptRandom<R> {
     }
 }
 
-impl<R: Rng> Deref for ScriptRandom<R> {
+impl<R: Rng + Clone + Send + Sync + 'static> Deref for ScriptRandom<R> {
     type Target = R;
 
     fn deref(&self) -> &Self::Target {
@@ -24,7 +28,7 @@ impl<R: Rng> Deref for ScriptRandom<R> {
     }
 }
 
-impl<R: Rng> DerefMut for ScriptRandom<R> {
+impl<R: Rng + Clone + Send + Sync + 'static> DerefMut for ScriptRandom<R> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { &mut *self.0 }
     }

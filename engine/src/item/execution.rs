@@ -1,7 +1,6 @@
-use firecore_pokedex::item::usage::ItemExecution;
 use serde::{Deserialize, Serialize};
 
-use pokedex::{ailment::Ailment, pokemon::Health};
+use battle::{pokedex::{ailment::Ailment, pokemon::Health, item::usage::ItemExecution}};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]

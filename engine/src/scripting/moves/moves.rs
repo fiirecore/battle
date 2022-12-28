@@ -1,8 +1,8 @@
 use rhai::INT;
 
-use pokedex::{
-    moves::{Accuracy, Move, MoveCategory},
-    types::PokemonType,
+use battle::{
+    moves::{Accuracy, BattleMove, MoveCategory},
+    pokedex::types::PokemonType,
 };
 
 #[derive(Clone, Copy)]
@@ -14,7 +14,7 @@ pub struct ScriptMove {
 }
 
 impl ScriptMove {
-    pub fn new(m: &Move) -> Self {
+    pub fn new(m: &BattleMove) -> Self {
         Self {
             category: m.category,
             type_: m.pokemon_type,

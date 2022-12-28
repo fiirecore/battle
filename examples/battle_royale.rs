@@ -1,23 +1,29 @@
-use std::ops::{Deref, Range};
+use std::{ops::{Deref, Range}, sync::Arc};
 
+use firecore_battle_engine::{
+    moves::{EngineMove, MoveExecution, MoveUse},
+    DefaultEngine,
+};
 use firecore_pokedex::{
     item::Item,
-    moves::{owned::SavedMove, Move, MoveCategory, MoveTarget},
+    moves::{owned::SavedMove, Move},
     pokemon::{
         data::{Breeding, LearnableMove, Training},
         owned::SavedPokemon,
         party::Party,
         stat::StatSet,
-        Pokemon,
+        Level, Pokemon, PokemonId,
     },
-    types::{PokemonType, Types},
+    types::{PokemonType, PokemonTypes},
     Dex,
 };
 
 use firecore_battle::{
-    default_engine::moves::{MoveExecution, MoveUse},
-    moves::damage::DamageKind,
-    prelude::*,
+    ai::BattleAi,
+    data::BattleData,
+    host::{Battle, PlayerData},
+    moves::{BattleMove, Contact, DamageKind, MoveCategory, MoveTarget},
+    player::PlayerSettings,
 };
 
 const POKEMON: Range<u16> = 0..6;
@@ -39,6 +45,8 @@ impl<T> Deref for Container<T> {
     }
 }
 
+type Id = u8;
+
 fn main() {
     simple_logger::SimpleLogger::new()
         .with_level(log::LevelFilter::Trace)
@@ -59,64 +67,32 @@ fn main() {
     movedex.insert(Move {
         id: move_id[0],
         name: "Test Move".to_owned(),
-        category: MoveCategory::Physical,
-        pokemon_type: PokemonType::Normal,
-        accuracy: Some(50),
-        power: Some(50),
         pp: 50,
-        priority: 0,
-        target: MoveTarget::Opponent,
-        contact: false,
-        crit_rate: 0,
     });
 
     movedex.insert(Move {
         id: move_id[1],
         name: "Script Move".to_owned(),
-        category: MoveCategory::Physical,
-        pokemon_type: PokemonType::Normal,
-        accuracy: Some(50),
-        power: None,
         pp: 50,
-        priority: 0,
-        target: MoveTarget::Opponent,
-        contact: false,
-        crit_rate: 0,
     });
 
     movedex.insert(Move {
         id: move_id[2],
         name: "Damage".to_owned(),
-        category: MoveCategory::Physical,
-        pokemon_type: PokemonType::Fighting,
-        accuracy: Some(80),
-        power: Some(90),
         pp: 50,
-        priority: 0,
-        target: MoveTarget::Opponent,
-        contact: false,
-        crit_rate: 2,
     });
 
     movedex.insert(Move {
         id: move_id[3],
         name: "Aromatherapy".to_owned(),
-        category: MoveCategory::Status,
-        pokemon_type: PokemonType::Grass,
-        accuracy: Some(80),
-        power: None,
         pp: 50,
-        priority: 0,
-        target: MoveTarget::UserAndAllies,
-        contact: false,
-        crit_rate: 0,
     });
 
     for id in POKEMON {
         pokedex.insert(Pokemon {
-            id,
+            id: PokemonId(id),
             name: format!("Test {}", id),
-            types: Types {
+            types: PokemonTypes {
                 primary: PokemonType::Normal,
                 secondary: Some(PokemonType::Ice),
             },
@@ -153,8 +129,8 @@ fn main() {
         .into_iter()
         .enumerate()
         .map(|(index, id)| SavedPokemon {
-            pokemon: id,
-            level: 10 + (index as u8) * 20,
+            pokemon: PokemonId(id),
+            level: 10 + (index as Level) * 20,
             ..Default::default()
         })
         .map(|mut o| {
@@ -163,22 +139,21 @@ fn main() {
             }
             o
         })
+        .flat_map(|p| p.init(&mut random, &pokedex, &movedex, &itemdex))
         .collect();
 
     const AS: usize = 2;
 
     let mut players: Vec<_> = (1..100)
         .into_iter()
-        .map(|_| BattleAi::<u8, RngType, ()>::new(random.clone()))
+        .map(|_| BattleAi::<Id, RngType, ()>::new(random.clone()))
         .collect();
 
-    let mut battle = Battle::new(
-        BattleData::default(),
-        &mut random,
-        AS,
-        &pokedex,
-        &movedex,
-        &itemdex,
+    let mut battle = Battle::<Id, (), DefaultEngine<_, _>>::new(
+        BattleData {
+            active: AS,
+            ..Default::default()
+        },
         players.iter().enumerate().map(|(id, player)| PlayerData {
             id: id as _,
             name: Some(format!("Player {}", id)),
@@ -186,25 +161,83 @@ fn main() {
             bag: Default::default(),
             trainer: Some(()),
             settings: PlayerSettings { gains_exp: false },
-            endpoint: Box::new(player.endpoint().clone()),
+            endpoint: Arc::new(player.endpoint().clone()),
         }),
     );
 
-    let mut engine = DefaultEngine::new::<u8, RngType>();
+    let mut engine = DefaultEngine::<Id, ()>::new::<RngType>();
 
     engine.moves.insert(
         move_id[0],
-        MoveExecution::Actions(vec![MoveUse::Damage(DamageKind::Power(50))]),
+        EngineMove {
+            data: BattleMove {
+                id: move_id[0],
+                category: MoveCategory::Physical,
+                pokemon_type: PokemonType::Normal,
+                accuracy: Some(50),
+                power: Some(50),
+                priority: 0,
+                target: MoveTarget::Opponent,
+                contact: Contact::default(),
+                crit_rate: 0,
+            },
+            usage: MoveExecution::Actions(vec![MoveUse::Damage(DamageKind::Power(50))]),
+        },
     );
 
     engine.moves.insert(
         move_id[2],
-        MoveExecution::Actions(vec![MoveUse::Damage(DamageKind::Power(90))]),
+        EngineMove {
+            data: BattleMove {
+                id: move_id[2],
+                category: MoveCategory::Physical,
+                pokemon_type: PokemonType::Fighting,
+                accuracy: Some(80),
+                power: Some(90),
+                priority: 0,
+                target: MoveTarget::Opponent,
+                contact: Contact(true),
+                crit_rate: 2,
+            },
+            usage: MoveExecution::Actions(vec![MoveUse::Damage(DamageKind::Power(90))]),
+        },
     );
 
-    engine.moves.insert(move_id[1], MoveExecution::Script);
+    engine.moves.insert(
+        move_id[1],
+        EngineMove {
+            data: BattleMove {
+                id: move_id[1],
+                category: MoveCategory::Physical,
+                pokemon_type: PokemonType::Normal,
+                accuracy: Some(50),
+                power: None,
+                priority: 0,
+                target: MoveTarget::Opponent,
+                contact: Contact(false),
+                crit_rate: 0,
+            },
+            usage: MoveExecution::Script,
+        },
+    );
 
-    engine.moves.insert(move_id[3], MoveExecution::Script);
+    engine.moves.insert(
+        move_id[3],
+        EngineMove {
+            data: BattleMove {
+                id: move_id[3],
+                category: MoveCategory::Status,
+                pokemon_type: PokemonType::Grass,
+                accuracy: Some(80),
+                power: None,
+                priority: 0,
+                target: MoveTarget::UserAndAllies,
+                contact: Contact(false),
+                crit_rate: 0,
+            },
+            usage: MoveExecution::Script,
+        },
+    );
 
     let script1 = r#"
 
@@ -258,7 +291,7 @@ fn main() {
         .moves
         .insert(move_id[3], script2.to_owned());
 
-    while !battle.finished() {
+    while battle.running() {
         battle.update(&mut random, &mut engine, &movedex, &itemdex);
         for player in players.iter_mut() {
             player.update(&pokedex, &movedex, &itemdex);

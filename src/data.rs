@@ -1,22 +1,33 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BattleData {
-    pub type_: BattleType,
+    /// constant
+    pub versus: VersusType,
+    /// constant
+    pub active: usize,
+    /// constant
     #[serde(default)]
     pub settings: BattleSettings,
+    // add weather, etc
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum BattleType {
+pub enum VersusType {
     Wild,
     Trainer,
     GymLeader,
 }
 
-impl BattleType {
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct BattleSettings {
+    #[serde(default = "const_true")]
+    pub allow_forfeit: bool,
+}
+
+impl VersusType {
     pub fn is_wild(&self) -> bool {
-        matches!(self, BattleType::Wild)
+        matches!(self, Self::Wild)
     }
 
     pub fn is_trainer(&self) -> bool {
@@ -24,16 +35,14 @@ impl BattleType {
     }
 }
 
-impl Default for BattleType {
+impl Default for BattleData {
     fn default() -> Self {
-        Self::Wild
+        Self {
+            versus: VersusType::Trainer,
+            active: 1,
+            settings: Default::default(),
+        }
     }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BattleSettings {
-    #[serde(default = "const_true")]
-    pub allow_forfeit: bool,
 }
 
 impl Default for BattleSettings {

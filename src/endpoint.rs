@@ -1,14 +1,14 @@
 use crate::message::{ClientMessage, ServerMessage};
 
-/// Represents a client endpoint for the battle host.
-pub trait BattleEndpoint<ID, T> {
-    fn send(&mut self, message: ServerMessage<ID, T>);
+/// Represents an endpoint for the battle host.
+pub trait BattleEndpoint<A, B> {
+    fn send(&self, message: A) -> Result<(), ConnectionError>;
 
-    fn receive(&mut self) -> Result<ClientMessage<ID>, Option<ReceiveError>>;
+    fn receive(&self) -> Result<Option<B>, ConnectionError>;
 }
 
 #[derive(Debug)]
-pub enum ReceiveError {
+pub enum ConnectionError {
     Disconnected,
 }
 
@@ -18,19 +18,19 @@ pub use mpsc::*;
 #[cfg(feature = "mpsc_endpoint")]
 mod mpsc {
 
-    use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError};
+    use crossbeam_channel::{unbounded, Receiver, Sender, TryRecvError, TrySendError};
 
     use crate::message::{ClientMessage, ServerMessage};
 
-    use super::{BattleEndpoint, ReceiveError};
+    use super::{BattleEndpoint, ConnectionError};
 
-    pub fn create<ID, T>() -> (MpscClient<ID, T>, MpscEndpoint<ID, T>) {
-        let (serv_sender, receiver) = unbounded();
+    pub fn create<A, B>() -> (MpscConnection<A, B>, MpscConnection<B, A>) {
         let (sender, serv_receiver) = unbounded();
+        let (serv_sender, receiver) = unbounded();
 
         (
-            MpscClient { sender, receiver },
-            MpscEndpoint {
+            MpscConnection { sender, receiver },
+            MpscConnection {
                 receiver: serv_receiver,
                 sender: serv_sender,
             },
@@ -38,39 +38,28 @@ mod mpsc {
     }
 
     #[derive(Clone)]
-    pub struct MpscClient<ID, T> {
-        pub sender: Sender<ClientMessage<ID>>,
-        pub receiver: Receiver<ServerMessage<ID, T>>,
+    pub struct MpscConnection<A, B> {
+        pub sender: Sender<A>,
+        pub receiver: Receiver<B>,
     }
 
-    #[derive(Clone)]
-    pub struct MpscEndpoint<ID, T> {
-        pub receiver: Receiver<ClientMessage<ID>>,
-        pub sender: Sender<ServerMessage<ID, T>>,
-    }
+    pub type MpscClient<ID, T> = MpscConnection<ClientMessage<ID>, ServerMessage<ID, T>>;
+    pub type MpscEndpoint<ID, T> = MpscConnection<ServerMessage<ID, T>, ClientMessage<ID>>;
 
-    impl<ID, T> MpscClient<ID, T> {
-        pub fn send(&self, message: ClientMessage<ID>) {
-            if let Err(err) = self.sender.try_send(message) {
-                log::error!("AI cannot send client message with error {}", err);
-            }
-        }
-    }
-
-    impl<ID, T> BattleEndpoint<ID, T> for MpscEndpoint<ID, T> {
-        fn send(&mut self, message: ServerMessage<ID, T>) {
-            if let Err(err) = self.sender.try_send(message) {
-                log::error!("Cannot send server message to AI with error {}", err);
+    impl<A, B> BattleEndpoint<A, B> for MpscConnection<A, B> {
+        fn send(&self, message: A) -> Result<(), ConnectionError> {
+            match self.sender.try_send(message) {
+                Ok(()) => Ok(()),
+                Err(TrySendError::Full(..)) => unreachable!(),
+                Err(TrySendError::Disconnected(..)) => Err(ConnectionError::Disconnected),
             }
         }
 
-        fn receive(&mut self) -> Result<ClientMessage<ID>, Option<ReceiveError>> {
+        fn receive(&self) -> Result<Option<B>, ConnectionError> {
             match self.receiver.try_recv() {
-                Ok(m) => Ok(m),
-                Err(err) => Err(match err {
-                    TryRecvError::Empty => None,
-                    TryRecvError::Disconnected => Some(ReceiveError::Disconnected),
-                }),
+                Ok(m) => Ok(Some(m)),
+                Err(TryRecvError::Empty) => Ok(None),
+                Err(TryRecvError::Disconnected) => Err(ConnectionError::Disconnected),
             }
         }
     }

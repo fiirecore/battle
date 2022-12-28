@@ -3,11 +3,11 @@ use core::ops::{Deref, DerefMut};
 use rand::Rng;
 use rhai::INT;
 
-use pokedex::{moves::MoveCategory, pokemon::owned::OwnedPokemon, types::PokemonType};
-
-use crate::{
+use battle::{
+    pokedex::types::PokemonType,
     engine::pokemon::{crit, throw_move, BattlePokemon},
-    pokemon::{Indexed, PokemonIdentifier},
+    moves::MoveCategory,
+    pokemon::{Indexed, TeamIndex},
 };
 
 use super::{ScriptDamage, ScriptMove, ScriptRandom};
@@ -44,35 +44,19 @@ impl<T> Clone for DerefPtr<T> {
 impl<T> Copy for DerefPtr<T> {}
 
 #[derive(Debug, Clone)]
-pub struct ScriptPokemon<ID: Clone>(PokemonIdentifier<ID>, pub BattlePokemon);
+pub struct ScriptPokemon<ID: Clone + Send + Sync + 'static>(TeamIndex<ID>, *mut BattlePokemon);
 
-impl<ID: Clone> ScriptPokemon<ID> {
-
-    pub fn new(pokemon: Indexed<ID, &BattlePokemon>) -> Self {
+impl<ID: Clone + Send + Sync + 'static> ScriptPokemon<ID> {
+    pub fn new(pokemon: Indexed<ID, &mut BattlePokemon>) -> Self {
         let Indexed(id, pokemon) = pokemon;
-        let p = BattlePokemon {
-            p: OwnedPokemon {
-                pokemon: pokemon.pokemon.clone(),
-                level: pokemon.level,
-                gender: pokemon.gender,
-                nature: pokemon.nature,
-                hp: pokemon.hp,
-                ivs: pokemon.ivs,
-                evs: pokemon.evs,
-                friendship: pokemon.friendship,
-                ailment: pokemon.ailment,
-                nickname: None,
-                moves: Default::default(),
-                item: pokemon.item.clone(),
-                experience: pokemon.experience,
-            },
-            stages: pokemon.stages.clone(),
-        };
-
-        Self(id, p)
+        Self(id, pokemon as _)
     }
 
-    pub fn throw_move<R: Rng + Clone + 'static>(
+    pub fn position(&self) -> &TeamIndex<ID> {
+        &self.0
+    }
+
+    pub fn throw_move<R: Rng + Clone + Send + Sync + 'static>(
         &mut self,
         mut random: ScriptRandom<R>,
         m: ScriptMove,
@@ -87,7 +71,7 @@ impl<ID: Clone> ScriptPokemon<ID> {
     //     true
     // }
 
-    pub fn get_damage<R: Rng + Clone + 'static>(
+    pub fn get_damage<R: Rng + Clone + Send + Sync + 'static>(
         &mut self,
         random: ScriptRandom<R>,
         target: Self,
@@ -112,16 +96,25 @@ impl<ID: Clone> ScriptPokemon<ID> {
     }
 }
 
-impl<ID: Clone> Deref for ScriptPokemon<ID> {
+unsafe impl<ID: Clone + Send + Sync + 'static> Send for ScriptPokemon<ID> {}
+unsafe impl<ID: Clone + Send + Sync + 'static> Sync for ScriptPokemon<ID> {}
+
+impl<ID: Clone + Send + Sync + 'static> Deref for ScriptPokemon<ID> {
     type Target = BattlePokemon;
 
     fn deref(&self) -> &Self::Target {
-        &self.1
+        unsafe { &*self.1 }
     }
 }
 
-impl<ID: Clone> Into<PokemonIdentifier<ID>> for ScriptPokemon<ID> {
-    fn into(self) -> PokemonIdentifier<ID> {
+impl<ID: Clone + Send + Sync + 'static> DerefMut for ScriptPokemon<ID> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.1 }
+    }
+}
+
+impl<ID: Clone + Send + Sync + 'static> Into<TeamIndex<ID>> for ScriptPokemon<ID> {
+    fn into(self) -> TeamIndex<ID> {
         self.0
     }
 }

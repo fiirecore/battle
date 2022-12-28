@@ -1,6 +1,6 @@
 use core::ops::DerefMut;
 
-use firecore_pokedex::ailment::*;
+use battle::pokedex::ailment::*;
 use rand::Rng;
 
 use super::ScriptRandom;
@@ -16,7 +16,7 @@ impl ScriptAilmentEffect {
         Self(Some(AilmentEffect { ailment, turns }))
     }
 
-    pub fn init<R: Rng + Clone + 'static>(
+    pub fn init<R: Rng + Clone + Send + Sync + 'static>(
         &mut self,
         mut random: ScriptRandom<R>,
     ) -> LiveScriptAilment {
