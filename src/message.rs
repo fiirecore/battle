@@ -14,7 +14,6 @@ use crate::{
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub enum ClientMessage<ID> {
     Select(ActivePosition, BattleSelection<ID>),
-    ReplaceFaint(ActivePosition, PartyPosition),
     TryForfeit,
     LearnMove(PartyPosition, MoveId, Option<usize>), // pokemon index, move, move index
                                                      // RequestMoveData(MoveId),

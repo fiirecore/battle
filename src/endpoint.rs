@@ -1,5 +1,3 @@
-use crate::message::{ClientMessage, ServerMessage};
-
 /// Represents an endpoint for the battle host.
 pub trait BattleEndpoint<A, B> {
     fn send(&self, message: A) -> Result<(), ConnectionError>;

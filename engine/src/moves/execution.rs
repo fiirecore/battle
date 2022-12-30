@@ -3,12 +3,12 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use battle::{
-    engine::{ActionResult, BattlePokemon},
+    engine::ActionResult,
     moves::{BattleMove, DamageKind, Percent},
     pokedex::ailment::{Ailment, AilmentLength},
     pokemon::{
         stat::{BattleStatType, Stage},
-        Indexed,
+        BattlePokemon, Indexed,
     },
 };
 

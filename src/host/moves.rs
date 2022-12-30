@@ -5,11 +5,11 @@ use std::collections::BTreeMap;
 use pokedex::pokemon::stat::{BaseStat, StatType};
 
 use crate::{
-    pokemon::{Indexed, TeamIndex},
-    select::BattleSelection, moves::Priority, engine::{BattlePokemon, BattleEngine},
+    engine::{ActiveBattlePokemon, BattleEngine},
+    moves::Priority,
+    pokemon::{BattlePokemon, Indexed, TeamIndex},
+    select::BattleSelection,
 };
-
-use super::pokemon::{ActiveBattlePokemon};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MovePriority<ID: Ord> {
@@ -17,7 +17,11 @@ pub enum MovePriority<ID: Ord> {
     Second(Reverse<Priority>, Reverse<BaseStat>, Option<u16>),
 }
 
-pub fn queue_player<ID: Clone + Ord + Hash + Send + Sync + 'static, T: Send + Sync + 'static, R: Rng>(
+pub fn queue_player<
+    ID: Clone + Ord + Hash + Send + Sync + 'static,
+    T: Send + Sync + 'static,
+    R: Rng,
+>(
     engine: &impl BattleEngine<ID, T>,
     queue: &mut BTreeMap<MovePriority<ID>, Indexed<ID, BattleSelection<ID>>>,
     id: &ID,

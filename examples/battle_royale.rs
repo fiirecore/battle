@@ -25,6 +25,7 @@ use firecore_battle::{
     moves::{BattleMove, Contact, DamageKind, MoveCategory, MoveTarget},
     player::PlayerSettings,
 };
+use rand::seq::IteratorRandom;
 
 const POKEMON: Range<u16> = 0..6;
 
@@ -146,7 +147,7 @@ fn main() {
 
     let mut players: Vec<_> = (1..100)
         .into_iter()
-        .map(|_| BattleAi::<Id, RngType, ()>::new(random.clone()))
+        .map(|_| BattleAi::new())
         .collect();
 
     let mut battle = Battle::<Id, (), DefaultEngine<_, _>>::new(
@@ -292,15 +293,20 @@ fn main() {
         .insert(move_id[3], script2.to_owned());
 
     while battle.running() {
-        battle.update(&mut random, &mut engine, &movedex, &itemdex);
+        battle.update(&mut random, &mut engine, &movedex).unwrap();
         for player in players.iter_mut() {
-            player.update(&pokedex, &movedex, &itemdex);
+            player.update(&mut random, &pokedex, &movedex, &itemdex).unwrap();
         }
+        println!("{}", players.get(firecore_battle::host::test.load(std::sync::atomic::Ordering::Relaxed) as usize).unwrap());
+        // if let Some(player) = players.iter_mut().filter(|p| p.active()).choose(&mut random) {
+        //     log::info!("Random AI Info: {player}");
+        // }
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
     log::info!(
         "{} wins!",
-        match battle.winner() {
+        match battle.winner().flatten() {
             Some(id) => format!("Player #{}", id),
             None => "No one".to_owned(),
         }

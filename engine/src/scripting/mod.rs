@@ -1,4 +1,5 @@
 use core::{fmt::Debug, hash::Hash};
+use std::error::Error;
 
 // use std::error::Error;
 
@@ -11,14 +12,12 @@ use rhai::{
 
 use battle::{
     data::BattleData,
-    engine::{ActionResult, BattlePokemon, PlayerQuery},
+    engine::{ActionResult, PlayerQuery},
     moves::{BattleMove, MoveCategory},
     pokedex::{item::ItemId, moves::MoveId},
     pokemon::{Indexed, TeamIndex},
-    select::ClientMoveAction,
+    select::PublicAction,
 };
-
-use crate::ScriptingEngine;
 
 type Scripts<ID> = HashMap<ID, String>;
 
@@ -27,6 +26,35 @@ pub type ItemScripts = Scripts<ItemId>;
 
 mod moves;
 pub use moves::*;
+
+pub trait ScriptingEngine<ID, T> {
+    /// Current battle data
+    type Data: Default;
+
+    type ExecutionError: Error;
+
+    fn execute_move(
+        &self,
+        data: &mut Self::Data,
+        random: &mut (impl Rng + Clone + Send + Sync + 'static),
+        battle: &mut BattleData,
+        m: &BattleMove,
+        user: &TeamIndex<ID>,
+        targets: Vec<TeamIndex<ID>>,
+        players: &mut PlayerQuery<ID, T>,
+    ) -> Result<Vec<Indexed<ID, PublicAction>>, Self::ExecutionError>;
+
+    fn execute_item(
+        &self,
+        data: &mut Self::Data,
+        random: &mut (impl Rng + Clone + Send + Sync + 'static),
+        battle: &mut BattleData,
+        item: &ItemId,
+        user: &ID,
+        target: TeamIndex<ID>,
+        players: &mut PlayerQuery<ID, T>,
+    ) -> Result<Vec<Indexed<ID, PublicAction>>, Self::ExecutionError>;
+}
 
 pub struct RhaiScriptingEngine {
     pub engine: Engine,
@@ -96,16 +124,16 @@ impl<ID: Eq + Hash + Clone + Send + Sync + 'static, T> ScriptingEngine<ID, T>
 
     type Data = ();
 
-    fn execute_move<'a, 'b: 'a>(
-        &'b self,
+    fn execute_move(
+        &self,
         data: &mut Self::Data,
         random: &mut (impl Rng + Clone + Send + Sync + 'static),
         battle: &mut BattleData,
         m: &BattleMove,
-        user: Indexed<ID, &mut BattlePokemon>,
+        user: &TeamIndex<ID>,
         targets: Vec<TeamIndex<ID>>,
-        players: &'a mut PlayerQuery<'a, ID, T>,
-    ) -> Result<Vec<Indexed<ID, ClientMoveAction>>, Self::ExecutionError> {
+        players: &mut PlayerQuery<ID, T>,
+    ) -> Result<Vec<Indexed<ID, PublicAction>>, Self::ExecutionError> {
         match self.moves.get(&m.id) {
             Some(script) => {
                 use rhai::*;
@@ -130,20 +158,28 @@ impl<ID: Eq + Hash + Clone + Send + Sync + 'static, T> ScriptingEngine<ID, T>
                     })
                     .collect::<Vec<ScriptPokemon<ID>>>();
 
+                let p = players.get_mut(user.team()).unwrap().party.active_mut(user.index()).unwrap();
+
                 let result: Array = self.engine.call_fn(
                     &mut scope,
                     &ast,
                     "use_move",
-                    (ScriptMove::new(m), ScriptPokemon::<ID>::new(user), targets),
+                    (ScriptMove::new(m), ScriptPokemon::<ID>::new(Indexed(user.clone(), p)), targets),
                 )?;
 
                 let result = result
                     .into_iter()
                     .flat_map(Dynamic::try_cast::<ScriptActionResult<ID>>)
                     .map(|r| r.0)
-                    .collect::<Vec<Indexed<ID, ClientMoveAction>>>();
+                    .collect::<Vec<Indexed<ID, ActionResult>>>();
 
-                Ok(result)
+                let mut actions = Vec::new();
+
+                for action in result {
+                    crate::run_action(action, battle, user, &mut actions, players);
+                }
+
+                Ok(actions)
             }
             None => Err(RhaiScriptError::Missing(m.id)),
         }
@@ -158,7 +194,7 @@ impl<ID: Eq + Hash + Clone + Send + Sync + 'static, T> ScriptingEngine<ID, T>
         _user: &ID,
         _target: TeamIndex<ID>,
         _players: &mut PlayerQuery<ID, T>,
-    ) -> Result<Vec<Indexed<ID, ClientMoveAction>>, Self::ExecutionError> {
+    ) -> Result<Vec<Indexed<ID, PublicAction>>, Self::ExecutionError> {
         Err(RhaiScriptError::Unimplemented)
     }
 }

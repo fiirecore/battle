@@ -2,14 +2,19 @@ use serde::{Deserialize, Serialize};
 
 use battle::pokedex::{ailment::Ailment, pokemon::Health};
 
-use super::usage::ItemExecution;
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct ItemUsage {
+    #[serde(default)]
+    pub conditions: Vec<ItemCondition>,
+    pub execute: ItemExecution,
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub enum BattleItemExecution {
-    Normal(ItemExecution),
-    Script,
-    Pokeball,
+pub enum ItemExecution {
+    Actions(Vec<ItemAction>),
+    // Script,
+    None,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -25,8 +30,8 @@ pub enum ItemAction {
     HealPokemon(Health),
 }
 
-impl Default for BattleItemExecution {
+impl Default for ItemExecution {
     fn default() -> Self {
-        Self::Normal(ItemExecution::None)
+        Self::None
     }
 }

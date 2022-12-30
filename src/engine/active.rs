@@ -1,9 +1,5 @@
-use pokedex::pokemon::owned::OwnedPokemon;
-
 use crate::{
-    engine::BattlePokemon,
     party::{Active, ActivePokemon},
-    pokemon::PokemonInstance,
     select::BattleSelection,
 };
 
@@ -47,15 +43,5 @@ impl<ID> core::fmt::Display for ActiveBattlePokemon<ID> {
             self.index,
             self.queued_move.is_some()
         )
-    }
-}
-
-impl PokemonInstance for BattlePokemon {
-    // fn id(&self) -> &PokemonId {
-    //     &self.pokemon.id
-    // }
-
-    fn fainted(&self) -> bool {
-        OwnedPokemon::fainted(self)
     }
 }

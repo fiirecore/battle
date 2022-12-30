@@ -1,10 +1,7 @@
 use crate::{
-    engine::BattlePokemon,
     party::{PlayerParty, RemoteParty},
-    pokemon::remote::RemotePokemon,
+    pokemon::{remote::RemotePokemon, BattlePokemon}, engine::ActiveBattlePokemon,
 };
-
-use super::pokemon::ActiveBattlePokemon;
 
 pub type BattleParty<ID, T> = PlayerParty<ID, ActiveBattlePokemon<ID>, BattlePokemon, T>;
 
@@ -32,7 +29,11 @@ impl<ID, T> BattleParty<ID, T> {
         RemoteParty {
             id: self.id.clone(),
             name: self.name.clone(),
-            pokemon: self.pokemon.iter().map(BattlePokemon::get_revealed).collect(),
+            pokemon: self
+                .pokemon
+                .iter()
+                .map(BattlePokemon::get_revealed)
+                .collect(),
             active: ActiveBattlePokemon::as_usize(&self.active),
             trainer: self.trainer.clone(),
         }

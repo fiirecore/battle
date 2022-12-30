@@ -3,12 +3,12 @@ name = "firecore-battle-engine"
 version = "0.0.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-firecore-battle = { path = ".." }
+firecore-battle = { version = "0.0.10", path = "..", default-features = false, features = [
+    "engine",
+] }
 serde = { version = "1", features = ["derive"] }
-hashbrown = { version = "0.12" }
+hashbrown = { version = "0.13" }
 
 rand = { version = "0.8", default-features = false }
 rhai = { version = "1", features = ["sync"] }

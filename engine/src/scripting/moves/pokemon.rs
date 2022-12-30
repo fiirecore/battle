@@ -5,7 +5,7 @@ use rhai::INT;
 
 use battle::{
     pokedex::types::PokemonType,
-    engine::pokemon::{crit, throw_move, BattlePokemon},
+    pokemon::{crit, throw_move, BattlePokemon},
     moves::MoveCategory,
     pokemon::{Indexed, TeamIndex},
 };

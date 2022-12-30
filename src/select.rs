@@ -4,11 +4,10 @@ use pokedex::{
     ailment::LiveAilment,
     item::ItemId,
     moves::{MoveId, PP},
-    pokemon::{Experience, Level},
+    pokemon::{Experience},
 };
 
 use crate::{
-    engine::{ActionResult, BattlePokemon},
     moves::{ClientDamage, MoveCancelId, RemovePokemonId},
     pokemon::{
         stat::{BattleStatType, Stage},
@@ -21,7 +20,8 @@ pub enum BattleSelection<ID> {
     /// Move ID, and its optional target.
     Move(MoveId, Option<TeamIndex<ID>>),
     /// Switch to another pokemon with it's party index.
-    Pokemon(usize),
+    /// OR Replace a fainted pokemon
+    Pokemon(PartyPosition),
     Item(Indexed<ID, ItemId>),
 }
 
@@ -29,6 +29,7 @@ pub enum BattleSelection<ID> {
 pub enum SelectMessage {
     Request(Option<SelectReason>),
     Confirm(SelectConfirm),
+    Deny,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -39,16 +40,20 @@ pub enum SelectConfirm {
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum SelectReason {
+    InvalidInput,
     NoPP,
     MissingAction,
     MissingPokemon,
+    MissingActive,
+    FaintedPokemon,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ClientAction<ID> {
     /// turn number, turn user, turn type
     Announce(usize, Option<TeamIndex<ID>>, ClientActionType<ID>),
-    Actions(Vec<Indexed<ID, ClientMoveAction>>),
+    /// vector of targets of client move action
+    Actions(Vec<Indexed<ID, PublicAction>>),
     Error(#[serde(skip)] String),
 }
 
@@ -62,7 +67,7 @@ pub enum ClientActionType<ID> {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum ClientMoveAction {
+pub enum PublicAction {
     /// This contains the percent HP the pokemon was left at, how effective the attack was, and if it was a critical hit.
     /// A Pokemon faints when it's hp is set to 0.0
     SetHP(ClientDamage<f32>),
@@ -73,26 +78,10 @@ pub enum ClientMoveAction {
     Cancel(MoveCancelId),
     Remove(RemovePokemonId),
     Miss,
-
-    SetExp(Experience, Level),
-
-    Error,
 }
 
-impl ClientMoveAction {
-    pub fn new(pokemon: &BattlePokemon, result: ActionResult) -> Self {
-        match result {
-            ActionResult::Damage(_) => todo!(),
-            ActionResult::Heal(_) => todo!(),
-            ActionResult::Ailment(_) => todo!(),
-            ActionResult::Stat(_, _) => todo!(),
-            ActionResult::Reveal(_) => todo!(),
-            ActionResult::Cancel(_) => todo!(),
-            ActionResult::Remove(_) => todo!(),
-            ActionResult::Fail => todo!(),
-            ActionResult::Miss => todo!(),
-        }
-    }
+pub enum PrivateAction {
+    AddExp(Experience),
 }
 
 impl<ID: core::fmt::Display> core::fmt::Display for BattleSelection<ID> {

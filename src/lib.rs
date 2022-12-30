@@ -19,9 +19,6 @@ pub mod host;
 #[cfg(feature = "engine")]
 pub mod engine;
 
-#[cfg(feature = "default_engine")]
-pub mod default_engine;
-
 #[cfg(feature = "ai")]
 pub mod ai;
 

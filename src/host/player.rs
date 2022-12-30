@@ -1,30 +1,14 @@
-use std::sync::Arc;
-
 use pokedex::{
     item::bag::OwnedBag,
     pokemon::{owned::OwnedPokemon, party::Party},
 };
 
 use crate::{
-    endpoint::{BattleEndpoint, ConnectionError},
-    engine::BattlePokemon,
-    message::{ClientMessage, ServerMessage},
+    engine::{BattlePlayer, PlayerEndpoint},
     party::{ActivePokemon, PlayerParty},
-    player::{PlayerSettings, RemovalReason},
+    player::PlayerSettings,
+    pokemon::BattlePokemon,
 };
-
-use super::pokemon::ActiveBattlePokemon;
-
-type PlayerEndpoint<ID, T> =
-    Arc<dyn BattleEndpoint<ServerMessage<ID, T>, ClientMessage<ID>> + Send + Sync + 'static>;
-
-pub struct BattlePlayer<ID, T> {
-    pub party: PlayerParty<ID, ActiveBattlePokemon<ID>, BattlePokemon, T>,
-    pub bag: OwnedBag,
-    pub settings: PlayerSettings,
-    pub endpoint: PlayerEndpoint<ID, T>,
-    pub(crate) removed: Option<RemovalReason>,
-}
 
 pub struct PlayerData<ID, T> {
     pub id: ID,
@@ -34,20 +18,6 @@ pub struct PlayerData<ID, T> {
     pub trainer: Option<T>,
     pub settings: PlayerSettings,
     pub endpoint: PlayerEndpoint<ID, T>,
-}
-
-impl<ID, T> BattlePlayer<ID, T> {
-    pub fn id(&self) -> &ID {
-        &self.party.id
-    }
-
-    pub(crate) fn send(&self, message: ServerMessage<ID, T>) -> Result<(), ConnectionError> {
-        self.endpoint.send(message)
-    }
-
-    pub fn receive(&self) -> Result<Option<ClientMessage<ID>>, ConnectionError> {
-        self.endpoint.receive()
-    }
 }
 
 impl<ID, T> PlayerData<ID, T> {
@@ -68,6 +38,7 @@ impl<ID, T> PlayerData<ID, T> {
             settings: self.settings,
             endpoint: self.endpoint,
             removed: None,
+            ready: Default::default(),
         }
     }
 }

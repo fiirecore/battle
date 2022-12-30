@@ -1,15 +1,14 @@
 use rhai::INT;
 
-use battle::{engine::ActionResult, pokemon::Indexed, select::ClientMoveAction};
+use battle::{engine::ActionResult, pokemon::Indexed};
 
 use super::{damage::ScriptDamage, pokemon::ScriptPokemon, LiveScriptAilment};
 
 #[derive(Clone, Copy)]
-pub struct ScriptActionResult<ID: Clone + Send + Sync + 'static>(pub Indexed<ID, ClientMoveAction>);
+pub struct ScriptActionResult<ID: Clone + Send + Sync + 'static>(pub Indexed<ID, ActionResult>);
 
 impl<ID: Clone + Send + Sync + 'static> ScriptActionResult<ID> {
-    pub fn new(pokemon: ScriptPokemon<ID>, result: ActionResult) -> Self {
-        let action = ClientMoveAction::new(&*pokemon, result);
+    pub fn new(pokemon: ScriptPokemon<ID>, action: ActionResult) -> Self {
         Self(Indexed(pokemon.position().clone(), action))
     }
 

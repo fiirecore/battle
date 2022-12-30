@@ -8,3 +8,4 @@
 
 * Public server capability
 
+* Add allied players
